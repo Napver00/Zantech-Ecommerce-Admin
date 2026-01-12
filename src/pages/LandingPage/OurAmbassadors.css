@@ -1,0 +1,85 @@
+.ambassador-card {
+    transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.ambassador-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 24px rgba(0,0,0,0.12) !important;
+}
+
+.ambassador-card-img {
+    height: 160px;
+    object-fit: cover;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.ambassador-name {
+    font-weight: 700;
+    font-size: 1rem;
+    color: #1e293b;
+    margin-bottom: 0.25rem;
+}
+
+.ambassador-bio {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin-top: 0.5rem;
+    line-height: 1.5;
+}
+
+.ambassador-card {
+    transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+}
+
+.ambassador-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 24px rgba(0,0,0,0.12) !important;
+}
+
+.ambassador-card-image-container {
+    position: relative;
+}
+
+.ambassador-card-img {
+    height: 160px;
+    object-fit: cover;
+    border-bottom: 1px solid #e2e8f0;
+    width: 100%;
+}
+
+.overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.4);
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+    border-radius: 12px 12px 0 0;
+}
+
+.ambassador-card:hover .overlay {
+    opacity: 1;
+}
+
+.ambassador-name {
+    font-weight: 700;
+    font-size: 1rem;
+    color: #1e293b;
+    margin-bottom: 0.25rem;
+}
+
+.ambassador-bio {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin-top: 0.5rem;
+    line-height: 1.5;
+}

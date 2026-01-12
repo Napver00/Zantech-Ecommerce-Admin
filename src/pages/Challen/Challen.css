@@ -1,0 +1,628 @@
+.challen-container {
+  padding: 1.5rem;
+  background-color: #f8f9fa;
+  min-height: calc(100vh - 60px);
+}
+
+.modern-card {
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
+  background: #ffffff;
+}
+
+.page-title {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.create-challan-btn {
+  padding: 0.5rem 1.25rem;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  background: #4361ee;
+  border: none;
+}
+
+.create-challan-btn:hover {
+  background: #3a56d4;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(67, 97, 238, 0.15);
+}
+
+.filters-section {
+  background: #f8f9fa;
+  padding: 1.25rem;
+  border-radius: 10px;
+  margin-bottom: 1.5rem;
+}
+
+.search-box .input-group {
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.search-box .input-group-text {
+  background: #fff;
+  border: 1px solid #e9ecef;
+  border-right: none;
+  color: #6c757d;
+}
+
+.search-input {
+  border: 1px solid #e9ecef;
+  border-left: none;
+  padding: 0.6rem 1rem;
+}
+
+.search-input:focus {
+  box-shadow: none;
+  border-color: #e9ecef;
+}
+
+.clear-search {
+  color: #6c757d;
+  padding: 0.6rem 1rem;
+}
+
+.clear-search:hover {
+  color: #dc3545;
+}
+
+.date-filter-box .input-group {
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.date-picker-input {
+  border: 1px solid #e9ecef;
+  padding: 0.6rem 1rem;
+}
+
+.limit-select {
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.clear-dates-btn {
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  transition: all 0.2s ease;
+}
+
+.clear-dates-btn:hover {
+  background: #e9ecef;
+}
+
+.table-container {
+  background: #fff;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.modern-table {
+  margin-bottom: 0;
+}
+
+.modern-table thead th {
+  background: #f8f9fa;
+  border-bottom: 2px solid #e9ecef;
+  color: #495057;
+  font-weight: 600;
+  padding: 1rem;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.modern-table tbody td {
+  padding: 1rem;
+  vertical-align: middle;
+  border-bottom: 1px solid #e9ecef;
+  color: #495057;
+  font-size: 0.95rem;
+}
+
+.modern-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.supplier-link {
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.supplier-link:hover {
+  color: #3a56d4 !important;
+}
+
+.view-btn {
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  border-color: #4361ee;
+  color: #4361ee;
+}
+
+.view-btn:hover {
+  background: #4361ee;
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(67, 97, 238, 0.15);
+}
+
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  padding: 1rem 0;
+}
+
+.modern-pagination {
+  gap: 0.25rem;
+}
+
+.modern-pagination .page-item .page-link {
+  border: none;
+  padding: 0.5rem 0.75rem;
+  margin: 0 0.125rem;
+  border-radius: 6px;
+  color: #495057;
+  transition: all 0.2s ease;
+}
+
+.modern-pagination .page-item.active .page-link {
+  background: #4361ee;
+  color: #fff;
+}
+
+.modern-pagination .page-item:not(.active) .page-link:hover {
+  background: #f8f9fa;
+  color: #4361ee;
+}
+
+.modern-pagination .page-item.disabled .page-link {
+  color: #adb5bd;
+  background: transparent;
+}
+
+/* Loading spinner animation */
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Modal styling */
+.modern-modal .modal-content {
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+}
+
+.modern-modal .modal-header {
+  border-bottom: 1px solid #e9ecef;
+  padding: 1.25rem;
+}
+
+.modern-modal .modal-title {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.modern-modal .modal-body {
+  padding: 1.5rem;
+}
+
+.modern-modal .modal-footer {
+  border-top: 1px solid #e9ecef;
+  padding: 1.25rem;
+}
+
+.supplier-details p {
+  margin-bottom: 0.75rem;
+  color: #495057;
+}
+
+.supplier-details strong {
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+.close-btn {
+  padding: 0.5rem 1.25rem;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+  background: #e9ecef;
+  transform: translateY(-1px);
+}
+
+/* Date picker styling */
+.date-range-popper {
+  z-index: 1000;
+}
+
+.date-range-popper .react-datepicker {
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+  font-family: inherit;
+}
+
+.date-range-popper .react-datepicker__header {
+  background: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+  padding: 1rem;
+}
+
+.date-range-popper .react-datepicker__month-container {
+  float: left;
+}
+
+.date-range-popper .react-datepicker__day {
+  border-radius: 6px;
+  margin: 0.2rem;
+  width: 2rem;
+  line-height: 2rem;
+  color: #495057;
+}
+
+.date-range-popper .react-datepicker__day:hover {
+  background: #f8f9fa;
+}
+
+.date-range-popper .react-datepicker__day--selected,
+.date-range-popper .react-datepicker__day--in-range {
+  background: #4361ee !important;
+  color: #fff !important;
+}
+
+.date-range-popper .react-datepicker__day--keyboard-selected {
+  background: #3a56d4 !important;
+  color: #fff !important;
+}
+
+.date-range-popper .react-datepicker__day--in-selecting-range {
+  background: rgba(67, 97, 238, 0.1);
+}
+
+.date-range-popper .react-datepicker__day--range-start,
+.date-range-popper .react-datepicker__day--range-end {
+  background: #4361ee !important;
+  color: #fff !important;
+}
+
+.date-range-popper .react-datepicker__navigation {
+  top: 1rem;
+}
+
+.date-range-popper .react-datepicker__navigation-icon::before {
+  border-color: #495057;
+}
+
+.date-range-popper .react-datepicker__current-month {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 0.5rem;
+}
+
+.date-range-popper .react-datepicker__day-name {
+  color: #6c757d;
+  font-weight: 500;
+  width: 2rem;
+  margin: 0.2rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .challen-container {
+    padding: 1rem;
+  }
+
+  .filters-section {
+    padding: 1rem;
+  }
+
+  .modern-table thead {
+    display: none;
+  }
+
+  .modern-table tbody tr {
+    display: block;
+    margin-bottom: 1rem;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+  }
+
+  .modern-table tbody td {
+    display: block;
+    text-align: right;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #e9ecef;
+  }
+
+  .modern-table tbody td:last-child {
+    border-bottom: none;
+  }
+
+  .modern-table tbody td::before {
+    content: attr(data-label);
+    float: left;
+    font-weight: 600;
+    color: #2c3e50;
+  }
+
+  .supplier-link {
+    display: inline-block;
+    margin-bottom: 0.5rem;
+  }
+
+  .view-btn {
+    width: 100%;
+    margin-top: 0.5rem;
+  }
+}
+
+/* Add Challan Page Styles */
+.modern-form {
+  max-width: 100%;
+}
+
+.form-section {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.section-title {
+  color: #2c3e50;
+  font-weight: 600;
+  font-size: 1.1rem;
+  margin-bottom: 1.5rem;
+}
+
+.form-control-modern,
+.form-select-modern {
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  transition: all 0.2s ease;
+}
+
+.form-control-modern:focus,
+.form-select-modern:focus {
+  border-color: #4361ee;
+  box-shadow: 0 0 0 0.2rem rgba(67, 97, 238, 0.15);
+}
+
+.form-label {
+  color: #495057;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.back-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  border-color: #e9ecef;
+  color: #495057;
+}
+
+.back-btn:hover {
+  background: #f8f9fa;
+  border-color: #dee2e6;
+  transform: translateY(-1px);
+}
+
+/* React Select Styling */
+.react-select-modern .select__control {
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  min-height: 42px;
+  box-shadow: none;
+  transition: all 0.2s ease;
+}
+
+.react-select-modern .select__control:hover {
+  border-color: #dee2e6;
+}
+
+.react-select-modern .select__control--is-focused {
+  border-color: #4361ee;
+  box-shadow: 0 0 0 0.2rem rgba(67, 97, 238, 0.15);
+}
+
+.react-select-modern .select__menu {
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  margin-top: 0.5rem;
+}
+
+.react-select-modern .select__option {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.react-select-modern .select__option--is-focused {
+  background: #f8f9fa;
+  color: #4361ee;
+}
+
+.react-select-modern .select__option--is-selected {
+  background: #4361ee;
+  color: #fff;
+}
+
+/* Items List Styling */
+.items-list {
+  border: none;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.item-card {
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  padding: 1.25rem;
+  transition: all 0.2s ease;
+}
+
+.item-card:last-child {
+  margin-bottom: 0;
+}
+
+.item-card:hover {
+  border-color: #dee2e6;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.item-name {
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+.remove-item-btn {
+  color: #dc3545;
+  transition: all 0.2s ease;
+}
+
+.remove-item-btn:hover {
+  color: #bd2130;
+  transform: scale(1.1);
+}
+
+/* Total Section Styling */
+.total-section {
+  margin-top: 2rem;
+}
+
+.total-card {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 1.5rem;
+  text-align: center;
+  border: 1px solid #e9ecef;
+}
+
+.total-label {
+  color: #6c757d;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.total-amount {
+  color: #2c3e50;
+  font-weight: 700;
+  margin-bottom: 0;
+  font-size: 2rem;
+}
+
+/* Form Actions Styling */
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.cancel-btn {
+  padding: 0.6rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  background: #f8f9fa;
+  border-color: #e9ecef;
+  color: #495057;
+}
+
+.cancel-btn:hover {
+  background: #e9ecef;
+  border-color: #dee2e6;
+  transform: translateY(-1px);
+}
+
+.submit-btn {
+  padding: 0.6rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  background: #4361ee;
+  border: none;
+}
+
+.submit-btn:hover:not(:disabled) {
+  background: #3a56d4;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(67, 97, 238, 0.15);
+}
+
+.submit-btn:disabled {
+  background: #a8b1cf;
+  cursor: not-allowed;
+}
+
+/* Responsive Adjustments for Add Challan Page */
+@media (max-width: 768px) {
+  .form-section {
+    padding: 1rem;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .form-actions .btn {
+    width: 100%;
+  }
+
+  .total-card {
+    padding: 1rem;
+  }
+
+  .total-amount {
+    font-size: 1.5rem;
+  }
+
+  .item-card {
+    padding: 1rem;
+  }
+
+  .item-card .row {
+    margin-top: 1rem;
+  }
+
+  .item-card .col-md-6 {
+    margin-bottom: 1rem;
+  }
+
+  .item-card .col-md-6:last-child {
+    margin-bottom: 0;
+  }
+} 

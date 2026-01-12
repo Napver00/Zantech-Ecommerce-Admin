@@ -1,0 +1,86 @@
+.landing-container {
+    padding: 2rem;
+    background-color: var(--light-bg);
+    min-height: calc(100vh - 70px);
+    animation: fadeIn 0.5s ease-out;
+}
+
+/* Animations moved to App.css */
+
+.landing-header {
+    margin-bottom: 2rem;
+}
+
+/* ... header styles ... */
+.landing-header h2 {
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.landing-header p {
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+}
+
+/* Custom Tabs Styling */
+.landing-tabs .nav-link {
+    border: none;
+    color: var(--text-secondary);
+    font-weight: 600;
+    padding: 1rem 1.5rem;
+    border-radius: var(--radius);
+    transition: all 0.2s ease;
+    margin-bottom: 0.5rem;
+}
+
+.landing-tabs .nav-link:hover {
+    background-color: rgba(59, 130, 246, 0.05);
+    color: var(--primary-color);
+}
+
+.landing-tabs .nav-link.active {
+    background-color: white;
+    color: var(--primary-color);
+    box-shadow: var(--shadow-sm);
+    position: relative;
+}
+
+.landing-tabs .nav-link.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40%;
+    height: 3px;
+    background-color: var(--primary-color);
+    border-radius: 3px 3px 0 0;
+}
+
+/* Tab Content Container style moved to App.css */
+
+/* Modern Card Style moved to App.css */
+
+/* Section Styling moved to App.css */
+
+/* Form Controls Enhancements */
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+}
+
+/* Social Icon List */
+.social-list-item {
+    transition: transform 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.social-list-item:hover {
+    background-color: var(--light-bg);
+    transform: translateX(5px);
+    border-color: var(--border-color);
+}
+
+/* Hover Lift Effect moved to App.css */
