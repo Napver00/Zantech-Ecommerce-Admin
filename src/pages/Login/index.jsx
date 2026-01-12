@@ -1,18 +1,19 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { toast } from 'react-hot-toast';
-import { FaLock, FaEnvelope, FaEye, FaEyeSlash } from 'react-icons/fa';
-import logo from '../../assets/zantechLogo.png';
-import { authService } from '../../services/api';
-import './Login.css';
-import usePageTitle from '../../hooks/usePageTitle';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-hot-toast";
+import { Eye, EyeOff, Loader2, ArrowRight } from "lucide-react";
+import { motion } from "framer-motion";
+import logo from "../../assets/zantechLogo.png";
+import { authService } from "../../services/api";
+import "./Login.css";
+import usePageTitle from "../../hooks/usePageTitle";
 
 const Login = () => {
-  usePageTitle('Login to Your Account');
+  usePageTitle("Login to Your Account");
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    email: '',
-    password: ''
+    email: "",
+    password: "",
   });
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -20,16 +21,15 @@ const Login = () => {
   const handleChange = (e) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Add validation
+
     if (!formData.email.trim() || !formData.password.trim()) {
-      toast.error('Please fill in all required fields');
+      toast.error("Please fill in all required fields");
       return;
     }
 
@@ -37,62 +37,67 @@ const Login = () => {
 
     try {
       const response = await authService.login(formData);
-      
-      // Store user data and token
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      localStorage.setItem('token', response.data.token);
-      
-      toast.success('Login successful!');
-      navigate('/dashboard');
+
+      localStorage.setItem("user", JSON.stringify(response.data.user));
+      localStorage.setItem("token", response.data.token);
+
+      toast.success("Login successful!");
+      navigate("/dashboard");
     } catch (error) {
-      toast.error(error.message || 'Login failed. Please try again.');
+      toast.error(error.message || "Login failed. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
-  };
-
   return (
     <div className="login-container">
-      <div className="login-box">
+      <motion.div
+        className="login-box"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
         <div className="login-header">
-          <div className="logo-container">
+          <motion.div
+            className="logo-container"
+            initial={{ scale: 0.8 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+          >
             <img src={logo} alt="Zantech Logo" className="login-logo" />
-          </div>
-          <div className="lock-icon">
-            <FaLock />
-          </div>
-          <h2>Welcome Back</h2>
-          <p>Please login to your account</p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+          >
+            <h2>Welcome Back</h2>
+            <p>Enter your credentials to access the command center</p>
+          </motion.div>
         </div>
 
         <form onSubmit={handleSubmit} className="login-form">
           <div className="form-group">
-            <label htmlFor="email">
-              <FaEnvelope className="input-icon" />
-              Email
-            </label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              className="form-control"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="Enter your email"
-              required
-            />
+            <label htmlFor="email">Email Address</label>
+            <div className="input-wrapper">
+              <input
+                type="email"
+                id="email"
+                name="email"
+                className="form-control"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="name@company.com"
+                required
+              />
+            </div>
           </div>
 
           <div className="form-group">
-            <label htmlFor="password">
-              <FaLock className="input-icon" />
-              Password
-            </label>
-            <div className="password-input-container">
+            <label htmlFor="password">Password</label>
+            <div className="input-wrapper">
               <input
                 type={showPassword ? "text" : "password"}
                 id="password"
@@ -106,9 +111,9 @@ const Login = () => {
               <button
                 type="button"
                 className="password-toggle"
-                onClick={togglePasswordVisibility}
+                onClick={() => setShowPassword(!showPassword)}
               >
-                {showPassword ? <FaEyeSlash /> : <FaEye />}
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
           </div>
@@ -118,24 +123,30 @@ const Login = () => {
               <input type="checkbox" id="remember" />
               <label htmlFor="remember">Remember me</label>
             </div>
-            <a href="#" className="forgot-password">Forgot Password?</a>
+            <a href="#" className="forgot-password">
+              Forgot Password?
+            </a>
           </div>
 
-          <button 
-            type="submit" 
-            className="btn btn-primary w-100 login-button"
+          <motion.button
+            type="submit"
+            className="login-button"
             disabled={loading}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
           >
             {loading ? (
-              <span className="loading-spinner"></span>
+              <Loader2 className="animate-spin mx-auto" />
             ) : (
-              'Sign In'
+              <span className="flex items-center justify-center gap-2">
+                Sign In <ArrowRight size={18} />
+              </span>
             )}
-          </button>
+          </motion.button>
         </form>
-      </div>
+      </motion.div>
     </div>
   );
 };
 
-export default Login; 
+export default Login;
