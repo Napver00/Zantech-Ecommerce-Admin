@@ -44,6 +44,8 @@ import NotFound from "./pages/NotFound";
 import LandingPage from "./pages/LandingPage";
 import AddProject from "./pages/LandingPage/AddProject";
 import ViewProject from "./pages/LandingPage/ViewProject";
+import AddCourse from "./pages/LandingPage/AddCourse";
+import ViewCourse from "./pages/LandingPage/ViewCourse";
 import Blog from "./pages/Blog";
 import AddPost from "./pages/Blog/AddPost";
 import ViewPost from "./pages/Blog/ViewPost";
@@ -148,6 +150,14 @@ const App = () => {
                         <Route
                           path="/landing/projects/:slug"
                           element={<ViewProject />}
+                        />
+                        <Route
+                          path="/landing/courses/add"
+                          element={<AddCourse />}
+                        />
+                        <Route
+                          path="/landing/courses/:slug"
+                          element={<ViewCourse />}
                         />
                         <Route path="/faq" element={<FAQ />} />
                         <Route path="*" element={<NotFound />} />

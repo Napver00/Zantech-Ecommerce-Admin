@@ -1,0 +1,201 @@
+import React, { useState, useRef, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-hot-toast";
+import { FaSave, FaArrowLeft } from "react-icons/fa";
+import axiosInstance from "../../config/axios";
+import { Row, Col, Card, Form, Button } from "react-bootstrap";
+import JoditEditor from "jodit-react";
+import usePageTitle from "../../hooks/usePageTitle";
+
+const AddCourse = () => {
+  usePageTitle("Add New Course");
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    title: "",
+    content: "",
+    category: "Course",
+    tags: [],
+    thumbnail: null,
+    reg_link: "",
+  });
+  const editorRef = useRef(null);
+
+  const editorConfig = useMemo(
+    () => ({
+      readonly: false,
+      placeholder: "Start typing the course content...",
+      height: 400,
+    }),
+    []
+  );
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleFileChange = (e) => {
+    setFormData((prev) => ({
+      ...prev,
+      thumbnail: e.target.files[0],
+    }));
+  };
+
+  const handleEditorChange = (newContent) => {
+    setFormData((prev) => ({
+      ...prev,
+      content: newContent,
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    const postData = new FormData();
+    postData.append("title", formData.title);
+    postData.append("content", formData.content);
+    postData.append("category", formData.category);
+    postData.append("reg_link", formData.reg_link);
+    formData.tags.forEach((tag) => postData.append("tags[]", tag));
+    if (formData.thumbnail) {
+      postData.append("thumbnail", formData.thumbnail);
+    }
+
+    try {
+      await axiosInstance.post("/posts", postData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      toast.success("Course added successfully");
+      navigate("/landing?tab=courses");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to add course");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="add-blog-container">
+      <div className="add-blog-header">
+        <h2>Add New Course</h2>
+        <p className="text-muted">Create a new course offering</p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="add-blog-form">
+        <Row>
+          <Col lg={12}>
+            <Card className="border mb-4">
+              <Card.Header className="bg-light">
+                <h5 className="mb-0">Course Details</h5>
+              </Card.Header>
+              <Card.Body>
+                <Row>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Title</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="title"
+                        value={formData.title}
+                        onChange={handleInputChange}
+                        required
+                        placeholder="Enter course title"
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Category</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="category"
+                        value={formData.category}
+                        readOnly
+                        disabled
+                      />
+                    </Form.Group>
+                  </Col>
+                </Row>
+                <Form.Group className="mb-3">
+                  <Form.Label>Registration Link</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="reg_link"
+                    value={formData.reg_link}
+                    onChange={handleInputChange}
+                    placeholder="Enter registration link (optional)"
+                  />
+                </Form.Group>
+                <Form.Group className="mb-3">
+                  <Form.Label>Tags (comma separated)</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="tags"
+                    value={formData.tags}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        tags: e.target.value.split(","),
+                      }))
+                    }
+                    placeholder="Enter tags"
+                  />
+                </Form.Group>
+                <Form.Group className="mb-3">
+                  <Form.Label>Thumbnail</Form.Label>
+                  <Form.Control
+                    type="file"
+                    name="thumbnail"
+                    onChange={handleFileChange}
+                  />
+                </Form.Group>
+                <Form.Group className="mb-3">
+                  <Form.Label>Content</Form.Label>
+                  <JoditEditor
+                    ref={editorRef}
+                    value={formData.content}
+                    config={editorConfig}
+                    tabIndex={1}
+                    onBlur={handleEditorChange}
+                  />
+                </Form.Group>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+
+        <div className="form-actions">
+          <button
+            type="button"
+            className="btn btn-light"
+            onClick={() => navigate("/landing?tab=courses")}
+          >
+            <FaArrowLeft className="me-2" /> Back to Courses
+          </button>
+          <button
+            type="submit"
+            className="btn btn-primary btn-with-icon"
+            disabled={loading}
+          >
+            {loading ? (
+              "Adding..."
+            ) : (
+              <>
+                <FaSave /> Save Course
+              </>
+            )}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+};
+
+export default AddCourse;

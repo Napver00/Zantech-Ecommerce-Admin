@@ -7,6 +7,7 @@ import usePageTitle from "../../hooks/usePageTitle";
 import AmbassadorApplication from "./AmbassadorApplication";
 import OurAmbassadors from "./OurAmbassadors";
 import Projects from "./Projects";
+import Courses from "./Courses";
 import CompanyInfo from "./CompanyInfo";
 
 const LandingPage = () => {
@@ -43,6 +44,9 @@ const LandingPage = () => {
         </Tab>
         <Tab eventKey="projects" title="Projects">
           <Projects />
+        </Tab>
+        <Tab eventKey="courses" title="Courses">
+          <Courses />
         </Tab>
         <Tab eventKey="company-info" title="Company Info">
           <CompanyInfo />
