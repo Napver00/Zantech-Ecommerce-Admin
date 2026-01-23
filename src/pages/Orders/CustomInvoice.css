@@ -1,24 +1,177 @@
 .custom-invoice-container {
-    padding: 1.5rem;
-    background-color: #f8f9fa;
+    padding: 2rem;
+    background-color: #f3f4f6;
+    min-height: 100vh;
 }
 
+.modern-card {
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+    background: #ffffff;
+    overflow: hidden;
+}
+
+.card-header-custom {
+    background: #ffffff;
+    border-bottom: 1px solid #f0f0f0;
+    padding: 1.5rem;
+}
+
+.card-header-custom h5 {
+    font-weight: 700;
+    color: #1a202c;
+    font-size: 1.2rem;
+    letter-spacing: -0.02em;
+}
+
+.section-label {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #a0aec0;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    display: block;
+}
+
+/* Item Type Selector - Pill Style */
+.item-type-selector {
+    display: flex;
+    background: #f1f5f9;
+    padding: 6px;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+}
+
+.type-option {
+    flex: 1;
+    text-align: center;
+    padding: 10px 20px;
+    cursor: pointer;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #64748b;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    border: 1px solid transparent;
+}
+
+.type-option.active {
+    background: #ffffff;
+    color: #2563eb;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    border-color: #e2e8f0;
+}
+
+.type-option:hover:not(.active) {
+    color: #334155;
+    background: rgba(255, 255, 255, 0.5);
+}
+
+/* Input Groups refinement */
+.input-group-text {
+    background-color: #f8fafc;
+    border-color: #e2e8f0;
+    color: #64748b;
+    border-right: none;
+    min-width: 45px;
+    justify-content: center;
+}
+
+.form-control,
+.form-select {
+    border-color: #e2e8f0;
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+    color: #334155;
+    background-color: #fff;
+    border-left: none;
+    /* If integrating deeply with icon */
+}
+
+/* Ensure focus state looks united */
+.input-group:focus-within .input-group-text {
+    border-color: #3b82f6;
+    color: #3b82f6;
+}
+
+.input-group:focus-within .form-control,
+.input-group:focus-within .form-select {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Adjusted for solitary inputs if any */
+.form-control:not(:first-child) {
+    border-left: 1px solid #e2e8f0;
+    /* Restore border if not using input group hack */
+}
+
+/* Remove border-left hack for cleaner genuine input groups */
+.input-group .form-control {
+    border-left: 1px solid #e2e8f0;
+}
+
+.input-group-text+.form-control {
+    border-left: none;
+}
+
+textarea.form-control {
+    min-height: 100px;
+}
+
+/* Invoice Summary */
 .invoice-summary {
-    max-width: 350px;
-    margin-left: auto;
+    background: #f8fafc;
+    padding: 2rem;
+    border-radius: 12px;
+    border: 1px dashed #cbd5e1;
 }
 
 .summary-item {
     display: flex;
     justify-content: space-between;
+    align-items: center;
     padding: 0.5rem 0;
-    font-size: 1rem;
+    font-size: 0.95rem;
+    color: #475569;
 }
 
 .summary-item.total {
-    font-weight: bold;
-    font-size: 1.25rem;
-    border-top: 2px solid #dee2e6;
-    margin-top: 0.5rem;
-    padding-top: 0.75rem;
+    font-weight: 800;
+    font-size: 1.5rem;
+    border-top: 2px dashed #cbd5e1;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    color: #0f172a;
+}
+
+.btn-primary-custom {
+    background-color: #2563eb;
+    border: none;
+    padding: 12px;
+    border-radius: 10px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    transition: background 0.2s;
+}
+
+.btn-primary-custom:hover {
+    background-color: #1d4ed8;
+}
+
+@media (max-width: 768px) {
+    .custom-invoice-container {
+        padding: 1rem;
+    }
+
+    .input-group-text {
+        font-size: 0.9rem;
+        padding: 0.5rem;
+    }
 }
