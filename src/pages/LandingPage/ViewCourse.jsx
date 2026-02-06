@@ -437,7 +437,7 @@ const ViewCourse = () => {
                                 <td className="align-middle text-center">
                                   {teacher.ambassador?.image && (
                                     <Image
-                                      src={`https://media.zantechbd.com/${teacher.ambassador.image}`}
+                                      src={`${teacher.ambassador.image}`}
                                       roundedCircle
                                       width={30}
                                       height={30}
