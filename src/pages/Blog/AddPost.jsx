@@ -1,52 +1,123 @@
-import React, { useState, useRef, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { toast } from 'react-hot-toast';
-import { FaSave } from 'react-icons/fa';
-import axiosInstance from '../../config/axios';
-import Loading from '../../components/Loading';
-import { Row, Col, Card, Form, Button } from 'react-bootstrap';
-import JoditEditor from 'jodit-react';
-import usePageTitle from '../../hooks/usePageTitle';
-import './Blog.css';
+import React, { useState, useRef, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-hot-toast";
+import { FaSave, FaPlus, FaTrash } from "react-icons/fa";
+import axiosInstance from "../../config/axios";
+import Loading from "../../components/Loading";
+import { Row, Col, Card, Form, Button } from "react-bootstrap";
+import JoditEditor from "jodit-react";
+import usePageTitle from "../../hooks/usePageTitle";
+import "./Blog.css";
 
 const AddPost = () => {
-  usePageTitle('Add New Post');
+  usePageTitle("Add New Post");
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    title: '',
-    content: '',
-    category: 'Blog',
+    title: "",
+    content: "",
+    category: "Blog",
     tags: [],
     thumbnail: null,
+    teachers: [],
   });
+  const [ambassadors, setAmbassadors] = useState([]);
+  const [selectedTeacherId, setSelectedTeacherId] = useState("");
+  const [teacherSerial, setTeacherSerial] = useState(1);
+  const [teacherStatus, setTeacherStatus] = useState(1);
   const editorRef = useRef(null);
 
-  const editorConfig = useMemo(() => ({
-    readonly: false,
-    placeholder: 'Start typing the post content...',
-    height: 400,
-  }), []);
+  useEffect(() => {
+    fetchAmbassadors();
+  }, []);
+
+  const fetchAmbassadors = async () => {
+    try {
+      const response = await axiosInstance.get("/ourambassadors");
+      if (response.data.success) {
+        setAmbassadors(response.data.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch ambassadors", error);
+    }
+  };
+
+  const handleAddTeacher = () => {
+    if (!selectedTeacherId) {
+      toast.error("Please select an ambassador");
+      return;
+    }
+
+    const ambassador = ambassadors.find(
+      (a) => a.id === parseInt(selectedTeacherId),
+    );
+    if (!ambassador) return;
+
+    const newTeacher = {
+      ourambassadors_id: ambassador.id,
+      name: ambassador.name, // For display
+      serial: teacherSerial,
+      status: teacherStatus,
+    };
+
+    // Check if already added
+    if (
+      formData.teachers.some(
+        (t) => t.ourambassadors_id === newTeacher.ourambassadors_id,
+      )
+    ) {
+      toast.error("This teacher is already added");
+      return;
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      teachers: [...prev.teachers, newTeacher].sort(
+        (a, b) => a.serial - b.serial,
+      ),
+    }));
+
+    // Reset fields
+    setSelectedTeacherId("");
+    setTeacherSerial((prev) => prev + 1);
+    setTeacherStatus(1);
+  };
+
+  const handleRemoveTeacher = (id) => {
+    setFormData((prev) => ({
+      ...prev,
+      teachers: prev.teachers.filter((t) => t.ourambassadors_id !== id),
+    }));
+  };
+
+  const editorConfig = useMemo(
+    () => ({
+      readonly: false,
+      placeholder: "Start typing the post content...",
+      height: 400,
+    }),
+    [],
+  );
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
-  
+
   const handleFileChange = (e) => {
-    setFormData(prev => ({
-        ...prev,
-        thumbnail: e.target.files[0]
+    setFormData((prev) => ({
+      ...prev,
+      thumbnail: e.target.files[0],
     }));
   };
 
   const handleEditorChange = (newContent) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      content: newContent
+      content: newContent,
     }));
   };
 
@@ -55,25 +126,35 @@ const AddPost = () => {
     setLoading(true);
 
     const postData = new FormData();
-    postData.append('title', formData.title);
-    postData.append('content', formData.content);
-    postData.append('category', formData.category);
-    formData.tags.forEach(tag => postData.append('tags[]', tag));
+    postData.append("title", formData.title);
+    postData.append("content", formData.content);
+    postData.append("category", formData.category);
+    formData.tags.forEach((tag) => postData.append("tags[]", tag));
     if (formData.thumbnail) {
-        postData.append('thumbnail', formData.thumbnail);
+      postData.append("thumbnail", formData.thumbnail);
     }
 
+    if (formData.category === "Course" && formData.teachers.length > 0) {
+      formData.teachers.forEach((teacher, index) => {
+        postData.append(
+          `teachers[${index}][ourambassadors_id]`,
+          teacher.ourambassadors_id,
+        );
+        postData.append(`teachers[${index}][serial]`, teacher.serial);
+        postData.append(`teachers[${index}][status]`, teacher.status);
+      });
+    }
 
     try {
-      await axiosInstance.post('/posts', postData, {
+      await axiosInstance.post("/posts", postData, {
         headers: {
-            'Content-Type': 'multipart/form-data'
-        }
+          "Content-Type": "multipart/form-data",
+        },
       });
-      toast.success('Post added successfully');
-      navigate('/blog');
+      toast.success("Post added successfully");
+      navigate("/blog");
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to add post');
+      toast.error(error.response?.data?.message || "Failed to add post");
     } finally {
       setLoading(false);
     }
@@ -124,23 +205,126 @@ const AddPost = () => {
                   </Col>
                 </Row>
                 <Form.Group className="mb-3">
-                    <Form.Label>Tags (comma separated)</Form.Label>
-                    <Form.Control
+                  <Form.Label>Tags (comma separated)</Form.Label>
+                  <Form.Control
                     type="text"
                     name="tags"
                     value={formData.tags}
-                    onChange={(e) => setFormData(prev => ({...prev, tags: e.target.value.split(',')}))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        tags: e.target.value.split(","),
+                      }))
+                    }
                     placeholder="Enter tags"
-                    />
+                  />
                 </Form.Group>
                 <Form.Group className="mb-3">
-                    <Form.Label>Thumbnail</Form.Label>
-                    <Form.Control
+                  <Form.Label>Thumbnail</Form.Label>
+                  <Form.Control
                     type="file"
                     name="thumbnail"
                     onChange={handleFileChange}
-                    />
+                  />
                 </Form.Group>
+
+                {formData.category === "Course" && (
+                  <div className="mb-3 border p-3 rounded">
+                    <h6 className="mb-3">Course Instructors</h6>
+                    <Row className="g-2 items-end mb-3 align-items-end">
+                      <Col md={5}>
+                        <Form.Label>Select Ambassador</Form.Label>
+                        <Form.Select
+                          value={selectedTeacherId}
+                          onChange={(e) => setSelectedTeacherId(e.target.value)}
+                        >
+                          <option value="">Select Ambassador...</option>
+                          {ambassadors.map((ambassador) => (
+                            <option key={ambassador.id} value={ambassador.id}>
+                              {ambassador.name} ({ambassador.campus})
+                            </option>
+                          ))}
+                        </Form.Select>
+                      </Col>
+                      <Col md={3}>
+                        <Form.Label>Serial</Form.Label>
+                        <Form.Control
+                          type="number"
+                          value={teacherSerial}
+                          onChange={(e) =>
+                            setTeacherSerial(parseInt(e.target.value) || 0)
+                          }
+                        />
+                      </Col>
+                      <Col md={2}>
+                        <Form.Label>Status</Form.Label>
+                        <Form.Select
+                          value={teacherStatus}
+                          onChange={(e) =>
+                            setTeacherStatus(parseInt(e.target.value))
+                          }
+                        >
+                          <option value={1}>Active</option>
+                          <option value={0}>Inactive</option>
+                        </Form.Select>
+                      </Col>
+                      <Col md={2}>
+                        <Button
+                          variant="secondary"
+                          onClick={handleAddTeacher}
+                          className="w-100"
+                        >
+                          <FaPlus /> Add
+                        </Button>
+                      </Col>
+                    </Row>
+
+                    {formData.teachers.length > 0 && (
+                      <div className="table-responsive">
+                        <table className="table table-sm table-bordered">
+                          <thead>
+                            <tr>
+                              <th>Serial</th>
+                              <th>Name</th>
+                              <th>Status</th>
+                              <th>Action</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {formData.teachers.map((teacher) => (
+                              <tr key={teacher.ourambassadors_id}>
+                                <td>{teacher.serial}</td>
+                                <td>{teacher.name}</td>
+                                <td>
+                                  <span
+                                    className={`badge bg-${teacher.status === 1 ? "success" : "secondary"}`}
+                                  >
+                                    {teacher.status === 1
+                                      ? "Active"
+                                      : "Inactive"}
+                                  </span>
+                                </td>
+                                <td>
+                                  <Button
+                                    variant="danger"
+                                    size="sm"
+                                    onClick={() =>
+                                      handleRemoveTeacher(
+                                        teacher.ourambassadors_id,
+                                      )
+                                    }
+                                  >
+                                    <FaTrash />
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <Form.Group className="mb-3">
                   <Form.Label>Content</Form.Label>
                   <JoditEditor
@@ -160,7 +344,7 @@ const AddPost = () => {
           <button
             type="button"
             className="btn btn-light"
-            onClick={() => navigate('/blog')}
+            onClick={() => navigate("/blog")}
           >
             Cancel
           </button>
@@ -169,7 +353,13 @@ const AddPost = () => {
             className="btn btn-primary btn-with-icon"
             disabled={loading}
           >
-            {loading ? 'Adding...' : <><FaSave /> Save Post</>}
+            {loading ? (
+              "Adding..."
+            ) : (
+              <>
+                <FaSave /> Save Post
+              </>
+            )}
           </button>
         </div>
       </form>

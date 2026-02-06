@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
-import { FaSave, FaArrowLeft } from "react-icons/fa";
+import { FaSave, FaArrowLeft, FaTrash, FaPlus } from "react-icons/fa";
 import axiosInstance from "../../config/axios";
 import Loading from "../../components/Loading";
 import { Row, Col, Card, Form, Button, Image } from "react-bootstrap";
 import JoditEditor from "jodit-react";
+import Select from "react-select";
 import usePageTitle from "../../hooks/usePageTitle";
 
 const ViewCourse = () => {
@@ -22,8 +23,14 @@ const ViewCourse = () => {
     thumbnail: null,
     reg_link: "",
     reg_status: "",
+
     serial: "",
   });
+  const [ambassadors, setAmbassadors] = useState([]);
+  const [selectedAmbassador, setSelectedAmbassador] = useState(null);
+  const [teacherSerial, setTeacherSerial] = useState(1);
+  const [teacherStatus, setTeacherStatus] = useState(1);
+  const [addingTeacher, setAddingTeacher] = useState(false);
   const editorRef = useRef(null);
 
   const editorConfig = useMemo(
@@ -32,31 +39,91 @@ const ViewCourse = () => {
       placeholder: "Start typing the course content...",
       height: 400,
     }),
-    []
+    [],
   );
 
   useEffect(() => {
-    const fetchPost = async () => {
-      try {
-        const response = await axiosInstance.get(`/posts/${slug}`);
-        const postData = response.data.data;
-        setPost(postData);
-        setFormData({
-          title: postData.title || "",
-          content: postData.content || "",
-          category: postData.category || "Course",
-          tags: postData.tags || [],
-          thumbnail: null,
-          reg_link: postData.reg_link || "",
-          reg_status: parseInt(postData.reg_status) || 0,
-          serial: postData.serial || "",
-        });
-      } catch (error) {
-        toast.error("Failed to fetch course details");
+    fetchAmbassadors();
+  }, []);
+
+  const fetchAmbassadors = async () => {
+    try {
+      const response = await axiosInstance.get("/ourambassadors");
+      if (response.data.success) {
+        setAmbassadors(response.data.data);
       }
-    };
+    } catch (error) {
+      console.error("Failed to fetch ambassadors", error);
+    }
+  };
+
+  const fetchPost = async () => {
+    try {
+      const response = await axiosInstance.get(`/posts/${slug}`);
+      const postData = response.data.data;
+      setPost(postData);
+      setFormData({
+        title: postData.title || "",
+        content: postData.content || "",
+        category: postData.category || "Course",
+        tags: postData.tags || [],
+        thumbnail: null,
+        reg_link: postData.reg_link || "",
+        reg_status: parseInt(postData.reg_status) || 0,
+        serial: postData.serial || "",
+      });
+    } catch (error) {
+      toast.error("Failed to fetch course details");
+    }
+  };
+
+  useEffect(() => {
     fetchPost();
   }, [slug]);
+
+  const handleAddTeacher = async () => {
+    if (!selectedAmbassador) {
+      toast.error("Please select an ambassador");
+      return;
+    }
+
+    setAddingTeacher(true);
+    try {
+      await axiosInstance.post("/posts/add-teacher", {
+        post_id: post.id,
+        ourambassadors_id: selectedAmbassador.value,
+        serial: teacherSerial,
+        status: teacherStatus,
+      });
+      toast.success("Teacher added successfully");
+      fetchPost(); // Refresh post data to show new teacher
+      setSelectedAmbassador(null);
+      setTeacherSerial((prev) => prev + 1);
+      setTeacherStatus(1);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to add teacher");
+    } finally {
+      setAddingTeacher(false);
+    }
+  };
+
+  const handleRemoveTeacher = async (ambassadorId) => {
+    if (!window.confirm("Are you sure you want to remove this teacher?"))
+      return;
+
+    try {
+      await axiosInstance.delete("/posts/remove-teacher", {
+        data: {
+          post_id: post.id,
+          ourambassadors_id: ambassadorId,
+        },
+      });
+      toast.success("Teacher removed successfully");
+      fetchPost(); // Refresh post to remove teacher from list
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to remove teacher");
+    }
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -236,6 +303,7 @@ const ViewCourse = () => {
                     </div>
                   )}
                 </Form.Group>
+
                 <Form.Group className="mb-3">
                   <Form.Label>Content</Form.Label>
                   <JoditEditor
@@ -245,6 +313,180 @@ const ViewCourse = () => {
                     onBlur={handleEditorChange}
                   />
                 </Form.Group>
+
+                <div className="mb-3 border p-3 rounded">
+                  <h5 className="mb-3">Course Instructors</h5>
+
+                  {/* Add Teacher Form */}
+                  <div className="bg-light p-3 rounded mb-3">
+                    <h6 className="mb-2">Add Instructor</h6>
+                    <Row className="g-2 align-items-end">
+                      <Col md={5}>
+                        <Form.Label className="small">
+                          Select Ambassador
+                        </Form.Label>
+                        <Select
+                          value={selectedAmbassador}
+                          onChange={setSelectedAmbassador}
+                          options={ambassadors.map((amb) => ({
+                            value: amb.id,
+                            label: amb.name,
+                            image: amb.image,
+                            campus: amb.campus,
+                          }))}
+                          formatOptionLabel={(option) => (
+                            <div className="d-flex align-items-center">
+                              {option.image ? (
+                                <Image
+                                  src={`https://media.zantechbd.com/${option.image}`}
+                                  roundedCircle
+                                  width={30}
+                                  height={30}
+                                  className="me-2"
+                                  style={{ objectFit: "cover" }}
+                                />
+                              ) : (
+                                <div
+                                  className="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center me-2"
+                                  style={{ width: 30, height: 30 }}
+                                >
+                                  {option.label.charAt(0)}
+                                </div>
+                              )}
+                              <div>
+                                <div className="fw-bold">{option.label}</div>
+                                <div
+                                  className="text-muted"
+                                  style={{ fontSize: "0.75rem" }}
+                                >
+                                  {option.campus}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          placeholder="Select Ambassador..."
+                          isSearchable
+                        />
+                      </Col>
+                      <Col md={3}>
+                        <Form.Label className="small">Serial</Form.Label>
+                        <Form.Control
+                          type="number"
+                          value={teacherSerial}
+                          onChange={(e) =>
+                            setTeacherSerial(parseInt(e.target.value) || 0)
+                          }
+                          size="sm"
+                        />
+                      </Col>
+                      <Col md={2}>
+                        <Form.Label className="small">Status</Form.Label>
+                        <Form.Select
+                          value={teacherStatus}
+                          onChange={(e) =>
+                            setTeacherStatus(parseInt(e.target.value))
+                          }
+                          size="sm"
+                        >
+                          <option value={1}>Active</option>
+                          <option value={0}>Inactive</option>
+                        </Form.Select>
+                      </Col>
+                      <Col md={2}>
+                        <Button
+                          variant="secondary"
+                          onClick={handleAddTeacher}
+                          className="w-100"
+                          size="sm"
+                          disabled={addingTeacher}
+                        >
+                          {addingTeacher ? (
+                            "Adding..."
+                          ) : (
+                            <>
+                              <FaPlus /> Add
+                            </>
+                          )}
+                        </Button>
+                      </Col>
+                    </Row>
+                  </div>
+
+                  {/* Teachers List */}
+                  {post.teachers && post.teachers.length > 0 ? (
+                    <div className="table-responsive">
+                      <table className="table table-sm table-bordered">
+                        <thead className="table-light">
+                          <tr>
+                            <th style={{ width: "60px" }}>Serial</th>
+                            <th style={{ width: "60px" }}>Image</th>
+                            <th>Name</th>
+                            <th>Campus</th>
+                            <th>Status</th>
+                            <th style={{ width: "80px" }}>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {post.teachers
+                            .sort((a, b) => a.serial - b.serial)
+                            .map((teacher) => (
+                              <tr key={teacher.id}>
+                                <td className="align-middle text-center">
+                                  {teacher.serial}
+                                </td>
+                                <td className="align-middle text-center">
+                                  {teacher.ambassador?.image && (
+                                    <Image
+                                      src={`https://media.zantechbd.com/${teacher.ambassador.image}`}
+                                      roundedCircle
+                                      width={30}
+                                      height={30}
+                                      style={{ objectFit: "cover" }}
+                                    />
+                                  )}
+                                </td>
+                                <td className="align-middle">
+                                  {teacher.ambassador?.name}
+                                </td>
+                                <td className="align-middle small text-muted">
+                                  {teacher.ambassador?.campus}
+                                </td>
+                                <td className="align-middle">
+                                  <span
+                                    className={`badge bg-${teacher.status === "active" || teacher.status === 1 ? "success" : "secondary"}`}
+                                  >
+                                    {teacher.status === "active" ||
+                                    teacher.status === 1
+                                      ? "Active"
+                                      : "Inactive"}
+                                  </span>
+                                </td>
+                                <td className="align-middle text-center">
+                                  <Button
+                                    variant="danger"
+                                    size="sm"
+                                    className="py-0 px-2"
+                                    onClick={() =>
+                                      handleRemoveTeacher(
+                                        teacher.ourambassadors_id,
+                                      )
+                                    }
+                                    title="Remove from course"
+                                  >
+                                    <FaTrash size={12} />
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="text-muted text-center py-3 mb-0">
+                      No instructors assigned to this course.
+                    </p>
+                  )}
+                </div>
               </Card.Body>
             </Card>
           </Col>
