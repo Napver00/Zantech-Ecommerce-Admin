@@ -21,13 +21,18 @@ export const OrderProvider = ({ children }) => {
   });
 
   const fetchStatusSummary = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
     try {
       const response = await axiosInstance.get('/orders');
       if (response.data.success && response.data.status_summary) {
         setStatusSummary(response.data.status_summary);
       }
     } catch (error) {
-      console.error('Error fetching order status summary:', error);
+      if (error.response?.status !== 401) {
+        console.error('Error fetching order status summary:', error);
+      }
     }
   };
 
