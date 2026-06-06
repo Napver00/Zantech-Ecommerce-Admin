@@ -39,6 +39,7 @@ import CustomInvoice from "./pages/Orders/CustomInvoice";
 import HeroImages from "./pages/HeroImages";
 import Contact from "./pages/Contact";
 import { OrderProvider } from "./context/OrderContext";
+import Analytics from "./pages/Analytics";
 import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
 import LandingPage from "./pages/LandingPage";
@@ -81,6 +82,7 @@ const App = () => {
                           element={<Navigate to="/dashboard" />}
                         />
                         <Route path="/dashboard" element={<Dashboard />} />
+                        <Route path="/analytics" element={<Analytics />} />
                         <Route path="/profile" element={<Profile />} />
                         <Route path="/products" element={<Products />} />
                         <Route path="/products/add" element={<AddProduct />} />
@@ -115,7 +117,6 @@ const App = () => {
                           element={<ViewCustomer />}
                         />
                         <Route path="/staff" element={<Staff />} />
-                        <Route path="/challens" element={<Challen />} />
                         <Route path="/challans" element={<Challen />} />
                         <Route path="/challans/add" element={<AddChallan />} />
                         <Route path="/challans/:id" element={<ViewChallan />} />

@@ -43,8 +43,8 @@ const CommonTable = ({ headers, data, tableLoading, loading, renderActions }) =>
               </tr>
             </thead>
             <tbody>
-              {data.map((row) => (
-                <TableRow key={row.id} row={row} headers={headers} renderActions={renderActions} />
+              {data.map((row, index) => (
+                <TableRow key={row.id ?? index} row={row} index={index} headers={headers} renderActions={renderActions} />
               ))}
             </tbody>
           </Table>

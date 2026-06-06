@@ -14,12 +14,12 @@ const resolveValue = (obj, key) => {
   return obj[key] ?? '';
 };
 
-const TableRow = ({ row, headers, renderActions }) => {
+const TableRow = ({ row, index, headers, renderActions }) => {
   return (
     <tr>
       {headers.map((header) => (
         <td key={header.key} data-label={header.label}>
-          {header.render ? header.render(row) : resolveValue(row, header.key)}
+          {header.render ? header.render(row, index) : resolveValue(row, header.key)}
         </td>
       ))}
       {renderActions && (
