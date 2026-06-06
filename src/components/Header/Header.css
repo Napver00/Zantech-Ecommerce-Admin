@@ -203,24 +203,22 @@
   letter-spacing: 0.05em;
 }
 
-/* Responsive */
+/* ── Responsive ───────────────────────────────────────────── */
+/* Hamburger only needed when sidebar is hidden (mobile) */
 @media (max-width: 768px) {
-  .header {
-    padding: 0 1rem;
-  }
-
-  .brand-name,
-  .user-info {
-    display: none;
-  }
-
   .mobile-menu-toggle {
     display: flex;
   }
+}
 
-  .user-profile {
-    padding: 0;
-    background: none;
-    border: none;
-  }
+@media (max-width: 768px) {
+  .header { padding: 0 0.875rem; }
+  .brand-name, .user-info { display: none; }
+  .user-profile { padding: 0; background: none; border: none; }
+  .header-right { gap: 0.5rem; }
+}
+
+@media (max-width: 480px) {
+  .header { padding: 0 0.75rem; }
+  .logo { height: 26px; }
 }

@@ -5,7 +5,7 @@ import { Dropdown } from "react-bootstrap";
 import logo from "../../assets/zantechLogo.png";
 import "./Header.css";
 
-const Header = () => {
+const Header = ({ onToggleSidebar }) => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [notifications, setNotifications] = useState([]);
@@ -39,7 +39,7 @@ const Header = () => {
   return (
     <header className="header">
       <div className="header-left">
-        <button className="mobile-menu-toggle">
+        <button className="mobile-menu-toggle" onClick={onToggleSidebar} aria-label="Toggle menu">
           <Menu size={20} />
         </button>
         <Link to="/dashboard" className="brand-container">

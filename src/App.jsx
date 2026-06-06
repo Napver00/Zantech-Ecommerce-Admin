@@ -59,6 +59,8 @@ const PrivateRoute = ({ children }) => {
 };
 
 const App = () => {
+  const [sidebarOpen, setSidebarOpen] = React.useState(false);
+
   return (
     <BrowserRouter>
       <Toaster position="top-right" />
@@ -70,10 +72,16 @@ const App = () => {
             element={
               <PrivateRoute>
                 <>
-                  <Header />
+                  <Header onToggleSidebar={() => setSidebarOpen((p) => !p)} />
                   <div className="main d-flex">
-                    <div className="sidebarwrapper">
-                      <Sidebar />
+                    {sidebarOpen && (
+                      <div
+                        className="sidebar-overlay"
+                        onClick={() => setSidebarOpen(false)}
+                      />
+                    )}
+                    <div className={`sidebarwrapper ${sidebarOpen ? "mobile-open" : ""}`}>
+                      <Sidebar onClose={() => setSidebarOpen(false)} />
                     </div>
                     <div className="contentwrapper">
                       <Routes>

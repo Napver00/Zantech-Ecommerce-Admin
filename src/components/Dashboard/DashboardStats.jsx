@@ -8,28 +8,19 @@ import {
 } from "react-icons/fa";
 
 const StatCard = ({ icon, title, value, colorClass }) => (
-  <Card className="modern-card text-center h-100 border-0">
-    <Card.Body className="d-flex flex-column justify-content-center p-4">
+  <Card className="modern-card h-100 border-0">
+    <Card.Body className="d-flex align-items-center gap-3 p-3">
       <div
-        className={`dashboard-icon ${colorClass} mx-auto mb-3 shadow-sm`}
-        style={{
-          width: "50px",
-          height: "50px",
-          borderRadius: "12px",
-          fontSize: "1.25rem",
-          color: "#fff",
-        }}
+        className={`dashboard-icon ${colorClass} flex-shrink-0 shadow-sm`}
+        style={{ width: 46, height: 46, borderRadius: 12, fontSize: "1.2rem", color: "#fff" }}
       >
         {icon}
       </div>
-      <div>
-        <h6
-          className="text-muted fw-bold mb-1 text-uppercase small"
-          style={{ letterSpacing: "0.05em" }}
-        >
+      <div className="min-w-0">
+        <p className="text-muted fw-semibold mb-1 text-uppercase" style={{ fontSize: "0.68rem", letterSpacing: "0.05em", lineHeight: 1 }}>
           {title}
-        </h6>
-        <h3 className="fw-bold text-dark mb-0">{value}</h3>
+        </p>
+        <h4 className="fw-bold text-dark mb-0" style={{ fontSize: "1.25rem", lineHeight: 1.2 }}>{value}</h4>
       </div>
     </Card.Body>
   </Card>
@@ -70,7 +61,7 @@ const DashboardStats = ({ data }) => {
   ];
 
   return (
-    <Row xs={2} md={3} lg={5} className="g-3">
+    <Row xs={1} sm={2} lg={3} xl={5} className="g-3">
       {stats.map((stat, index) => (
         <Col key={index}>
           <StatCard {...stat} />

@@ -1,54 +1,42 @@
 .sidebar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 280px;
-  height: 100vh;
-  transition: width 0.3s ease;
-  z-index: 1000;
+  width: 260px;
+  height: 100%;
   overflow-y: auto;
+  overflow-x: hidden;
   scrollbar-width: thin;
+  scrollbar-color: #e2e8f0 transparent;
   border-right: 1px solid #e2e8f0;
+  transition: width 0.25s ease;
+  flex-shrink: 0;
 }
 
 .sidebar.collapsed {
-  width: 80px;
+  width: 72px;
 }
 
+/* ── Brand ────────────────────────────────────────────────── */
 .sidebar-brand {
   height: 70px;
   display: flex;
   align-items: center;
-  justify-content: center;
 }
 
-.sidebar-brand .brand-logo {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  transition: opacity 0.3s ease;
-}
-
-.sidebar.collapsed .sidebar-brand .brand-logo {
-    opacity: 0;
-}
-
+/* ── Section title ────────────────────────────────────────── */
 .sidebar-section-title {
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  color: #64748b;
-  padding: 0 1rem;
+  opacity: 0.6;
+  user-select: none;
 }
 
+/* ── Links ────────────────────────────────────────────────── */
 .sidebar-link {
   position: relative;
   color: #475569;
   font-weight: 500;
-  transition: all 0.2s ease;
-  text-decoration: none;
+  font-size: 0.875rem;
+  text-decoration: none !important;
   border-radius: 8px;
-  margin: 2px 0;
+  transition: background 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
 }
 
 .sidebar-link:hover {
@@ -58,35 +46,99 @@
 
 .sidebar-link.active {
   background-color: #3b82f6;
-  color: white;
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.sidebar-link.active .sidebar-icon {
+  color: #fff;
+}
+
+.sidebar-sublink {
+  font-size: 0.82rem;
+  color: #64748b;
+  padding-top: 0.4rem !important;
+  padding-bottom: 0.4rem !important;
+}
+
+.sidebar-sublink.active {
+  background-color: #eff6ff;
+  color: #2563eb !important;
+  box-shadow: none;
 }
 
 .sidebar-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
+  min-width: 22px;
 }
 
+/* Collapsed: center icons, show tooltips */
 .sidebar.collapsed .sidebar-link {
-  padding: 0.75rem !important;
   justify-content: center;
+  padding-left: 0.75rem !important;
+  padding-right: 0.75rem !important;
 }
 
-.sidebar.collapsed .sidebar-link[title]:hover::after {
+.sidebar.collapsed .sidebar-link::after {
   content: attr(title);
   position: absolute;
-  left: 100%;
+  left: calc(100% + 8px);
   top: 50%;
   transform: translateY(-50%);
-  background-color: #1e293b;
-  color: white;
-  padding: 0.5rem 0.75rem;
-  border-radius: 4px;
-  font-size: 0.875rem;
+  background: #1e293b;
+  color: #fff;
+  padding: 0.3rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
   white-space: nowrap;
-  z-index: 1001;
-  margin-left: 0.5rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  z-index: 2000;
+}
+
+.sidebar.collapsed .sidebar-link:hover::after {
+  opacity: 1;
+}
+
+/* ── Toggle button visibility ────────────────────────────── */
+.sidebar-desktop-toggle { display: flex; }
+.sidebar-mobile-close   { display: none; }
+
+/* ── Scrollbar ────────────────────────────────────────────── */
+.sidebar::-webkit-scrollbar { width: 4px; }
+.sidebar::-webkit-scrollbar-track { background: transparent; }
+.sidebar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px; }
+.sidebar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* ── Tablet (hide collapse button) ───────────────────────── */
+@media (max-width: 1024px) {
+  .sidebar { width: 240px; }
+}
+
+/* ── Mobile ───────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .sidebar {
+    width: 270px !important;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100dvh;
+    z-index: 1100;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
+  }
+
+  .sidebar.collapsed {
+    width: 270px !important;
+  }
+
+  .sidebar-nav {
+    padding-bottom: 5rem;
+  }
+
+  /* Swap button visibility on mobile */
+  .sidebar-desktop-toggle { display: none; }
+  .sidebar-mobile-close   { display: flex; }
 }
