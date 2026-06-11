@@ -115,6 +115,7 @@ const Orders = () => {
         ...(searchParams.endDate && {
           end_date: searchParams.endDate.toISOString().split("T")[0],
         }),
+        ...(filterStatus && { status: filterStatus }),
       };
 
       const response = await axiosInstance.get("/orders", { params });
@@ -166,6 +167,10 @@ const Orders = () => {
 
   const handleFilterStatusChange = (e) => {
     setFilterStatus(e.target.value);
+    setSearchParams((prev) => ({
+      ...prev,
+      page: 1,
+    }));
   };
 
   const handleDateChange = (e, type) => {
@@ -206,10 +211,6 @@ const Orders = () => {
       page: 1,
     }));
   };
-
-  const filteredOrders = filterStatus
-    ? orders.filter((order) => order.status?.toString() === filterStatus)
-    : orders;
 
   const handleStatusChange = async (orderId, newStatus) => {
     setUpdatingStatus((prev) => ({ ...prev, [orderId]: true }));
@@ -568,7 +569,7 @@ const Orders = () => {
 
           <CommonTable
             headers={headers}
-            data={filteredOrders}
+            data={orders}
             tableLoading={loading}
             loading={loading}
             renderActions={renderActions}

@@ -41,7 +41,6 @@ const Courses = () => {
 
   // Debounced search
   useEffect(() => {
-    if (!search && !isSearching) return;
     setIsSearching(true);
     const id = setTimeout(() => fetchCourses(search), 500);
     return () => clearTimeout(id);

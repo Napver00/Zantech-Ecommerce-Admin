@@ -40,10 +40,32 @@ const Expenses = () => {
   });
   const [formErrors, setFormErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [searchTimeout, setSearchTimeout] = useState(null);
+  const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
     fetchExpenses();
   }, [searchParams.page, searchParams.limit, searchParams.exactDate, searchParams.startDate, searchParams.endDate]);
+
+  useEffect(() => {
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
+    }
+
+    const timeoutId = setTimeout(() => {
+      setIsSearching(true);
+      fetchExpenses(1).finally(() => setIsSearching(false));
+    }, 500);
+
+    setSearchTimeout(timeoutId);
+
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams.search]);
 
   const formatDateForAPI = (date) => {
     if (!date) return null;
@@ -62,6 +84,7 @@ const Expenses = () => {
       const params = {
         page,
         limit: searchParams.limit,
+        ...(searchParams.search && { search: searchParams.search }),
         ...(searchParams.exactDate && { date: formatDateForAPI(searchParams.exactDate) }),
         ...(searchParams.startDate && { start_date: formatDateForAPI(searchParams.startDate) }),
         ...(searchParams.endDate && { end_date: formatDateForAPI(searchParams.endDate) })
@@ -364,7 +387,7 @@ const Expenses = () => {
                 <div className="search-box">
                   <InputGroup>
                     <InputGroup.Text className="search-icon">
-                      <FaSearch />
+                      {isSearching ? <FaSpinner className="spinner" /> : <FaSearch />}
                     </InputGroup.Text>
                     <Form.Control
                       type="text"

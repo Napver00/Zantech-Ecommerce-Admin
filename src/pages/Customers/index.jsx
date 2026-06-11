@@ -47,10 +47,8 @@ const Customers = () => {
     }
 
     const timeoutId = setTimeout(() => {
-      if (searchParams.search !== "") {
-        setIsSearching(true);
-        fetchCustomers(1);
-      }
+      setIsSearching(true);
+      fetchCustomers(1);
     }, 500);
 
     setSearchTimeout(timeoutId);
@@ -60,6 +58,7 @@ const Customers = () => {
         clearTimeout(timeoutId);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams.search]);
 
   const fetchCustomers = async (page = searchParams.page) => {
@@ -79,13 +78,15 @@ const Customers = () => {
       }
 
       setCustomers(result.data);
-      setPagination({
-        total_rows: result.data.length,
-        current_page: page,
-        per_page: searchParams.limit,
-        total_pages: Math.ceil(result.data.length / searchParams.limit),
-        has_more_pages: result.data.length > page * searchParams.limit,
-      });
+      setPagination(
+        result.pagination || {
+          total_rows: result.data.length,
+          current_page: page,
+          per_page: searchParams.limit,
+          total_pages: Math.ceil(result.data.length / searchParams.limit),
+          has_more_pages: result.data.length > page * searchParams.limit,
+        }
+      );
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to fetch customers");
       setCustomers([]);

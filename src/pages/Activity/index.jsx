@@ -126,21 +126,32 @@ const Activity = () => {
     }));
   };
 
-  const handleDateChange = (dates) => {
-    const [start, end] = dates;
+  const handleDateChange = (e, type) => {
+    const value = e.target.value ? new Date(e.target.value) : null;
 
-    if (start && end && start > end) {
+    if (
+      type === "start" &&
+      value &&
+      searchParams.endDate &&
+      value > searchParams.endDate
+    ) {
       toast.error("Start date cannot be after end date");
       return;
     }
 
-    const formattedStart = start ? new Date(start.setHours(0, 0, 0, 0)) : null;
-    const formattedEnd = end ? new Date(end.setHours(23, 59, 59, 999)) : null;
+    if (
+      type === "end" &&
+      value &&
+      searchParams.startDate &&
+      value < searchParams.startDate
+    ) {
+      toast.error("End date cannot be before start date");
+      return;
+    }
 
     setSearchParams(prev => ({
       ...prev,
-      startDate: formattedStart,
-      endDate: formattedEnd,
+      [type === "start" ? "startDate" : "endDate"]: value,
       page: 1
     }));
   };
@@ -289,6 +300,91 @@ const Activity = () => {
 
           <div className="filters-section mb-4">
             <Row className="g-3">
+              <Col md={3}>
+                <div className="search-box">
+                  <InputGroup>
+                    <InputGroup.Text className="search-icon">
+                      {isSearching ? (
+                        <FaSpinner className="spinner" />
+                      ) : (
+                        <FaSearch />
+                      )}
+                    </InputGroup.Text>
+                    <Form.Control
+                      type="text"
+                      placeholder="Search activities..."
+                      value={searchParams.search}
+                      onChange={handleSearch}
+                      className="search-input"
+                    />
+                    {searchParams.search && (
+                      <Button
+                        variant="link"
+                        className="clear-search"
+                        onClick={() => {
+                          setSearchParams((prev) => ({ ...prev, search: "" }));
+                          fetchActivities(1);
+                        }}
+                      >
+                        <FaTimes />
+                      </Button>
+                    )}
+                  </InputGroup>
+                </div>
+              </Col>
+              <Col md={2}>
+                <Form.Select
+                  value={searchParams.type}
+                  onChange={handleTypeChange}
+                  className="type-filter"
+                >
+                  <option value="">All Types</option>
+                  <option value="coupon">Coupon</option>
+                  <option value="order">Order</option>
+                  <option value="product">Product</option>
+                  <option value="user">User</option>
+                </Form.Select>
+              </Col>
+              <Col md={3}>
+                <div className="date-filter-box">
+                  <InputGroup>
+                    <InputGroup.Text>
+                      <FaCalendarAlt />
+                    </InputGroup.Text>
+                    <Form.Control
+                      type="date"
+                      value={
+                        searchParams.startDate
+                          ? searchParams.startDate.toISOString().split("T")[0]
+                          : ""
+                      }
+                      onChange={(e) => handleDateChange(e, "start")}
+                      className="date-input"
+                      max={
+                        searchParams.endDate
+                          ? searchParams.endDate.toISOString().split("T")[0]
+                          : new Date().toISOString().split("T")[0]
+                      }
+                    />
+                    <Form.Control
+                      type="date"
+                      value={
+                        searchParams.endDate
+                          ? searchParams.endDate.toISOString().split("T")[0]
+                          : ""
+                      }
+                      onChange={(e) => handleDateChange(e, "end")}
+                      className="date-input"
+                      min={
+                        searchParams.startDate
+                          ? searchParams.startDate.toISOString().split("T")[0]
+                          : undefined
+                      }
+                      max={new Date().toISOString().split("T")[0]}
+                    />
+                  </InputGroup>
+                </div>
+              </Col>
               <Col md={2}>
                 <Form.Select
                   value={searchParams.limit}

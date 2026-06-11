@@ -40,10 +40,8 @@ const Suppliers = () => {
         }
 
         const timeoutId = setTimeout(() => {
-            if (searchParams.search !== "") {
-                setIsSearching(true);
-                fetchSuppliers();
-            }
+            setIsSearching(true);
+            fetchSuppliers();
         }, 500);
 
         setSearchTimeout(timeoutId);
@@ -53,6 +51,7 @@ const Suppliers = () => {
                 clearTimeout(timeoutId);
             }
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchParams.search]);
 
     const fetchSuppliers = async () => {

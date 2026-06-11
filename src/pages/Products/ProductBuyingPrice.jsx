@@ -62,10 +62,10 @@ const ProductBuyingPrice = () => {
             const params = {
                 page,
                 limit: searchParams.limit,
-                search: searchParams.search,
-                date: searchParams.date,
-                start_date: searchParams.startDate,
-                end_date: searchParams.endDate,
+                ...(searchParams.search && { search: searchParams.search }),
+                ...(searchParams.date && { date: searchParams.date }),
+                ...(searchParams.startDate && { start_date: searchParams.startDate }),
+                ...(searchParams.endDate && { end_date: searchParams.endDate }),
             };
 
             const response = await axiosInstance.get('/buying-price-items', { params });
@@ -112,13 +112,72 @@ const ProductBuyingPrice = () => {
         setSearchParams(prev => ({ ...prev, limit: parseInt(e.target.value), page: 1 }));
     };
 
-    const handleDateChange = (e, type) => {
-        const { value } = e.target;
-        setSearchParams(prev => ({ ...prev, [type]: value, page: 1 }));
+    const handleExactDateChange = (e) => {
+        setSearchParams(prev => ({ ...prev, date: e.target.value || null, startDate: null, endDate: null, page: 1 }));
     };
-    
+
+    const handleDateRangeChange = (e, type) => {
+        const value = e.target.value || null;
+
+        if (type === 'startDate' && value && searchParams.endDate && value > searchParams.endDate) {
+            toast.error('Start date cannot be after end date');
+            return;
+        }
+
+        if (type === 'endDate' && value && searchParams.startDate && value < searchParams.startDate) {
+            toast.error('End date cannot be before start date');
+            return;
+        }
+
+        setSearchParams(prev => ({ ...prev, [type]: value, date: null, page: 1 }));
+    };
+
+    const clearDateFilters = () => {
+        setSearchParams(prev => ({ ...prev, date: null, startDate: null, endDate: null, page: 1 }));
+    };
+
     const renderPagination = () => {
-        // ... (pagination logic from other components)
+        const items = [];
+        const { current_page, total_pages } = pagination;
+        const maxPages = 5;
+        let startPage = Math.max(1, current_page - Math.floor(maxPages / 2));
+        let endPage = Math.min(total_pages, startPage + maxPages - 1);
+
+        if (endPage - startPage + 1 < maxPages) {
+            startPage = Math.max(1, endPage - maxPages + 1);
+        }
+
+        items.push(
+            <Pagination.Prev key="prev" onClick={() => handlePageChange(current_page - 1)} disabled={current_page === 1} />
+        );
+
+        if (startPage > 1) {
+            items.push(<Pagination.Item key={1} onClick={() => handlePageChange(1)}>1</Pagination.Item>);
+            if (startPage > 2) {
+                items.push(<Pagination.Ellipsis key="ellipsis1" disabled />);
+            }
+        }
+
+        for (let number = startPage; number <= endPage; number++) {
+            items.push(
+                <Pagination.Item key={number} active={number === current_page} onClick={() => handlePageChange(number)}>
+                    {number}
+                </Pagination.Item>
+            );
+        }
+
+        if (endPage < total_pages) {
+            if (endPage < total_pages - 1) {
+                items.push(<Pagination.Ellipsis key="ellipsis2" disabled />);
+            }
+            items.push(<Pagination.Item key={total_pages} onClick={() => handlePageChange(total_pages)}>{total_pages}</Pagination.Item>);
+        }
+
+        items.push(
+            <Pagination.Next key="next" onClick={() => handlePageChange(current_page + 1)} disabled={current_page === total_pages} />
+        );
+
+        return items;
     };
 
     if (loading && items.length === 0) {
@@ -138,9 +197,11 @@ const ProductBuyingPrice = () => {
 
                     <div className="filters-section mb-4">
                         <Row className="g-3">
-                            <Col md={4}>
+                            <Col md={3}>
                                 <InputGroup className="search-box">
-                                    <InputGroup.Text><FaSearch /></InputGroup.Text>
+                                    <InputGroup.Text>
+                                        {isSearching ? <FaSpinner className="spinner" /> : <FaSearch />}
+                                    </InputGroup.Text>
                                     <Form.Control
                                         type="text"
                                         placeholder="Search by item name..."
@@ -148,13 +209,66 @@ const ProductBuyingPrice = () => {
                                         onChange={handleSearch}
                                     />
                                     {searchParams.search && (
-                                        <Button variant="link" className="clear-search" onClick={() => setSearchParams(prev => ({ ...prev, search: '' }))}>
+                                        <Button
+                                            variant="link"
+                                            className="clear-search"
+                                            onClick={() => {
+                                                setSearchParams(prev => ({ ...prev, search: '' }));
+                                                fetchBuyingPriceItems(1);
+                                            }}
+                                        >
                                             <FaTimes />
                                         </Button>
                                     )}
                                 </InputGroup>
                             </Col>
-                            {/* ... (date filters if needed) */}
+                            <Col md={2}>
+                                <InputGroup>
+                                    <InputGroup.Text><FaCalendarAlt /></InputGroup.Text>
+                                    <Form.Control
+                                        type="date"
+                                        value={searchParams.date || ''}
+                                        onChange={handleExactDateChange}
+                                        max={new Date().toISOString().split('T')[0]}
+                                        placeholder="Exact date"
+                                    />
+                                </InputGroup>
+                            </Col>
+                            <Col md={3}>
+                                <InputGroup>
+                                    <InputGroup.Text><FaCalendarAlt /></InputGroup.Text>
+                                    <Form.Control
+                                        type="date"
+                                        value={searchParams.startDate || ''}
+                                        onChange={(e) => handleDateRangeChange(e, 'startDate')}
+                                        max={searchParams.endDate || new Date().toISOString().split('T')[0]}
+                                        placeholder="Start date"
+                                    />
+                                    <Form.Control
+                                        type="date"
+                                        value={searchParams.endDate || ''}
+                                        onChange={(e) => handleDateRangeChange(e, 'endDate')}
+                                        min={searchParams.startDate || undefined}
+                                        max={new Date().toISOString().split('T')[0]}
+                                        placeholder="End date"
+                                    />
+                                </InputGroup>
+                            </Col>
+                            <Col md={2}>
+                                <Form.Select value={searchParams.limit} onChange={handleLimitChange}>
+                                    <option value="5">5 per page</option>
+                                    <option value="10">10 per page</option>
+                                    <option value="20">20 per page</option>
+                                    <option value="50">50 per page</option>
+                                </Form.Select>
+                            </Col>
+                            <Col md={2}>
+                                {(searchParams.date || searchParams.startDate || searchParams.endDate) && (
+                                    <Button variant="outline-secondary" className="w-100" onClick={clearDateFilters}>
+                                        <FaTimes className="me-2" /> Clear Dates
+                                    </Button>
+                                )}
+                            </Col>
                         </Row>
                     </div>
 
@@ -186,7 +300,13 @@ const ProductBuyingPrice = () => {
                             </tbody>
                         </Table>
                     </div>
-                    {/* ... (pagination component) */}
+                    {pagination.total_pages > 1 && (
+                        <div className="pagination-container mt-4">
+                            <Pagination className="modern-pagination">
+                                {renderPagination()}
+                            </Pagination>
+                        </div>
+                    )}
                 </Card.Body>
             </Card>
 

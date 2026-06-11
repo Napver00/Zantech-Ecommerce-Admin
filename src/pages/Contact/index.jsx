@@ -32,12 +32,10 @@ const Contact = () => {
 
     const timeoutId = setTimeout(() => {
       if (searchParams.search !== "") {
-        setIsSearching(true);
         handleSearch(searchParams.search);
       } else {
         setFilteredContacts(contacts);
       }
-      setIsSearching(false);
     }, 300);
 
     setSearchTimeout(timeoutId);

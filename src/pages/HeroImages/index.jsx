@@ -270,6 +270,38 @@ const HeroImages = () => {
           <div className="filters-section mb-4">
             <Row className="g-3">
               <Col md={3}>
+                <div className="search-box">
+                  <InputGroup>
+                    <InputGroup.Text className="search-icon">
+                      {isSearching ? (
+                        <FaSpinner className="spinner" />
+                      ) : (
+                        <FaSearch />
+                      )}
+                    </InputGroup.Text>
+                    <Form.Control
+                      type="text"
+                      placeholder="Search hero images..."
+                      value={searchParams.search}
+                      onChange={handleSearch}
+                      className="search-input"
+                    />
+                    {searchParams.search && (
+                      <Button
+                        variant="link"
+                        className="clear-search"
+                        onClick={() => {
+                          setSearchParams(prev => ({ ...prev, search: '' }));
+                          fetchHeroImages(1);
+                        }}
+                      >
+                        <FaTimes />
+                      </Button>
+                    )}
+                  </InputGroup>
+                </div>
+              </Col>
+              <Col md={3}>
                 <Form.Select
                   value={searchParams.limit}
                   onChange={handleLimitChange}
