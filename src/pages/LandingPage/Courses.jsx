@@ -170,7 +170,7 @@ const Courses = () => {
     <div className="courses-container">
       <Card className="modern-card border-0">
         <Card.Body className="p-4">
-          <div className="d-flex justify-content-between align-items-center mb-4">
+          <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
             <div>
               <h4 className="mb-1 fw-bold text-primary">Courses</h4>
               <p className="text-muted small mb-0">

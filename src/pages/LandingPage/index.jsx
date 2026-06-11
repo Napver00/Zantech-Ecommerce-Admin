@@ -1,11 +1,10 @@
 import React from "react";
 import { useSearchParams } from "react-router-dom";
 import { Tabs, Tab } from "react-bootstrap";
+import { FaProjectDiagram, FaGraduationCap, FaBuilding } from "react-icons/fa";
 import "./Landing.css";
 import usePageTitle from "../../hooks/usePageTitle";
 
-import AmbassadorApplication from "./AmbassadorApplication";
-import OurAmbassadors from "./OurAmbassadors";
 import Projects from "./Projects";
 import Courses from "./Courses";
 import CompanyInfo from "./CompanyInfo";
@@ -13,7 +12,7 @@ import CompanyInfo from "./CompanyInfo";
 const LandingPage = () => {
   usePageTitle("Landing Page");
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get("tab") || "application";
+  const activeTab = searchParams.get("tab") || "projects";
 
   const handleSelect = (key) => {
     setSearchParams({ tab: key });
@@ -24,7 +23,7 @@ const LandingPage = () => {
       <div className="landing-header">
         <h2 className="mb-1">Landing Page Management</h2>
         <p className="lead fs-6 mb-0">
-          Manage your website's public facing content, projects, and ambassadors
+          Manage your website's public facing content, projects, and courses
           from one place.
         </p>
       </div>
@@ -34,21 +33,35 @@ const LandingPage = () => {
         onSelect={handleSelect}
         id="landing-page-tabs"
         className="landing-tabs mb-4 border-0"
-        fill
       >
-        <Tab eventKey="application" title="Ambassador Application">
-          <AmbassadorApplication />
-        </Tab>
-        <Tab eventKey="ambassadors" title="Our Ambassadors">
-          <OurAmbassadors />
-        </Tab>
-        <Tab eventKey="projects" title="Projects">
+        <Tab
+          eventKey="projects"
+          title={
+            <span className="landing-tab-title">
+              <FaProjectDiagram className="me-2" /> Projects
+            </span>
+          }
+        >
           <Projects />
         </Tab>
-        <Tab eventKey="courses" title="Courses">
+        <Tab
+          eventKey="courses"
+          title={
+            <span className="landing-tab-title">
+              <FaGraduationCap className="me-2" /> Courses
+            </span>
+          }
+        >
           <Courses />
         </Tab>
-        <Tab eventKey="company-info" title="Company Info">
+        <Tab
+          eventKey="company-info"
+          title={
+            <span className="landing-tab-title">
+              <FaBuilding className="me-2" /> Company Info
+            </span>
+          }
+        >
           <CompanyInfo />
         </Tab>
       </Tabs>

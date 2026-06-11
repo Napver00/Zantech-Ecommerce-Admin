@@ -7,7 +7,6 @@ import Login from "./pages/Login";
 import Profile from "./pages/Profile";
 import Products from "./pages/Products";
 import Categories from "./pages/Categories";
-import Careers from "./pages/Career";
 import AddProduct from "./pages/Products/AddProduct";
 import ViewProduct from "./pages/Products/ViewProduct";
 import ProductBuyingPrice from "./pages/Products/ProductBuyingPrice";
@@ -28,10 +27,6 @@ import ViewCustomer from "./pages/Customers/ViewCustomer";
 import Staff from "./pages/Staff";
 import Transitions from "./pages/Transitions";
 import Activity from "./pages/Activity";
-import AddCareer from "./pages/Career/AddCareer";
-import ViewCareer from "./pages/Career/ViewCareer";
-import CareerApplications from "./pages/Career/CareerApplications";
-import ViewApplication from "./pages/Career/ViewApplication";
 import Orders from "./pages/Orders";
 import ViewOrder from "./pages/Orders/ViewOrder";
 import CreateOrder from "./pages/Orders/CreateOrder";
@@ -104,17 +99,6 @@ const App = () => {
                         />
                         <Route path="/products/:id" element={<ViewProduct />} />
                         <Route path="/categories" element={<Categories />} />
-                        <Route path="/careers/add" element={<AddCareer />} />
-                        <Route path="/careers/:id" element={<ViewCareer />} />
-                        <Route
-                          path="/careers/:id/applications"
-                          element={<CareerApplications />}
-                        />
-                        <Route
-                          path="/careers/:career_id/applications/:application_id"
-                          element={<ViewApplication />}
-                        />
-                        <Route path="/careers" element={<Careers />} />
                         <Route path="/blog" element={<Blog />} />
                         <Route path="/blog/add" element={<AddPost />} />
                         <Route path="/blog/:slug" element={<ViewPost />} />

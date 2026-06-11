@@ -113,7 +113,7 @@ const CompanyInfo = () => {
   return (
     <div className="tab-content-container">
       <Card className="modern-card border-0">
-        <Card.Header className="d-flex justify-content-between align-items-center bg-white border-bottom-0 pb-0 pt-4 px-4">
+        <Card.Header className="d-flex flex-wrap justify-content-between align-items-center gap-2 bg-white border-bottom-0 pb-0 pt-4 px-4">
           <div>
             <h4 className="mb-1 text-primary fw-bold">
               {isEditing

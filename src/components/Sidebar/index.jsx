@@ -22,7 +22,6 @@ import {
   MdHistory,
   MdWeb,
   MdPeopleOutline,
-  MdWork,
   MdBook,
   MdQuestionAnswer,
   MdSettings,
@@ -108,7 +107,6 @@ const Sidebar = ({ onClose }) => {
     {
       title: "Content",
       items: [
-        { path: "/careers", icon: <MdWork size={22} />, label: "Careers" },
         { path: "/blog", icon: <MdBook size={22} />, label: "Blog" },
         { path: "/faq", icon: <MdQuestionAnswer size={22} />, label: "FAQ" },
       ],
