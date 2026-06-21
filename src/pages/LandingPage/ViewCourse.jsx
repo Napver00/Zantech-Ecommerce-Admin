@@ -15,7 +15,7 @@ const COURSE_TYPES = [
   { value: "hybrid", label: "Hybrid" },
 ];
 
-const emptyCurriculum = () => ({ module_no: "", title: "", description: "" });
+const emptyCurriculum = () => ({ title: "", description: "" });
 const emptySchedule = () => ({ course_type: "online_live", start_datetime: "" });
 const emptyMentor = () => ({
   name: "", description: "", experience: "",
@@ -42,9 +42,13 @@ const ViewCourse = () => {
   const [form, setForm] = useState({
     title: "", description: "", short_description: "",
     category: "", tags: "", price: "", discount_price: "",
-    reg_link: "", serial_number: "",
+    payment_type: "one_time", admission_fee: "", duration_months: "",
+    reg_link: "", serial_number: "", is_active: true,
+    meta_title: "", meta_description: "",
     thumbnail: null, thumbnailPreview: null, thumbnailUrl: null,
   });
+
+  const isMonthly = form.payment_type === "monthly";
 
   const [curriculums, setCurriculums] = useState([emptyCurriculum()]);
   const [schedules, setSchedules] = useState([emptySchedule()]);
@@ -70,8 +74,14 @@ const ViewCourse = () => {
           tags: Array.isArray(d.tags) ? d.tags.join(", ") : (d.tags || ""),
           price: d.price ?? "",
           discount_price: d.discount_price ?? "",
+          payment_type: d.payment_type || "one_time",
+          admission_fee: d.admission_fee ?? "",
+          duration_months: d.duration_months ?? "",
           reg_link: d.reg_link || "",
           serial_number: d.serial_number ?? "",
+          is_active: d.is_active ?? true,
+          meta_title: d.meta_title || "",
+          meta_description: d.meta_description || "",
           thumbnail: null,
           thumbnailPreview: null,
           thumbnailUrl: d.thumbnail || null,
@@ -79,11 +89,12 @@ const ViewCourse = () => {
 
         setCurriculums(
           d.curriculums?.length
-            ? d.curriculums.map((c) => ({
-                module_no: c.module_no ?? "",
-                title: c.title || "",
-                description: c.description || "",
-              }))
+            ? [...d.curriculums]
+                .sort((a, b) => (a.module_no ?? 0) - (b.module_no ?? 0))
+                .map((c) => ({
+                  title: c.title || "",
+                  description: c.description || "",
+                }))
             : [emptyCurriculum()]
         );
 
@@ -123,8 +134,8 @@ const ViewCourse = () => {
 
   // ── Field handlers ────────────────────────────────────────────────────────────
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm((p) => ({ ...p, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    setForm((p) => ({ ...p, [name]: type === "checkbox" ? checked : value }));
   };
 
   const handleThumbnail = (e) => {
@@ -163,6 +174,12 @@ const ViewCourse = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.title.trim()) return toast.error("Title is required");
+    if (isMonthly) {
+      if (form.discount_price === "") return toast.error("Discount price is required for monthly payment type");
+      if (form.admission_fee === "") return toast.error("Admission fee is required for monthly payment type");
+      if (form.duration_months === "" || Number(form.duration_months) <= 0)
+        return toast.error("Duration (months) is required for monthly payment type");
+    }
 
     setSaving(true);
     const fd = new FormData();
@@ -175,16 +192,24 @@ const ViewCourse = () => {
     if (form.reg_link) fd.append("reg_link", form.reg_link);
     if (form.price !== "") fd.append("price", form.price);
     if (form.discount_price !== "") fd.append("discount_price", form.discount_price);
+    fd.append("payment_type", form.payment_type);
+    if (isMonthly) {
+      fd.append("admission_fee", form.admission_fee);
+      fd.append("duration_months", form.duration_months);
+    }
     if (form.serial_number !== "") fd.append("serial_number", form.serial_number);
+    fd.append("is_active", form.is_active ? 1 : 0);
+    if (form.meta_title) fd.append("meta_title", form.meta_title);
+    if (form.meta_description) fd.append("meta_description", form.meta_description);
     if (form.thumbnail) fd.append("thumbnail", form.thumbnail);
 
     const tagList = form.tags.split(",").map((t) => t.trim()).filter(Boolean);
     tagList.forEach((tag) => fd.append("tags[]", tag));
 
-    // Curriculums — only filled rows
+    // Curriculums — only filled rows; module_no is auto-assigned by order
     const filledCurriculums = curriculums.filter((c) => c.title.trim());
     filledCurriculums.forEach((c, i) => {
-      if (c.module_no !== "") fd.append(`curriculums[${i}][module_no]`, c.module_no);
+      fd.append(`curriculums[${i}][module_no]`, i + 1);
       fd.append(`curriculums[${i}][title]`, c.title);
       if (c.description) fd.append(`curriculums[${i}][description]`, c.description);
     });
@@ -303,6 +328,19 @@ const ViewCourse = () => {
             <Row>
               <Col md={4}>
                 <Form.Group className="mb-3">
+                  <Form.Label>Payment Type</Form.Label>
+                  <Form.Select
+                    name="payment_type"
+                    value={form.payment_type}
+                    onChange={handleChange}
+                  >
+                    <option value="one_time">One Time</option>
+                    <option value="monthly">Monthly</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group className="mb-3">
                   <Form.Label>Price (৳)</Form.Label>
                   <Form.Control
                     type="number"
@@ -317,7 +355,9 @@ const ViewCourse = () => {
               </Col>
               <Col md={4}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Discount Price (৳)</Form.Label>
+                  <Form.Label>
+                    Discount Price (৳) {isMonthly && <span className="text-danger">*</span>}
+                  </Form.Label>
                   <Form.Control
                     type="number"
                     name="discount_price"
@@ -326,10 +366,51 @@ const ViewCourse = () => {
                     placeholder="0.00"
                     min={0}
                     step="0.01"
+                    required={isMonthly}
                   />
+                  {isMonthly && (
+                    <Form.Text className="text-muted">Used as the base price for monthly fee calculation.</Form.Text>
+                  )}
                 </Form.Group>
               </Col>
-              <Col md={4}>
+            </Row>
+
+            {isMonthly && (
+              <Row>
+                <Col md={4}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Admission Fee (৳) <span className="text-danger">*</span></Form.Label>
+                    <Form.Control
+                      type="number"
+                      name="admission_fee"
+                      value={form.admission_fee}
+                      onChange={handleChange}
+                      placeholder="0.00"
+                      min={0}
+                      step="0.01"
+                      required
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={4}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Duration (Months) <span className="text-danger">*</span></Form.Label>
+                    <Form.Control
+                      type="number"
+                      name="duration_months"
+                      value={form.duration_months}
+                      onChange={handleChange}
+                      placeholder="e.g. 6"
+                      min={1}
+                      required
+                    />
+                  </Form.Group>
+                </Col>
+              </Row>
+            )}
+
+            <Row>
+              <Col md={6}>
                 <Form.Group className="mb-3">
                   <Form.Label>Registration Link</Form.Label>
                   <Form.Control
@@ -337,6 +418,45 @@ const ViewCourse = () => {
                     value={form.reg_link}
                     onChange={handleChange}
                     placeholder="https://..."
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={6} className="d-flex align-items-end">
+                <Form.Group className="mb-3">
+                  <Form.Check
+                    type="switch"
+                    id="is_active-switch"
+                    name="is_active"
+                    label="Active"
+                    checked={form.is_active}
+                    onChange={handleChange}
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Meta Title</Form.Label>
+                  <Form.Control
+                    name="meta_title"
+                    value={form.meta_title}
+                    onChange={handleChange}
+                    placeholder="Auto-generated from title if left blank"
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Meta Description</Form.Label>
+                  <Form.Control
+                    as="textarea"
+                    rows={1}
+                    name="meta_description"
+                    value={form.meta_description}
+                    onChange={handleChange}
+                    placeholder="Auto-generated from title if left blank"
                   />
                 </Form.Group>
               </Col>
@@ -399,19 +519,7 @@ const ViewCourse = () => {
                   )}
                 </div>
                 <Row>
-                  <Col md={2}>
-                    <Form.Group className="mb-2">
-                      <Form.Label>Module No.</Form.Label>
-                      <Form.Control
-                        type="number"
-                        value={c.module_no}
-                        onChange={(e) => setCurriculum(i, "module_no", e.target.value)}
-                        placeholder="#"
-                        min={1}
-                      />
-                    </Form.Group>
-                  </Col>
-                  <Col md={10}>
+                  <Col md={12}>
                     <Form.Group className="mb-2">
                       <Form.Label>Title <span className="text-danger">*</span></Form.Label>
                       <Form.Control

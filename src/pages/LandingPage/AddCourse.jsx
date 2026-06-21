@@ -14,7 +14,7 @@ const COURSE_TYPES = [
   { value: "hybrid", label: "Hybrid" },
 ];
 
-const emptyCurriculum = () => ({ module_no: "", title: "", description: "" });
+const emptyCurriculum = () => ({ title: "", description: "" });
 const emptySchedule = () => ({ course_type: "online_live", start_datetime: "" });
 const emptyMentor = () => ({
   name: "",
@@ -39,11 +39,16 @@ const AddCourse = () => {
     tags: "",
     price: "",
     discount_price: "",
+    payment_type: "one_time",
+    admission_fee: "",
+    duration_months: "",
     reg_link: "",
     serial_number: "",
     thumbnail: null,
     thumbnailPreview: null,
   });
+
+  const isMonthly = form.payment_type === "monthly";
 
   const [curriculums, setCurriculums] = useState([emptyCurriculum()]);
   const [schedules, setSchedules] = useState([emptySchedule()]);
@@ -101,6 +106,12 @@ const AddCourse = () => {
     e.preventDefault();
     if (!form.title.trim()) return toast.error("Title is required");
     if (!form.description.trim()) return toast.error("Description is required");
+    if (isMonthly) {
+      if (form.discount_price === "") return toast.error("Discount price is required for monthly payment type");
+      if (form.admission_fee === "") return toast.error("Admission fee is required for monthly payment type");
+      if (form.duration_months === "" || Number(form.duration_months) <= 0)
+        return toast.error("Duration (months) is required for monthly payment type");
+    }
 
     setLoading(true);
     const fd = new FormData();
@@ -113,6 +124,11 @@ const AddCourse = () => {
     if (form.reg_link) fd.append("reg_link", form.reg_link);
     if (form.price !== "") fd.append("price", form.price);
     if (form.discount_price !== "") fd.append("discount_price", form.discount_price);
+    fd.append("payment_type", form.payment_type);
+    if (isMonthly) {
+      fd.append("admission_fee", form.admission_fee);
+      fd.append("duration_months", form.duration_months);
+    }
     if (form.serial_number !== "") fd.append("serial_number", form.serial_number);
     if (form.thumbnail) fd.append("thumbnail", form.thumbnail);
 
@@ -123,10 +139,10 @@ const AddCourse = () => {
       .filter(Boolean);
     tagList.forEach((tag) => fd.append("tags[]", tag));
 
-    // Curriculums — only include rows that have a title
+    // Curriculums — only include rows that have a title; module_no is auto-assigned by order
     const filledCurriculums = curriculums.filter((c) => c.title.trim());
     filledCurriculums.forEach((c, i) => {
-      if (c.module_no !== "") fd.append(`curriculums[${i}][module_no]`, c.module_no);
+      fd.append(`curriculums[${i}][module_no]`, i + 1);
       fd.append(`curriculums[${i}][title]`, c.title);
       if (c.description) fd.append(`curriculums[${i}][description]`, c.description);
     });
@@ -251,6 +267,19 @@ const AddCourse = () => {
             <Row>
               <Col md={4}>
                 <Form.Group className="mb-3">
+                  <Form.Label>Payment Type</Form.Label>
+                  <Form.Select
+                    name="payment_type"
+                    value={form.payment_type}
+                    onChange={handleChange}
+                  >
+                    <option value="one_time">One Time</option>
+                    <option value="monthly">Monthly</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group className="mb-3">
                   <Form.Label>Price (৳)</Form.Label>
                   <Form.Control
                     type="number"
@@ -265,7 +294,9 @@ const AddCourse = () => {
               </Col>
               <Col md={4}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Discount Price (৳)</Form.Label>
+                  <Form.Label>
+                    Discount Price (৳) {isMonthly && <span className="text-danger">*</span>}
+                  </Form.Label>
                   <Form.Control
                     type="number"
                     name="discount_price"
@@ -274,10 +305,51 @@ const AddCourse = () => {
                     placeholder="0.00"
                     min={0}
                     step="0.01"
+                    required={isMonthly}
                   />
+                  {isMonthly && (
+                    <Form.Text className="text-muted">Used as the base price for monthly fee calculation.</Form.Text>
+                  )}
                 </Form.Group>
               </Col>
-              <Col md={4}>
+            </Row>
+
+            {isMonthly && (
+              <Row>
+                <Col md={4}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Admission Fee (৳) <span className="text-danger">*</span></Form.Label>
+                    <Form.Control
+                      type="number"
+                      name="admission_fee"
+                      value={form.admission_fee}
+                      onChange={handleChange}
+                      placeholder="0.00"
+                      min={0}
+                      step="0.01"
+                      required
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={4}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Duration (Months) <span className="text-danger">*</span></Form.Label>
+                    <Form.Control
+                      type="number"
+                      name="duration_months"
+                      value={form.duration_months}
+                      onChange={handleChange}
+                      placeholder="e.g. 6"
+                      min={1}
+                      required
+                    />
+                  </Form.Group>
+                </Col>
+              </Row>
+            )}
+
+            <Row>
+              <Col md={6}>
                 <Form.Group className="mb-3">
                   <Form.Label>Registration Link</Form.Label>
                   <Form.Control
@@ -343,19 +415,7 @@ const AddCourse = () => {
                   )}
                 </div>
                 <Row>
-                  <Col md={2}>
-                    <Form.Group className="mb-2">
-                      <Form.Label>Module No.</Form.Label>
-                      <Form.Control
-                        type="number"
-                        value={c.module_no}
-                        onChange={(e) => setCurriculum(i, "module_no", e.target.value)}
-                        placeholder="#"
-                        min={1}
-                      />
-                    </Form.Group>
-                  </Col>
-                  <Col md={10}>
+                  <Col md={12}>
                     <Form.Group className="mb-2">
                       <Form.Label>Title <span className="text-danger">*</span></Form.Label>
                       <Form.Control

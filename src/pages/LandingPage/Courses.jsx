@@ -96,10 +96,23 @@ const Courses = () => {
     { key: "title", label: "Title" },
     { key: "category", label: "Category", render: (row) => row.category || "—" },
     {
+      key: "payment_type",
+      label: "Type",
+      render: (row) => (
+        <Badge bg={row.payment_type === "monthly" ? "info" : "secondary"}>
+          {row.payment_type === "monthly" ? "Monthly" : "One Time"}
+        </Badge>
+      ),
+    },
+    {
       key: "price",
       label: "Price",
       render: (row) =>
-        row.price != null ? (
+        row.payment_type === "monthly" ? (
+          row.monthly_fee != null ? (
+            <span className="text-success fw-bold">৳{Number(row.monthly_fee).toLocaleString()}/mo</span>
+          ) : "—"
+        ) : row.price != null ? (
           <span>
             {row.discount_price ? (
               <>
