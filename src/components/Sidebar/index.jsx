@@ -1,150 +1,80 @@
-import React, { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import React, { useState, useEffect, useMemo } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
-  MdDashboard,
-  MdShoppingCart,
-  MdPeople,
-  MdCategory,
-  MdInventory,
-  MdAnalytics,
   MdStore,
-  MdBusiness,
   MdChevronLeft,
   MdChevronRight,
-  MdPerson,
-  MdAttachMoney,
-  MdLocalOffer,
-  MdStar,
-  MdSwapHoriz,
-  MdContactMail,
   MdExpandMore,
   MdExpandLess,
-  MdHistory,
-  MdWeb,
-  MdPeopleOutline,
-  MdBook,
-  MdQuestionAnswer,
-  MdSettings,
-  MdReceiptLong,
   MdClose,
-  MdSchool,
+  MdSearch,
 } from "react-icons/md";
 import { Nav, Badge, Collapse } from "react-bootstrap";
 import { useOrderContext } from "../../context/OrderContext";
+import { NAV_SECTIONS } from "../../config/navigation";
 import "./Sidebar.css";
+
+const matches = (label, query) => label.toLowerCase().includes(query);
 
 const Sidebar = ({ onClose }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const { statusSummary } = useOrderContext();
   const [openSections, setOpenSections] = useState({});
+  const [search, setSearch] = useState("");
 
   // Close sidebar on route change (mobile)
   useEffect(() => {
     if (onClose) onClose();
   }, [location.pathname]);
 
-  const toggleSection = (title) => {
-    setOpenSections((prev) => ({ ...prev, [title]: !prev[title] }));
+  // Collapsed rail has no room for a text filter — clear it if the user collapses mid-search
+  useEffect(() => {
+    if (collapsed) setSearch("");
+  }, [collapsed]);
+
+  const toggleSection = (label) => {
+    setOpenSections((prev) => ({ ...prev, [label]: !prev[label] }));
   };
 
-  const menuItems = [
-    {
-      title: "Main",
-      items: [
-        { path: "/dashboard", icon: <MdDashboard size={22} />, label: "Dashboard" },
-        { path: "/analytics", icon: <MdAnalytics size={22} />, label: "Analytics" },
-      ],
-    },
-    {
-      title: "Management",
-      items: [
-        {
-          path: "/orders",
-          icon: <MdShoppingCart size={22} />,
-          label: "Orders",
-          badge: statusSummary.processing > 0 ? (
-            <Badge bg="danger" pill className="ms-auto">{statusSummary.processing}</Badge>
-          ) : null,
-        },
-        {
-          label: "Products",
-          icon: <MdInventory size={22} />,
-          subItems: [
-            { path: "/products", label: "All Products" },
-            { path: "/products/add", label: "Add Product" },
-            { path: "/products/buying-price", label: "Buying Price" },
-            { path: "/products/in-stock", label: "In Stock" },
-          ],
-        },
-        { path: "/categories", icon: <MdCategory size={22} />, label: "Categories" },
-        { path: "/coupons", icon: <MdLocalOffer size={22} />, label: "Coupons" },
-        { path: "/ratings", icon: <MdStar size={22} />, label: "Ratings" },
-        { path: "/transitions", icon: <MdSwapHoriz size={22} />, label: "Transitions" },
-      ],
-    },
-    {
-      title: "Customers",
-      items: [
-        { path: "/customers", icon: <MdPeople size={22} />, label: "Customers" },
-        { path: "/contact", icon: <MdContactMail size={22} />, label: "Contacts" },
-      ],
-    },
-    {
-      title: "Inventory",
-      items: [
-        { path: "/suppliers", icon: <MdBusiness size={22} />, label: "Suppliers" },
-        { path: "/challans", icon: <MdReceiptLong size={22} />, label: "Challans" },
-        { path: "/expenses", icon: <MdAttachMoney size={22} />, label: "Expenses" },
-      ],
-    },
-    {
-      title: "Staff & Activity",
-      items: [
-        { path: "/staff", icon: <MdPeopleOutline size={22} />, label: "Staff" },
-        { path: "/activity", icon: <MdHistory size={22} />, label: "Activity" },
-      ],
-    },
-    {
-      title: "Content",
-      items: [
-        { path: "/blog", icon: <MdBook size={22} />, label: "Blog" },
-        { path: "/faq", icon: <MdQuestionAnswer size={22} />, label: "FAQ" },
-      ],
-    },
-    {
-      title: "Courses",
-      items: [
-        {
-          label: "Courses",
-          icon: <MdSchool size={22} />,
-          subItems: [
-            { path: "/landing?tab=courses", label: "Manage Courses" },
-            { path: "/students", label: "Students" },
-            { path: "/course-invoices", label: "Course Invoices" },
-            { path: "/course-invoices/add", label: "New Invoice" },
-          ],
-        },
-      ],
-    },
-    {
-      title: "Reports",
-      items: [
-        { path: "/reports", icon: <MdAnalytics size={22} />, label: "Reports" },
-      ],
-    },
-    {
-      title: "Settings",
-      items: [
-        { path: "/settings/hero", icon: <MdSettings size={22} />, label: "Hero Section" },
-        { path: "/landing", icon: <MdWeb size={22} />, label: "Landing Page" },
-        { path: "/settings/documents", icon: <MdReceiptLong size={22} />, label: "Documents" },
-      ],
-    },
-  ];
-
   const isActive = (path) => location.pathname === path;
-  const isSubActive = (subItems) => subItems.some((s) => location.pathname.startsWith(s.path));
+  const isSubActive = (subItems) => subItems.some((s) => location.pathname.startsWith(s.path.split("?")[0]));
+
+  const badgeValues = { processing: statusSummary.processing };
+
+  const query = search.trim().toLowerCase();
+  const isSearching = query.length > 0;
+
+  // When filtering, decide per-section/per-item visibility without touching the
+  // underlying nav data — nothing is destructively hidden, only dimmed away.
+  const filteredSections = useMemo(() => {
+    if (!isSearching) return NAV_SECTIONS;
+    return NAV_SECTIONS.map((section) => ({
+      ...section,
+      items: section.items.filter((item) => {
+        if (item.subItems) {
+          return matches(item.label, query) || item.subItems.some((s) => matches(s.label, query));
+        }
+        return matches(item.label, query);
+      }),
+    })).filter((section) => section.items.length > 0);
+  }, [isSearching, query]);
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key !== "Enter") return;
+    // Jump straight to the first match on Enter
+    for (const section of filteredSections) {
+      for (const item of section.items) {
+        if (item.subItems) {
+          const sub = item.subItems.find((s) => matches(s.label, query));
+          if (sub) return navigate(sub.path);
+        } else if (matches(item.label, query)) {
+          return navigate(item.path);
+        }
+      }
+    }
+  };
 
   return (
     <div className={`sidebar bg-white h-100 shadow-sm ${collapsed ? "collapsed" : ""}`}>
@@ -176,10 +106,35 @@ const Sidebar = ({ onClose }) => {
         </div>
       </div>
 
+      {/* Quick filter — never hides anything unless the user actively types */}
+      {!collapsed && (
+        <div className="sidebar-search px-3 pt-3">
+          <div className="sidebar-search-box">
+            <MdSearch size={17} className="sidebar-search-icon" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={handleSearchKeyDown}
+              placeholder="Find a page..."
+              aria-label="Search navigation"
+            />
+            {search && (
+              <button className="sidebar-search-clear" onClick={() => setSearch("")} aria-label="Clear search">
+                <MdClose size={14} />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Nav */}
       <div className="sidebar-nav p-2">
-        {menuItems.map((section, si) => (
-          <div key={si} className="mb-3">
+        {filteredSections.length === 0 && isSearching && (
+          <div className="text-center text-muted small py-4 px-2">No pages match "{search}"</div>
+        )}
+        {filteredSections.map((section) => (
+          <div key={section.key} className="mb-3">
             {!collapsed && (
               <div className="sidebar-section-title text-uppercase small fw-semibold text-secondary mb-1 px-2" style={{ fontSize: "0.7rem", letterSpacing: "0.06em" }}>
                 {section.title}
@@ -189,17 +144,19 @@ const Sidebar = ({ onClose }) => {
               {section.items.map((item) => {
                 if (item.subItems) {
                   const active = isSubActive(item.subItems);
-                  const open = openSections[item.label] ?? active;
+                  const forceOpen = isSearching && item.subItems.some((s) => matches(s.label, query));
+                  const open = forceOpen || (openSections[item.label] ?? active);
                   return (
                     <div key={item.label}>
                       <Nav.Link
                         onClick={() => toggleSection(item.label)}
                         className={`sidebar-link d-flex align-items-center gap-2 rounded-3 px-3 py-2 ${active ? "active" : ""}`}
                       >
-                        <span className="sidebar-icon flex-shrink-0">{item.icon}</span>
+                        <span className="sidebar-icon flex-shrink-0"><item.icon size={22} /></span>
                         {!collapsed && (
                           <>
                             <span className="flex-grow-1 text-truncate">{item.label}</span>
+                            {item.badgeText && <Badge bg="success" className="sidebar-new-badge me-1">{item.badgeText}</Badge>}
                             {open ? <MdExpandLess size={18} /> : <MdExpandMore size={18} />}
                           </>
                         )}
@@ -207,22 +164,26 @@ const Sidebar = ({ onClose }) => {
                       <Collapse in={!collapsed && open}>
                         <div>
                           <Nav className="flex-column gap-1 ps-4 mt-1">
-                            {item.subItems.map((sub) => (
-                              <Nav.Link
-                                key={sub.path}
-                                as={Link}
-                                to={sub.path}
-                                className={`sidebar-link sidebar-sublink d-flex align-items-center rounded-3 px-3 py-2 ${location.pathname === sub.path ? "active" : ""}`}
-                              >
-                                <span className="flex-grow-1 text-truncate" style={{ fontSize: "0.85rem" }}>{sub.label}</span>
-                              </Nav.Link>
-                            ))}
+                            {item.subItems
+                              .filter((sub) => !isSearching || matches(sub.label, query) || matches(item.label, query))
+                              .map((sub) => (
+                                <Nav.Link
+                                  key={sub.path}
+                                  as={Link}
+                                  to={sub.path}
+                                  className={`sidebar-link sidebar-sublink d-flex align-items-center rounded-3 px-3 py-2 ${location.pathname === sub.path.split("?")[0] ? "active" : ""}`}
+                                >
+                                  <span className="flex-grow-1 text-truncate" style={{ fontSize: "0.85rem" }}>{sub.label}</span>
+                                </Nav.Link>
+                              ))}
                           </Nav>
                         </div>
                       </Collapse>
                     </div>
                   );
                 }
+
+                const badgeValue = item.badgeKey ? badgeValues[item.badgeKey] : null;
 
                 return (
                   <Nav.Item key={item.path} title={collapsed ? item.label : undefined}>
@@ -231,11 +192,11 @@ const Sidebar = ({ onClose }) => {
                       to={item.path}
                       className={`sidebar-link d-flex align-items-center gap-2 rounded-3 px-3 py-2 ${isActive(item.path) ? "active" : ""}`}
                     >
-                      <span className="sidebar-icon flex-shrink-0">{item.icon}</span>
+                      <span className="sidebar-icon flex-shrink-0"><item.icon size={22} /></span>
                       {!collapsed && (
                         <>
                           <span className="flex-grow-1 text-truncate">{item.label}</span>
-                          {item.badge}
+                          {badgeValue > 0 && <Badge bg="danger" pill className="ms-auto">{badgeValue}</Badge>}
                         </>
                       )}
                     </Nav.Link>

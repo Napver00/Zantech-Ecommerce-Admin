@@ -52,6 +52,7 @@ import AddCourseInvoice from "./pages/CourseInvoices/AddCourseInvoice";
 import ViewCourseInvoice from "./pages/CourseInvoices/ViewCourseInvoice";
 import Students from "./pages/Students";
 import ViewStudent from "./pages/Students/ViewStudent";
+import CommandPalette from "./components/CommandPalette";
 
 const PrivateRoute = ({ children }) => {
   const token = localStorage.getItem("token");
@@ -60,6 +61,19 @@ const PrivateRoute = ({ children }) => {
 
 const App = () => {
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
+  const [showCommandPalette, setShowCommandPalette] = React.useState(false);
+
+  // Global Ctrl/Cmd+K to open the quick-nav search from anywhere in the app
+  React.useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setShowCommandPalette((p) => !p);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   return (
     <BrowserRouter>
@@ -72,7 +86,11 @@ const App = () => {
             element={
               <PrivateRoute>
                 <>
-                  <Header onToggleSidebar={() => setSidebarOpen((p) => !p)} />
+                  <Header
+                    onToggleSidebar={() => setSidebarOpen((p) => !p)}
+                    onOpenSearch={() => setShowCommandPalette(true)}
+                  />
+                  <CommandPalette show={showCommandPalette} onClose={() => setShowCommandPalette(false)} />
                   <div className="main d-flex">
                     {sidebarOpen && (
                       <div

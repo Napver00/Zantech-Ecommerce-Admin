@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { Bell, User, LogOut, Menu, UserCircle } from "lucide-react";
+import { Bell, User, LogOut, Menu, UserCircle, Search } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Dropdown } from "react-bootstrap";
 import logo from "../../assets/zantechLogo.png";
 import "./Header.css";
 
-const Header = ({ onToggleSidebar }) => {
+const Header = ({ onToggleSidebar, onOpenSearch }) => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [notifications, setNotifications] = useState([]);
@@ -48,7 +48,16 @@ const Header = ({ onToggleSidebar }) => {
         </Link>
       </div>
 
+      <button className="header-search-trigger" onClick={onOpenSearch} aria-label="Search pages">
+        <Search size={16} />
+        <span className="header-search-trigger-text">Search pages...</span>
+        <span className="header-search-trigger-kbd">Ctrl K</span>
+      </button>
+
       <div className="header-right">
+        <button className="action-button header-search-icon-only" onClick={onOpenSearch} aria-label="Search pages">
+          <Search size={20} />
+        </button>
         {/* Notifications */}
         <Dropdown align="end">
           <Dropdown.Toggle as={CustomToggle}>
