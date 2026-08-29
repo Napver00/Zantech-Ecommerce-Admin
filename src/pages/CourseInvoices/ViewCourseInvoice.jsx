@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
-import { FaArrowLeft, FaEdit, FaBan, FaMoneyBillWave, FaSave, FaTimes } from "react-icons/fa";
+import { FaArrowLeft, FaEdit, FaBan, FaMoneyBillWave, FaSave, FaTimes, FaFilePdf } from "react-icons/fa";
 import { Card, Row, Col, Button, Form, Badge, Modal, Spinner } from "react-bootstrap";
 import axiosInstance from "../../config/axios";
 import Loading from "../../components/Loading";
 import usePageTitle from "../../hooks/usePageTitle";
+import CourseInvoiceDocument from "../../components/CourseInvoiceDocument";
 import "./CourseInvoices.css";
 
 const STATUS_VARIANT = { due: "warning", partial: "info", paid: "success", void: "secondary" };
@@ -20,6 +21,7 @@ const ViewCourseInvoice = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editForm, setEditForm] = useState({ student_name: "", student_phone: "", student_email: "", amount: "", discount: "", note: "" });
+  const [generatingPdf, setGeneratingPdf] = useState(false);
 
   const [showPayModal, setShowPayModal] = useState(false);
   const [payAmount, setPayAmount] = useState("");
@@ -85,6 +87,26 @@ const ViewCourseInvoice = () => {
     }
   };
 
+  const handleGeneratePdf = () => {
+    if (generatingPdf || !invoice) return;
+    setGeneratingPdf(true);
+    try {
+      const printWindow = window.open("", "_blank");
+      const invoiceContent = CourseInvoiceDocument({ invoice });
+      printWindow.document.write(invoiceContent);
+      printWindow.document.close();
+      printWindow.onload = function () {
+        setTimeout(() => {
+          printWindow.print();
+        }, 500);
+      };
+    } catch {
+      toast.error("Failed to generate invoice PDF");
+    } finally {
+      setGeneratingPdf(false);
+    }
+  };
+
   const openPayModal = () => {
     setPayAmount("");
     setPayMethod("");
@@ -133,6 +155,9 @@ const ViewCourseInvoice = () => {
               </Badge>
             </div>
             <div className="d-flex gap-2">
+              <Button variant="outline-secondary" onClick={handleGeneratePdf} disabled={generatingPdf}>
+                <FaFilePdf className="me-2" /> {generatingPdf ? "Preparing..." : "Print / PDF"}
+              </Button>
               {!isLocked && !isEditing && (
                 <Button variant="success" onClick={openPayModal}>
                   <FaMoneyBillWave className="me-2" /> Add Payment

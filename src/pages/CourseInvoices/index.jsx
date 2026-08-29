@@ -10,11 +10,13 @@ import {
   FaTimes,
   FaChevronLeft,
   FaChevronRight,
+  FaFilePdf,
 } from "react-icons/fa";
 import { Card, Form, InputGroup, Button, Row, Col, Badge, Pagination } from "react-bootstrap";
 import axiosInstance from "../../config/axios";
 import CommonTable from "../../components/Common/CommonTable";
 import usePageTitle from "../../hooks/usePageTitle";
+import CourseInvoiceDocument from "../../components/CourseInvoiceDocument";
 import "./CourseInvoices.css";
 
 const STATUS_VARIANT = { due: "warning", partial: "info", paid: "success", void: "secondary" };
@@ -110,6 +112,16 @@ const CourseInvoices = () => {
     }
   };
 
+  const handlePrint = (invoice) => {
+    const printWindow = window.open("", "_blank");
+    const content = CourseInvoiceDocument({ invoice });
+    printWindow.document.write(content);
+    printWindow.document.close();
+    printWindow.onload = function () {
+      setTimeout(() => printWindow.print(), 500);
+    };
+  };
+
   const clearFilters = () => {
     setSearch("");
     setCourseId("");
@@ -162,6 +174,14 @@ const CourseInvoices = () => {
         title="View"
       >
         <FaEye />
+      </Button>
+      <Button
+        variant="outline-secondary"
+        size="sm"
+        onClick={() => handlePrint(invoice)}
+        title="Print / PDF"
+      >
+        <FaFilePdf />
       </Button>
       {invoice.status !== "void" && (
         <Button
