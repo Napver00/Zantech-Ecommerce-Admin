@@ -27,6 +27,7 @@ import {
   MdSettings,
   MdReceiptLong,
   MdClose,
+  MdSchool,
 } from "react-icons/md";
 import { Nav, Badge, Collapse } from "react-bootstrap";
 import { useOrderContext } from "../../context/OrderContext";
@@ -109,6 +110,21 @@ const Sidebar = ({ onClose }) => {
       items: [
         { path: "/blog", icon: <MdBook size={22} />, label: "Blog" },
         { path: "/faq", icon: <MdQuestionAnswer size={22} />, label: "FAQ" },
+      ],
+    },
+    {
+      title: "Courses",
+      items: [
+        {
+          label: "Courses",
+          icon: <MdSchool size={22} />,
+          subItems: [
+            { path: "/landing?tab=courses", label: "Manage Courses" },
+            { path: "/students", label: "Students" },
+            { path: "/course-invoices", label: "Course Invoices" },
+            { path: "/course-invoices/add", label: "New Invoice" },
+          ],
+        },
       ],
     },
     {

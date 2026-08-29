@@ -1,12 +1,20 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
-import { FaSave, FaArrowLeft, FaPlus, FaTrash } from "react-icons/fa";
+import { FaSave, FaArrowLeft, FaPlus, FaTrash, FaUserGraduate } from "react-icons/fa";
 import axiosInstance from "../../config/axios";
 import Loading from "../../components/Loading";
 import { Row, Col, Card, Form, Button, Badge, Spinner } from "react-bootstrap";
+import AsyncSelect from "react-select/async";
 import JoditEditor from "jodit-react";
 import usePageTitle from "../../hooks/usePageTitle";
+
+const studentSelectMenuProps = {
+  menuPortalTarget: typeof document !== "undefined" ? document.body : null,
+  menuPosition: "fixed",
+  menuPlacement: "auto",
+  styles: { menuPortal: (base) => ({ ...base, zIndex: 9999 }) },
+};
 
 const COURSE_TYPES = [
   { value: "online_live", label: "Online Live" },
@@ -49,6 +57,10 @@ const ViewCourse = () => {
   });
 
   const isMonthly = form.payment_type === "monthly";
+  const computedMonthlyFee =
+    isMonthly && form.discount_price !== "" && form.admission_fee !== "" && Number(form.duration_months) > 0
+      ? Math.round(((Number(form.discount_price) - Number(form.admission_fee)) / Number(form.duration_months)) * 100) / 100
+      : null;
 
   const [curriculums, setCurriculums] = useState([emptyCurriculum()]);
   const [schedules, setSchedules] = useState([emptySchedule()]);
@@ -58,6 +70,84 @@ const ViewCourse = () => {
     () => ({ readonly: false, placeholder: "Write full course description...", height: 350 }),
     []
   );
+
+  // ── Enrolled Students ──────────────────────────────────────────────────────
+  const [enrolledStudents, setEnrolledStudents] = useState([]);
+  const [enrollLoading, setEnrollLoading] = useState(false);
+  const [enrolling, setEnrolling] = useState(false);
+  const [showNewStudentForm, setShowNewStudentForm] = useState(false);
+  const [newStudent, setNewStudent] = useState({ name: "", school_name: "", parent_phone: "" });
+
+  const fetchEnrolledStudents = useCallback(async () => {
+    if (!courseId) return;
+    setEnrollLoading(true);
+    try {
+      const res = await axiosInstance.get(`/courses/${courseId}/students`);
+      setEnrolledStudents(Array.isArray(res.data.data) ? res.data.data : []);
+    } catch {
+      setEnrolledStudents([]);
+    } finally {
+      setEnrollLoading(false);
+    }
+  }, [courseId]);
+
+  useEffect(() => { fetchEnrolledStudents(); }, [fetchEnrolledStudents]);
+
+  const loadStudentOptions = async (inputValue) => {
+    try {
+      const res = await axiosInstance.get("/students", { params: { search: inputValue } });
+      if (!res.data.success) return [];
+      const enrolledIds = new Set(enrolledStudents.map((s) => s.id));
+      return res.data.data
+        .filter((s) => !enrolledIds.has(s.id))
+        .map((s) => ({ value: s.id, label: `${s.name}${s.school_name ? ` — ${s.school_name}` : ""} (${s.parent_phone})` }));
+    } catch {
+      return [];
+    }
+  };
+
+  const handleEnroll = async (option) => {
+    if (!option) return;
+    setEnrolling(true);
+    try {
+      await axiosInstance.post(`/students/${option.value}/courses`, { course_id: courseId });
+      toast.success("Student enrolled");
+      fetchEnrolledStudents();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to enroll student");
+    } finally {
+      setEnrolling(false);
+    }
+  };
+
+  const handleUnenroll = async (studentId) => {
+    if (!window.confirm("Unenroll this student from the course? Any invoices already issued to them are kept for audit history.")) return;
+    try {
+      await axiosInstance.delete(`/students/${studentId}/courses/${courseId}`);
+      toast.success("Student unenrolled");
+      fetchEnrolledStudents();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to unenroll student");
+    }
+  };
+
+  const handleCreateAndEnrollStudent = async (e) => {
+    e.preventDefault();
+    if (!newStudent.name.trim()) return toast.error("Name is required");
+    if (!newStudent.parent_phone.trim()) return toast.error("Parent's phone is required");
+    setEnrolling(true);
+    try {
+      await axiosInstance.post("/students", { ...newStudent, course_id: courseId });
+      toast.success("Student created and enrolled");
+      setNewStudent({ name: "", school_name: "", parent_phone: "" });
+      setShowNewStudentForm(false);
+      fetchEnrolledStudents();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to create student");
+    } finally {
+      setEnrolling(false);
+    }
+  };
 
   // ── Fetch course ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -406,6 +496,14 @@ const ViewCourse = () => {
                     />
                   </Form.Group>
                 </Col>
+                <Col md={4} className="d-flex align-items-center">
+                  <div className="mb-3">
+                    <Form.Label className="d-block">Monthly Fee (preview)</Form.Label>
+                    <Badge bg="success" style={{ fontSize: "0.95rem" }}>
+                      {computedMonthlyFee != null ? `৳${computedMonthlyFee.toLocaleString()}/mo` : "—"}
+                    </Badge>
+                  </div>
+                </Col>
               </Row>
             )}
 
@@ -709,6 +807,111 @@ const ViewCourse = () => {
           </button>
         </div>
       </form>
+
+      {/* ── Enrolled Students ── */}
+      <Card className="border mb-4">
+        <Card.Header className="bg-light d-flex align-items-center gap-2">
+          <h5 className="mb-0"><FaUserGraduate className="me-2" />Enrolled Students</h5>
+          <Badge bg="secondary" pill>{enrolledStudents.length}</Badge>
+        </Card.Header>
+        <Card.Body>
+          <Row className="mb-3 align-items-end">
+            <Col md={7}>
+              <Form.Label>Enroll an existing student</Form.Label>
+              <AsyncSelect
+                key={enrolledStudents.length}
+                cacheOptions
+                defaultOptions
+                loadOptions={loadStudentOptions}
+                onChange={handleEnroll}
+                placeholder="Search by name, phone or school..."
+                isDisabled={enrolling}
+                noOptionsMessage={() => "No matching students"}
+                value={null}
+                {...studentSelectMenuProps}
+              />
+            </Col>
+            <Col md={5}>
+              <Button variant="outline-primary" onClick={() => setShowNewStudentForm((p) => !p)} disabled={enrolling}>
+                <FaPlus className="me-1" /> {showNewStudentForm ? "Cancel" : "New Student"}
+              </Button>
+            </Col>
+          </Row>
+
+          {showNewStudentForm && (
+            <Form onSubmit={handleCreateAndEnrollStudent} className="border rounded p-3 mb-3">
+              <Row>
+                <Col md={4}>
+                  <Form.Group className="mb-2">
+                    <Form.Label>Name <span className="text-danger">*</span></Form.Label>
+                    <Form.Control
+                      value={newStudent.name}
+                      onChange={(e) => setNewStudent((p) => ({ ...p, name: e.target.value }))}
+                      placeholder="Student's full name"
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={4}>
+                  <Form.Group className="mb-2">
+                    <Form.Label>School</Form.Label>
+                    <Form.Control
+                      value={newStudent.school_name}
+                      onChange={(e) => setNewStudent((p) => ({ ...p, school_name: e.target.value }))}
+                      placeholder="School name"
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={4}>
+                  <Form.Group className="mb-2">
+                    <Form.Label>Parent's Phone <span className="text-danger">*</span></Form.Label>
+                    <Form.Control
+                      value={newStudent.parent_phone}
+                      onChange={(e) => setNewStudent((p) => ({ ...p, parent_phone: e.target.value }))}
+                      placeholder="01xxxxxxxxx"
+                    />
+                  </Form.Group>
+                </Col>
+              </Row>
+              <Button type="submit" variant="primary" size="sm" disabled={enrolling}>
+                {enrolling ? "Saving..." : "Create & Enroll"}
+              </Button>
+            </Form>
+          )}
+
+          {enrollLoading ? (
+            <div className="text-center py-3"><Spinner animation="border" size="sm" /></div>
+          ) : enrolledStudents.length === 0 ? (
+            <p className="text-muted small mb-0">No students enrolled in this course yet.</p>
+          ) : (
+            <div className="table-responsive">
+              <table className="table align-middle modern-table">
+                <thead className="bg-light">
+                  <tr>
+                    <th>Name</th>
+                    <th>School</th>
+                    <th>Parent's Phone</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {enrolledStudents.map((s) => (
+                    <tr key={s.id}>
+                      <td>{s.name}</td>
+                      <td>{s.school_name || "—"}</td>
+                      <td>{s.parent_phone}</td>
+                      <td className="text-end">
+                        <Button variant="outline-danger" size="sm" onClick={() => handleUnenroll(s.id)}>
+                          <FaTrash className="me-1" /> Unenroll
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card.Body>
+      </Card>
     </div>
   );
 };

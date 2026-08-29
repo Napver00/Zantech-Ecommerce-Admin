@@ -1,0 +1,59 @@
+.course-invoices-container .filters-card {
+  margin-bottom: 1.5rem;
+}
+
+.ledger-months-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.ledger-month-chip {
+  min-width: 42px;
+  text-align: center;
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1px solid #dee2e6;
+  background: #f8f9fa;
+  color: #6c757d;
+}
+
+.ledger-month-chip.paid {
+  background: #d1e7dd;
+  border-color: #badbcc;
+  color: #0f5132;
+}
+
+.ledger-month-chip.current {
+  background: #cfe2ff;
+  border-color: #9ec5fe;
+  color: #084298;
+}
+
+.invoice-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1rem;
+}
+
+.invoice-summary-item {
+  background: #f8f9fa;
+  border-radius: 10px;
+  padding: 0.9rem 1rem;
+  text-align: center;
+}
+
+.invoice-summary-item .label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6c757d;
+  margin-bottom: 0.25rem;
+}
+
+.invoice-summary-item .value {
+  font-size: 1.15rem;
+  font-weight: 700;
+}

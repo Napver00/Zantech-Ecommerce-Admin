@@ -15,6 +15,8 @@ const Reports = () => {
   const [salesOverTime, setSalesOverTime] = useState([]);
   const [salesPeriod, setSalesPeriod] = useState('daily');
   const [salesLoading, setSalesLoading] = useState(false);
+  const [courseSummary, setCourseSummary] = useState(null);
+  const [courseMonthly, setCourseMonthly] = useState([]);
 
   useEffect(() => {
     const fetchAllReports = async () => {
@@ -23,7 +25,7 @@ const Reports = () => {
         const [expensesRes, salesRes, topItemsRes] = await Promise.all([
           axiosInstance.get('/reports/expenses/monthly-total'),
           axiosInstance.get('/reports/transitions/monthly-total'),
-          axiosInstance.get('/reports/top-selling-items')
+          axiosInstance.get('/reports/top-selling-items'),
         ]);
 
         const salesData = salesRes.data.data;
@@ -36,6 +38,19 @@ const Reports = () => {
         toast.error("Failed to load initial reports data.");
       } finally {
         setLoading(false);
+      }
+
+      // Course revenue reports are fetched independently so a missing/failing
+      // endpoint doesn't block the rest of the reports page from loading.
+      try {
+        const [courseSummaryRes, courseMonthlyRes] = await Promise.all([
+          axiosInstance.get('/reports/course-invoices/summary'),
+          axiosInstance.get('/reports/course-invoices/monthly-total'),
+        ]);
+        setCourseSummary(courseSummaryRes.data.data);
+        setCourseMonthly(courseMonthlyRes.data.data || []);
+      } catch {
+        // Silently skip the Course Revenue section if unavailable.
       }
     };
 
@@ -101,7 +116,22 @@ const Reports = () => {
         { key: 'total_sales', label: 'Total Sales', render: (row) => <span className="text-end text-success">৳{parseFloat(row.total_sales).toLocaleString()}</span> },
         { key: 'order_count', label: 'Order Count', render: (row) => <span className="text-end">{row.order_count}</span> },
     ];
-  
+
+    const courseByCourseHeaders = [
+        { key: 'course_title', label: 'Course' },
+        { key: 'total_invoiced', label: 'Invoiced', render: (row) => <span className="text-end">৳{parseFloat(row.total_invoiced).toLocaleString()}</span> },
+        { key: 'total_collected', label: 'Collected', render: (row) => <span className="text-end text-success">৳{parseFloat(row.total_collected).toLocaleString()}</span> },
+        { key: 'total_due', label: 'Due', render: (row) => <span className="text-end text-danger">৳{parseFloat(row.total_due).toLocaleString()}</span> },
+        { key: 'invoice_count', label: 'Invoices', render: (row) => <span className="text-end">{row.invoice_count}</span> },
+    ];
+
+    const courseMonthlyHeaders = [
+        { key: 'month', label: 'Month', render: (row) => `${row.year}-${String(row.month).padStart(2, '0')}` },
+        { key: 'total_paid', label: 'Collected', render: (row) => <span className="text-end text-success">৳{parseFloat(row.total_paid).toLocaleString()}</span> },
+        { key: 'total_due', label: 'Due', render: (row) => <span className="text-end text-danger">৳{parseFloat(row.total_due).toLocaleString()}</span> },
+        { key: 'invoice_count', label: 'Invoices', render: (row) => <span className="text-end">{row.invoice_count}</span> },
+    ];
+
     if (loading) {
       return <Loading />;
     }
@@ -147,6 +177,64 @@ const Reports = () => {
               </Card.Body>
             </Card>
           </Col>
+
+          {courseSummary && (
+            <Col lg={12} className="mb-4">
+              <Card className="modern-card">
+                <Card.Header>
+                  <h5 className="mb-0">Course Revenue</h5>
+                </Card.Header>
+                <Card.Body>
+                  <Row className="mb-4 text-center g-3">
+                    <Col md={3}>
+                      <div className="p-3 rounded" style={{ background: '#f8f9fa' }}>
+                        <div className="small text-muted mb-1">Total Invoiced</div>
+                        <div className="fs-5 fw-bold">৳{parseFloat(courseSummary.total_invoiced).toLocaleString()}</div>
+                      </div>
+                    </Col>
+                    <Col md={3}>
+                      <div className="p-3 rounded" style={{ background: '#f8f9fa' }}>
+                        <div className="small text-muted mb-1">Total Collected</div>
+                        <div className="fs-5 fw-bold text-success">৳{parseFloat(courseSummary.total_collected).toLocaleString()}</div>
+                      </div>
+                    </Col>
+                    <Col md={3}>
+                      <div className="p-3 rounded" style={{ background: '#f8f9fa' }}>
+                        <div className="small text-muted mb-1">Total Due</div>
+                        <div className="fs-5 fw-bold text-danger">৳{parseFloat(courseSummary.total_due).toLocaleString()}</div>
+                      </div>
+                    </Col>
+                    <Col md={3}>
+                      <div className="p-3 rounded" style={{ background: '#f8f9fa' }}>
+                        <div className="small text-muted mb-1">Invoices</div>
+                        <div className="fs-5 fw-bold">{courseSummary.invoice_count}</div>
+                      </div>
+                    </Col>
+                  </Row>
+                  <Row>
+                    <Col lg={6} className="mb-3">
+                      <h6 className="mb-3">By Course</h6>
+                      <CommonTable
+                        headers={courseByCourseHeaders}
+                        data={courseSummary.by_course || []}
+                        tableLoading={loading}
+                        loading={loading}
+                      />
+                    </Col>
+                    <Col lg={6} className="mb-3">
+                      <h6 className="mb-3">Monthly Trend</h6>
+                      <CommonTable
+                        headers={courseMonthlyHeaders}
+                        data={courseMonthly}
+                        tableLoading={loading}
+                        loading={loading}
+                      />
+                    </Col>
+                  </Row>
+                </Card.Body>
+              </Card>
+            </Col>
+          )}
 
           <Col lg={12}>
             <Card className="modern-card">

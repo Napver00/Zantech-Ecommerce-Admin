@@ -47,6 +47,11 @@ import AddPost from "./pages/Blog/AddPost";
 import ViewPost from "./pages/Blog/ViewPost";
 import FAQ from "./pages/FAQ";
 import Documents from "./pages/Documents";
+import CourseInvoices from "./pages/CourseInvoices";
+import AddCourseInvoice from "./pages/CourseInvoices/AddCourseInvoice";
+import ViewCourseInvoice from "./pages/CourseInvoices/ViewCourseInvoice";
+import Students from "./pages/Students";
+import ViewStudent from "./pages/Students/ViewStudent";
 
 const PrivateRoute = ({ children }) => {
   const token = localStorage.getItem("token");
@@ -153,6 +158,17 @@ const App = () => {
                           element={<ViewCourse />}
                         />
                         <Route path="/faq" element={<FAQ />} />
+                        <Route path="/students" element={<Students />} />
+                        <Route path="/students/:id" element={<ViewStudent />} />
+                        <Route path="/course-invoices" element={<CourseInvoices />} />
+                        <Route
+                          path="/course-invoices/add"
+                          element={<AddCourseInvoice />}
+                        />
+                        <Route
+                          path="/course-invoices/:id"
+                          element={<ViewCourseInvoice />}
+                        />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
                     </div>

@@ -49,6 +49,10 @@ const AddCourse = () => {
   });
 
   const isMonthly = form.payment_type === "monthly";
+  const computedMonthlyFee =
+    isMonthly && form.discount_price !== "" && form.admission_fee !== "" && Number(form.duration_months) > 0
+      ? Math.round(((Number(form.discount_price) - Number(form.admission_fee)) / Number(form.duration_months)) * 100) / 100
+      : null;
 
   const [curriculums, setCurriculums] = useState([emptyCurriculum()]);
   const [schedules, setSchedules] = useState([emptySchedule()]);
@@ -344,6 +348,14 @@ const AddCourse = () => {
                       required
                     />
                   </Form.Group>
+                </Col>
+                <Col md={4} className="d-flex align-items-center">
+                  <div className="mb-3">
+                    <Form.Label className="d-block">Monthly Fee (preview)</Form.Label>
+                    <Badge bg="success" style={{ fontSize: "0.95rem" }}>
+                      {computedMonthlyFee != null ? `৳${computedMonthlyFee.toLocaleString()}/mo` : "—"}
+                    </Badge>
+                  </div>
                 </Col>
               </Row>
             )}
