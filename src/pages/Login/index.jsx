@@ -65,7 +65,7 @@ const Login = () => {
             animate={{ scale: 1 }}
             transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
           >
-            <img src={logo} alt="Zantech Logo" className="login-logo" />
+            <img src={logo} alt="ZAN Tech Logo" className="login-logo" />
           </motion.div>
 
           <motion.div

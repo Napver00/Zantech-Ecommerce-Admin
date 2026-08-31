@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { FaPlus, FaEdit, FaTrash, FaSearch, FaSpinner, FaTimes } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 import axiosInstance from "@/config/axios";
-import { Card, Form, InputGroup, Button, Row, Col, Modal, Badge } from "react-bootstrap";
+import { Card, Form, InputGroup, Button, Row, Col, Modal, Badge, Pagination } from "react-bootstrap";
 import Loading from "@/components/Loading";
 import "./FAQ.css";
 import usePageTitle from '@/hooks/usePageTitle';
@@ -26,6 +26,8 @@ const FAQ = () => {
     });
     const [searchTimeout, setSearchTimeout] = useState(null);
     const [isSearching, setIsSearching] = useState(false);
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(10);
 
     useEffect(() => {
         fetchFaqs();
@@ -38,6 +40,7 @@ const FAQ = () => {
 
         const timeoutId = setTimeout(() => {
             setIsSearching(true);
+            setPage(1);
             fetchFaqs();
         }, 500);
 
@@ -77,6 +80,22 @@ const FAQ = () => {
             setTableLoading(false);
             setIsSearching(false);
         }
+    };
+
+    // FAQ backend endpoint has no server-side pagination, so page size is
+    // applied client-side over the full fetched list.
+    const totalPages = Math.max(1, Math.ceil(faqs.length / limit));
+    const currentPage = Math.min(page, totalPages);
+    const paginatedFaqs = faqs.slice((currentPage - 1) * limit, currentPage * limit);
+
+    const handlePageChange = (p) => {
+        if (p < 1 || p > totalPages) return;
+        setPage(p);
+    };
+
+    const handleLimitChange = (e) => {
+        setLimit(parseInt(e.target.value));
+        setPage(1);
     };
 
     const handleAddFaq = async (e) => {
@@ -271,16 +290,48 @@ const FAQ = () => {
                                     </InputGroup>
                                 </Form>
                             </Col>
+                            <Col md={2}>
+                                <Form.Select value={limit} onChange={handleLimitChange} className="limit-select">
+                                    <option value="5">5 per page</option>
+                                    <option value="10">10 per page</option>
+                                    <option value="20">20 per page</option>
+                                    <option value="50">50 per page</option>
+                                </Form.Select>
+                            </Col>
                         </Row>
                     </div>
 
                     <CommonTable
                         headers={headers}
-                        data={faqs}
+                        data={paginatedFaqs}
                         tableLoading={tableLoading}
                         loading={loading}
                         renderActions={renderActions}
                     />
+
+                    {totalPages > 1 && (
+                        <div className="pagination-container mt-4">
+                            <Pagination className="modern-pagination">
+                                <Pagination.Prev
+                                    onClick={() => handlePageChange(currentPage - 1)}
+                                    disabled={currentPage === 1}
+                                />
+                                {[...Array(totalPages)].map((_, index) => (
+                                    <Pagination.Item
+                                        key={index + 1}
+                                        active={index + 1 === currentPage}
+                                        onClick={() => handlePageChange(index + 1)}
+                                    >
+                                        {index + 1}
+                                    </Pagination.Item>
+                                ))}
+                                <Pagination.Next
+                                    onClick={() => handlePageChange(currentPage + 1)}
+                                    disabled={currentPage === totalPages}
+                                />
+                            </Pagination>
+                        </div>
+                    )}
                     <Modal show={showModal} onHide={closeModal} centered>
                         <Modal.Header closeButton>
                             <Modal.Title>

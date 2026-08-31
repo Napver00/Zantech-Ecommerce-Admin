@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Card, Button, Badge } from "react-bootstrap";
+import { Card, Button, Badge, Form, Row, Col, Pagination } from "react-bootstrap";
 import { toast } from "react-hot-toast";
 import axiosInstance from "../../config/axios";
 import { FaPlus, FaTrash, FaEdit } from "react-icons/fa";
@@ -13,17 +13,36 @@ const Projects = () => {
   const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [pagination, setPagination] = useState({
+    total_rows: 0,
+    current_page: 1,
+    per_page: 10,
+    total_pages: 1,
+    has_more_pages: false,
+  });
 
   useEffect(() => {
-    fetchProjects();
-  }, []);
+    fetchProjects(page);
+  }, [page, limit]);
 
-  const fetchProjects = async () => {
+  const fetchProjects = async (pageNum = page) => {
     try {
       setLoading(true);
-      const response = await axiosInstance.get("/projects");
+      const response = await axiosInstance.get("/projects", { params: { page: pageNum, limit } });
       if (response.data.success) {
-        setProjects(response.data.data);
+        const raw = response.data.data;
+        setProjects(raw);
+        setPagination(
+          response.data.pagination || {
+            total_rows: raw.length,
+            current_page: pageNum,
+            per_page: limit,
+            total_pages: 1,
+            has_more_pages: false,
+          }
+        );
       } else {
         toast.error("Failed to fetch projects.");
       }
@@ -34,13 +53,23 @@ const Projects = () => {
     }
   };
 
+  const handlePageChange = (p) => {
+    if (p < 1 || (pagination && p > pagination.total_pages)) return;
+    setPage(p);
+  };
+
+  const handleLimitChange = (e) => {
+    setLimit(parseInt(e.target.value));
+    setPage(1);
+  };
+
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this project?")) {
       try {
         const response = await axiosInstance.delete(`/projects/${id}`);
         if (response.data.success) {
           toast.success("Project deleted successfully!");
-          fetchProjects();
+          fetchProjects(page);
         } else {
           toast.error("Failed to delete project.");
         }
@@ -135,7 +164,7 @@ const Projects = () => {
           <div>
             <h4 className="mb-1 fw-bold text-primary">Our Projects</h4>
             <p className="text-muted small mb-0">
-              Manage and showcase your portfolio projects
+              {loading ? "Loading..." : `${pagination.total_rows} project${pagination.total_rows !== 1 ? "s" : ""} found`}
             </p>
           </div>
           <Button
@@ -147,6 +176,17 @@ const Projects = () => {
           </Button>
         </Card.Header>
         <Card.Body className="p-4">
+          <Row className="mb-4">
+            <Col md={2} className="ms-auto">
+              <Form.Select value={limit} onChange={handleLimitChange} className="limit-select">
+                <option value="5">5 per page</option>
+                <option value="10">10 per page</option>
+                <option value="20">20 per page</option>
+                <option value="50">50 per page</option>
+              </Form.Select>
+            </Col>
+          </Row>
+
           <CommonTable
             headers={headers}
             data={projects}
@@ -154,6 +194,30 @@ const Projects = () => {
             loading={loading}
             renderActions={renderActions}
           />
+
+          {pagination.total_pages > 1 && (
+            <div className="pagination-container mt-4">
+              <Pagination className="modern-pagination">
+                <Pagination.Prev
+                  onClick={() => handlePageChange(pagination.current_page - 1)}
+                  disabled={pagination.current_page === 1}
+                />
+                {[...Array(pagination.total_pages)].map((_, index) => (
+                  <Pagination.Item
+                    key={index + 1}
+                    active={index + 1 === pagination.current_page}
+                    onClick={() => handlePageChange(index + 1)}
+                  >
+                    {index + 1}
+                  </Pagination.Item>
+                ))}
+                <Pagination.Next
+                  onClick={() => handlePageChange(pagination.current_page + 1)}
+                  disabled={!pagination.has_more_pages}
+                />
+              </Pagination>
+            </div>
+          )}
         </Card.Body>
       </Card>
     </div>

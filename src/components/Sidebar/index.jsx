@@ -2,8 +2,6 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   MdStore,
-  MdChevronLeft,
-  MdChevronRight,
   MdExpandMore,
   MdExpandLess,
   MdClose,
@@ -19,7 +17,6 @@ const matches = (label, query) => label.toLowerCase().includes(query);
 const Sidebar = ({ onClose }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [collapsed, setCollapsed] = useState(false);
   const { statusSummary } = useOrderContext();
   const [openSections, setOpenSections] = useState({});
   const [search, setSearch] = useState("");
@@ -28,11 +25,6 @@ const Sidebar = ({ onClose }) => {
   useEffect(() => {
     if (onClose) onClose();
   }, [location.pathname]);
-
-  // Collapsed rail has no room for a text filter — clear it if the user collapses mid-search
-  useEffect(() => {
-    if (collapsed) setSearch("");
-  }, [collapsed]);
 
   const toggleSection = (label) => {
     setOpenSections((prev) => ({ ...prev, [label]: !prev[label] }));
@@ -77,24 +69,14 @@ const Sidebar = ({ onClose }) => {
   };
 
   return (
-    <div className={`sidebar bg-white h-100 shadow-sm ${collapsed ? "collapsed" : ""}`}>
+    <div className="sidebar bg-white h-100 shadow-sm">
       {/* Brand */}
       <div className="sidebar-brand p-3 border-bottom">
         <div className="d-flex align-items-center justify-content-between">
-          {!collapsed && (
-            <div className="brand-logo d-flex align-items-center gap-2">
-              <MdStore size={26} className="text-primary" />
-              <span className="fw-bold fs-6">ZanTech</span>
-            </div>
-          )}
-          {/* Desktop collapse toggle — visible at ≥769px */}
-          <button
-            className="btn btn-link text-secondary p-0 sidebar-desktop-toggle align-items-center"
-            onClick={() => setCollapsed((p) => !p)}
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            {collapsed ? <MdChevronRight size={22} /> : <MdChevronLeft size={22} />}
-          </button>
+          <div className="brand-logo d-flex align-items-center gap-2">
+            <MdStore size={26} className="text-primary" />
+            <span className="fw-bold fs-6">ZAN Tech</span>
+          </div>
           {/* Mobile close button — visible at ≤768px */}
           <button
             className="btn btn-link text-secondary p-0 sidebar-mobile-close align-items-center"
@@ -107,26 +89,24 @@ const Sidebar = ({ onClose }) => {
       </div>
 
       {/* Quick filter — never hides anything unless the user actively types */}
-      {!collapsed && (
-        <div className="sidebar-search px-3 pt-3">
-          <div className="sidebar-search-box">
-            <MdSearch size={17} className="sidebar-search-icon" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={handleSearchKeyDown}
-              placeholder="Find a page..."
-              aria-label="Search navigation"
-            />
-            {search && (
-              <button className="sidebar-search-clear" onClick={() => setSearch("")} aria-label="Clear search">
-                <MdClose size={14} />
-              </button>
-            )}
-          </div>
+      <div className="sidebar-search px-3 pt-3">
+        <div className="sidebar-search-box">
+          <MdSearch size={17} className="sidebar-search-icon" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={handleSearchKeyDown}
+            placeholder="Find a page..."
+            aria-label="Search navigation"
+          />
+          {search && (
+            <button className="sidebar-search-clear" onClick={() => setSearch("")} aria-label="Clear search">
+              <MdClose size={14} />
+            </button>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Nav */}
       <div className="sidebar-nav p-2">
@@ -135,11 +115,9 @@ const Sidebar = ({ onClose }) => {
         )}
         {filteredSections.map((section) => (
           <div key={section.key} className="mb-3">
-            {!collapsed && (
-              <div className="sidebar-section-title text-uppercase small fw-semibold text-secondary mb-1 px-2" style={{ fontSize: "0.7rem", letterSpacing: "0.06em" }}>
-                {section.title}
-              </div>
-            )}
+            <div className="sidebar-section-title text-uppercase small fw-semibold text-secondary mb-1 px-2" style={{ fontSize: "0.7rem", letterSpacing: "0.06em" }}>
+              {section.title}
+            </div>
             <Nav className="flex-column gap-1">
               {section.items.map((item) => {
                 if (item.subItems) {
@@ -153,15 +131,11 @@ const Sidebar = ({ onClose }) => {
                         className={`sidebar-link d-flex align-items-center gap-2 rounded-3 px-3 py-2 ${active ? "active" : ""}`}
                       >
                         <span className="sidebar-icon flex-shrink-0"><item.icon size={22} /></span>
-                        {!collapsed && (
-                          <>
-                            <span className="flex-grow-1 text-truncate">{item.label}</span>
-                            {item.badgeText && <Badge bg="success" className="sidebar-new-badge me-1">{item.badgeText}</Badge>}
-                            {open ? <MdExpandLess size={18} /> : <MdExpandMore size={18} />}
-                          </>
-                        )}
+                        <span className="flex-grow-1 text-truncate">{item.label}</span>
+                        {item.badgeText && <Badge bg="success" className="sidebar-new-badge me-1">{item.badgeText}</Badge>}
+                        {open ? <MdExpandLess size={18} /> : <MdExpandMore size={18} />}
                       </Nav.Link>
-                      <Collapse in={!collapsed && open}>
+                      <Collapse in={open}>
                         <div>
                           <Nav className="flex-column gap-1 ps-4 mt-1">
                             {item.subItems
@@ -186,19 +160,15 @@ const Sidebar = ({ onClose }) => {
                 const badgeValue = item.badgeKey ? badgeValues[item.badgeKey] : null;
 
                 return (
-                  <Nav.Item key={item.path} title={collapsed ? item.label : undefined}>
+                  <Nav.Item key={item.path}>
                     <Nav.Link
                       as={Link}
                       to={item.path}
                       className={`sidebar-link d-flex align-items-center gap-2 rounded-3 px-3 py-2 ${isActive(item.path) ? "active" : ""}`}
                     >
                       <span className="sidebar-icon flex-shrink-0"><item.icon size={22} /></span>
-                      {!collapsed && (
-                        <>
-                          <span className="flex-grow-1 text-truncate">{item.label}</span>
-                          {badgeValue > 0 && <Badge bg="danger" pill className="ms-auto">{badgeValue}</Badge>}
-                        </>
-                      )}
+                      <span className="flex-grow-1 text-truncate">{item.label}</span>
+                      {badgeValue > 0 && <Badge bg="danger" pill className="ms-auto">{badgeValue}</Badge>}
                     </Nav.Link>
                   </Nav.Item>
                 );

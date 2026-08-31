@@ -43,8 +43,8 @@ const Header = ({ onToggleSidebar, onOpenSearch }) => {
           <Menu size={20} />
         </button>
         <Link to="/dashboard" className="brand-container">
-          <img src={logo} alt="Zantech Logo" className="logo" />
-          <span className="brand-name">Zantech</span>
+          <img src={logo} alt="ZAN Tech Logo" className="logo" />
+          <span className="brand-name">ZAN Tech</span>
         </Link>
       </div>
 

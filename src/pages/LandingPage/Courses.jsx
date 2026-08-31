@@ -3,7 +3,7 @@ import { FaPlus, FaEdit, FaTrash, FaSearch, FaSpinner, FaTimes } from "react-ico
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import axiosInstance from "../../config/axios";
-import { Card, Form, InputGroup, Button, Row, Col, Badge } from "react-bootstrap";
+import { Card, Form, InputGroup, Button, Row, Col, Badge, Pagination } from "react-bootstrap";
 import CommonTable from "../../components/Common/CommonTable";
 import usePageTitle from "../../hooks/usePageTitle";
 
@@ -17,16 +17,34 @@ const Courses = () => {
   const [tableLoading, setTableLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [pagination, setPagination] = useState({
+    total_rows: 0,
+    current_page: 1,
+    per_page: 10,
+    total_pages: 1,
+    has_more_pages: false,
+  });
 
-  const fetchCourses = useCallback(async (title = "") => {
+  const fetchCourses = useCallback(async (title = "", pageNum = 1) => {
     setTableLoading(true);
     try {
-      const params = {};
+      const params = { page: pageNum, limit };
       if (title) params.title = title;
       const res = await axiosInstance.get("/courses", { params });
       if (!res.data.success) throw new Error(res.data.message);
-      const raw = res.data.data;
-      setCourses(Array.isArray(raw) ? raw : raw ? [raw] : []);
+      const raw = Array.isArray(res.data.data) ? res.data.data : res.data.data ? [res.data.data] : [];
+      setCourses(raw);
+      setPagination(
+        res.data.pagination || {
+          total_rows: raw.length,
+          current_page: pageNum,
+          per_page: limit,
+          total_pages: 1,
+          has_more_pages: false,
+        }
+      );
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to fetch courses");
       setCourses([]);
@@ -35,16 +53,30 @@ const Courses = () => {
       setTableLoading(false);
       setIsSearching(false);
     }
-  }, []);
+  }, [limit]);
 
-  useEffect(() => { fetchCourses(); }, [fetchCourses]);
+  useEffect(() => { fetchCourses(search, page); }, [page, limit]);
 
   // Debounced search
   useEffect(() => {
     setIsSearching(true);
-    const id = setTimeout(() => fetchCourses(search), 500);
+    const id = setTimeout(() => {
+      setPage(1);
+      fetchCourses(search, 1);
+    }, 500);
     return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
+
+  const handlePageChange = (p) => {
+    if (p < 1 || (pagination && p > pagination.total_pages)) return;
+    setPage(p);
+  };
+
+  const handleLimitChange = (e) => {
+    setLimit(parseInt(e.target.value));
+    setPage(1);
+  };
 
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this course? This will also remove all its curriculum, schedules, mentors and images.")) return;
@@ -52,7 +84,7 @@ const Courses = () => {
       setTableLoading(true);
       await axiosInstance.delete(`/courses/${id}`);
       toast.success("Course deleted");
-      fetchCourses(search);
+      fetchCourses(search, page);
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to delete course");
     } finally {
@@ -65,7 +97,7 @@ const Courses = () => {
       setTableLoading(true);
       await axiosInstance.patch(`/courses/status/${id}`);
       toast.success(`Status changed to ${currentStatus === "draft" ? "published" : "draft"}`);
-      fetchCourses(search);
+      fetchCourses(search, page);
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to update status");
     } finally {
@@ -187,7 +219,7 @@ const Courses = () => {
             <div>
               <h4 className="mb-1 fw-bold text-primary">Courses</h4>
               <p className="text-muted small mb-0">
-                {loading ? "Loading..." : `${courses.length} course${courses.length !== 1 ? "s" : ""} found`}
+                {loading ? "Loading..." : `${pagination.total_rows} course${pagination.total_rows !== 1 ? "s" : ""} found`}
               </p>
             </div>
             <Button variant="primary" onClick={() => navigate("/landing/courses/add")}>
@@ -214,6 +246,14 @@ const Courses = () => {
                 )}
               </InputGroup>
             </Col>
+            <Col md={2}>
+              <Form.Select value={limit} onChange={handleLimitChange} className="limit-select">
+                <option value="5">5 per page</option>
+                <option value="10">10 per page</option>
+                <option value="20">20 per page</option>
+                <option value="50">50 per page</option>
+              </Form.Select>
+            </Col>
           </Row>
 
           <CommonTable
@@ -223,6 +263,30 @@ const Courses = () => {
             loading={loading}
             renderActions={renderActions}
           />
+
+          {pagination.total_pages > 1 && (
+            <div className="pagination-container mt-4">
+              <Pagination className="modern-pagination">
+                <Pagination.Prev
+                  onClick={() => handlePageChange(pagination.current_page - 1)}
+                  disabled={pagination.current_page === 1}
+                />
+                {[...Array(pagination.total_pages)].map((_, index) => (
+                  <Pagination.Item
+                    key={index + 1}
+                    active={index + 1 === pagination.current_page}
+                    onClick={() => handlePageChange(index + 1)}
+                  >
+                    {index + 1}
+                  </Pagination.Item>
+                ))}
+                <Pagination.Next
+                  onClick={() => handlePageChange(pagination.current_page + 1)}
+                  disabled={!pagination.has_more_pages}
+                />
+              </Pagination>
+            </div>
+          )}
         </Card.Body>
       </Card>
     </div>

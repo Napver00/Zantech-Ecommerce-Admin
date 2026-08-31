@@ -11,7 +11,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import axiosInstance from "../../config/axios";
-import { Card, Form, InputGroup, Button, Row, Col } from "react-bootstrap";
+import { Card, Form, InputGroup, Button, Row, Col, Pagination } from "react-bootstrap";
 import Loading from "../../components/Loading";
 import "./Blog.css";
 import usePageTitle from "../../hooks/usePageTitle";
@@ -29,11 +29,20 @@ const Blog = () => {
   });
   const [searchTimeout, setSearchTimeout] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [pagination, setPagination] = useState({
+    total_rows: 0,
+    current_page: 1,
+    per_page: 10,
+    total_pages: 1,
+    has_more_pages: false,
+  });
 
   useEffect(() => {
     const loadInitialData = async () => {
       try {
-        await fetchPosts();
+        await fetchPosts(1);
       } finally {
         setPageLoading(false);
       }
@@ -42,9 +51,9 @@ const Blog = () => {
     if (pageLoading) {
       loadInitialData();
     } else {
-      fetchPosts();
+      fetchPosts(page);
     }
-  }, []);
+  }, [page, limit]);
 
   useEffect(() => {
     if (searchTimeout) {
@@ -53,7 +62,8 @@ const Blog = () => {
 
     const timeoutId = setTimeout(() => {
       setIsSearching(true);
-      fetchPosts();
+      setPage(1);
+      fetchPosts(1);
     }, 500);
 
     setSearchTimeout(timeoutId);
@@ -65,11 +75,13 @@ const Blog = () => {
     };
   }, [searchParams.search]);
 
-  const fetchPosts = async () => {
+  const fetchPosts = async (pageNum = page) => {
     setLoading(true);
     setTableLoading(true);
     try {
       const params = {
+        page: pageNum,
+        limit,
         ...(searchParams.search && { title: searchParams.search }),
       };
 
@@ -80,9 +92,17 @@ const Blog = () => {
         throw new Error(result.message || "Failed to fetch posts");
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 300));
-
-      setPosts(Array.isArray(result.data) ? result.data : [result.data]);
+      const raw = Array.isArray(result.data) ? result.data : [result.data];
+      setPosts(raw);
+      setPagination(
+        result.pagination || {
+          total_rows: raw.length,
+          current_page: pageNum,
+          per_page: limit,
+          total_pages: 1,
+          has_more_pages: false,
+        }
+      );
     } catch (error) {
       console.error("Error fetching posts:", error);
       toast.error(error.response?.data?.message || "Failed to fetch posts");
@@ -94,13 +114,23 @@ const Blog = () => {
     }
   };
 
+  const handlePageChange = (p) => {
+    if (p < 1 || (pagination && p > pagination.total_pages)) return;
+    setPage(p);
+  };
+
+  const handleLimitChange = (e) => {
+    setLimit(parseInt(e.target.value));
+    setPage(1);
+  };
+
   const handleDeletePost = async (id) => {
     if (window.confirm("Are you sure you want to delete this post?")) {
       try {
         setTableLoading(true);
         await axiosInstance.delete(`/posts/${id}`);
         toast.success("Post deleted successfully");
-        fetchPosts();
+        fetchPosts(page);
       } catch (error) {
         toast.error(error.response?.data?.message || "Failed to delete post");
       } finally {
@@ -113,7 +143,7 @@ const Blog = () => {
     try {
       await axiosInstance.patch(`/posts/status/${id}`);
       toast.success("Status updated successfully");
-      fetchPosts();
+      fetchPosts(page);
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to update status");
     }
@@ -195,7 +225,7 @@ const Blog = () => {
                 </div>
               ) : (
                 <p className="page-subtitle mb-0">
-                  Showing {posts.length} posts
+                  Showing {pagination.total_rows} posts
                 </p>
               )}
             </div>
@@ -246,6 +276,14 @@ const Blog = () => {
                   </InputGroup>
                 </Form>
               </Col>
+              <Col md={2}>
+                <Form.Select value={limit} onChange={handleLimitChange} className="limit-select">
+                  <option value="5">5 per page</option>
+                  <option value="10">10 per page</option>
+                  <option value="20">20 per page</option>
+                  <option value="50">50 per page</option>
+                </Form.Select>
+              </Col>
             </Row>
           </div>
 
@@ -256,6 +294,30 @@ const Blog = () => {
             loading={loading}
             renderActions={renderActions}
           />
+
+          {pagination.total_pages > 1 && (
+            <div className="pagination-container mt-4">
+              <Pagination className="modern-pagination">
+                <Pagination.Prev
+                  onClick={() => handlePageChange(pagination.current_page - 1)}
+                  disabled={pagination.current_page === 1}
+                />
+                {[...Array(pagination.total_pages)].map((_, index) => (
+                  <Pagination.Item
+                    key={index + 1}
+                    active={index + 1 === pagination.current_page}
+                    onClick={() => handlePageChange(index + 1)}
+                  >
+                    {index + 1}
+                  </Pagination.Item>
+                ))}
+                <Pagination.Next
+                  onClick={() => handlePageChange(pagination.current_page + 1)}
+                  disabled={!pagination.has_more_pages}
+                />
+              </Pagination>
+            </div>
+          )}
         </Card.Body>
       </Card>
     </div>

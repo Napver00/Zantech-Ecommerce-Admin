@@ -17,6 +17,7 @@ import {
   Row,
   Col,
   Modal,
+  Pagination,
 } from "react-bootstrap";
 import Loading from "../../components/Loading";
 import "./Categories.css";
@@ -41,11 +42,20 @@ const Categories = () => {
   });
   const [searchTimeout, setSearchTimeout] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [pagination, setPagination] = useState({
+    total_rows: 0,
+    current_page: 1,
+    per_page: 10,
+    total_pages: 1,
+    has_more_pages: false,
+  });
 
   useEffect(() => {
     const loadInitialData = async () => {
       try {
-        await fetchCategories();
+        await fetchCategories(1);
       } finally {
         setPageLoading(false);
       }
@@ -54,9 +64,9 @@ const Categories = () => {
     if (pageLoading) {
       loadInitialData();
     } else {
-      fetchCategories();
+      fetchCategories(page);
     }
-  }, []);
+  }, [page, limit]);
 
   useEffect(() => {
     if (searchTimeout) {
@@ -65,7 +75,8 @@ const Categories = () => {
 
     const timeoutId = setTimeout(() => {
       setIsSearching(true);
-      fetchCategories();
+      setPage(1);
+      fetchCategories(1);
     }, 500);
 
     setSearchTimeout(timeoutId);
@@ -77,11 +88,13 @@ const Categories = () => {
     };
   }, [searchParams.search]);
 
-  const fetchCategories = async () => {
+  const fetchCategories = async (pageNum = page) => {
     setLoading(true);
     setTableLoading(true);
     try {
       const params = {
+        page: pageNum,
+        limit,
         ...(searchParams.search && { search: searchParams.search }),
       };
 
@@ -92,9 +105,16 @@ const Categories = () => {
         throw new Error(result.message || "Failed to fetch categories");
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 300));
-
       setCategories(result.data);
+      setPagination(
+        result.pagination || {
+          total_rows: result.data.length,
+          current_page: pageNum,
+          per_page: limit,
+          total_pages: 1,
+          has_more_pages: false,
+        }
+      );
     } catch (error) {
       console.error("Error fetching categories:", error);
       toast.error(
@@ -108,11 +128,21 @@ const Categories = () => {
     }
   };
 
+  const handlePageChange = (p) => {
+    if (p < 1 || (pagination && p > pagination.total_pages)) return;
+    setPage(p);
+  };
+
+  const handleLimitChange = (e) => {
+    setLimit(parseInt(e.target.value));
+    setPage(1);
+  };
+
   const handleAddCategory = async (e) => {
     e.preventDefault();
     try {
       await axiosInstance.post("/categories", formData);
-      fetchCategories();
+      fetchCategories(page);
       setShowModal(false);
       setFormData({ name: "", description: "" });
       toast.success("Category added successfully");
@@ -125,7 +155,7 @@ const Categories = () => {
     e.preventDefault();
     try {
       await axiosInstance.put(`/categories/${selectedCategory.id}`, formData);
-      fetchCategories();
+      fetchCategories(page);
       setShowModal(false);
       setFormData({ name: "", description: "" });
       setSelectedCategory(null);
@@ -141,7 +171,7 @@ const Categories = () => {
         setTableLoading(true);
         await axiosInstance.delete(`/categories/${id}`);
         toast.success("Category deleted successfully");
-        fetchCategories();
+        fetchCategories(page);
       } catch (error) {
         toast.error(
           error.response?.data?.message || "Failed to delete category"
@@ -241,7 +271,7 @@ const Categories = () => {
                 </div>
               ) : (
                 <p className="page-subtitle mb-0">
-                  Showing {categories.length} categories
+                  Showing {pagination.total_rows} categories
                 </p>
               )}
             </div>
@@ -292,6 +322,14 @@ const Categories = () => {
                   </InputGroup>
                 </Form>
               </Col>
+              <Col md={2}>
+                <Form.Select value={limit} onChange={handleLimitChange} className="limit-select">
+                  <option value="5">5 per page</option>
+                  <option value="10">10 per page</option>
+                  <option value="20">20 per page</option>
+                  <option value="50">50 per page</option>
+                </Form.Select>
+              </Col>
             </Row>
           </div>
 
@@ -302,6 +340,31 @@ const Categories = () => {
             loading={loading}
             renderActions={renderActions}
           />
+
+          {pagination.total_pages > 1 && (
+            <div className="pagination-container mt-4">
+              <Pagination className="modern-pagination">
+                <Pagination.Prev
+                  onClick={() => handlePageChange(pagination.current_page - 1)}
+                  disabled={pagination.current_page === 1}
+                />
+                {[...Array(pagination.total_pages)].map((_, index) => (
+                  <Pagination.Item
+                    key={index + 1}
+                    active={index + 1 === pagination.current_page}
+                    onClick={() => handlePageChange(index + 1)}
+                  >
+                    {index + 1}
+                  </Pagination.Item>
+                ))}
+                <Pagination.Next
+                  onClick={() => handlePageChange(pagination.current_page + 1)}
+                  disabled={!pagination.has_more_pages}
+                />
+              </Pagination>
+            </div>
+          )}
+
           <Modal show={showModal} onHide={closeModal} centered>
             <Modal.Header closeButton>
               <Modal.Title>

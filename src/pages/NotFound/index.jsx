@@ -9,7 +9,7 @@ const NotFound = () => {
   return (
     <div className="not-found-container">
       <div className="not-found-box">
-        <img src={logo} alt="ZanTech Logo" className="not-found-logo" />
+        <img src={logo} alt="ZAN Tech Logo" className="not-found-logo" />
         <h1 className="not-found-title">404</h1>
         <h2 className="not-found-subtitle">Page Not Found</h2>
         <p className="not-found-text">

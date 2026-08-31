@@ -32,6 +32,7 @@ const CourseInvoices = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [pagination, setPagination] = useState(null);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
 
   const [search, setSearch] = useState("");
   const [courseId, setCourseId] = useState("");
@@ -51,7 +52,7 @@ const CourseInvoices = () => {
     async (pageNum = 1) => {
       setTableLoading(true);
       try {
-        const params = { limit: 15, page: pageNum };
+        const params = { limit, page: pageNum };
         if (search) params.search = search;
         if (courseId) params.course_id = courseId;
         if (paymentFor) params.payment_for = paymentFor;
@@ -73,7 +74,7 @@ const CourseInvoices = () => {
         setIsSearching(false);
       }
     },
-    [search, courseId, paymentFor, status, startDate, endDate]
+    [search, courseId, paymentFor, status, startDate, endDate, limit]
   );
 
   // Debounced search text; other filters refetch immediately
@@ -85,12 +86,16 @@ const CourseInvoices = () => {
     }, 450);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, courseId, paymentFor, status, startDate, endDate]);
+  }, [search, courseId, paymentFor, status, startDate, endDate, limit]);
 
   const handlePageChange = (p) => {
     if (p < 1 || (pagination && p > pagination.total_pages)) return;
     setPage(p);
     fetchInvoices(p);
+  };
+
+  const handleLimitChange = (e) => {
+    setLimit(parseInt(e.target.value));
   };
 
   const handleVoid = async (id) => {
@@ -295,6 +300,15 @@ const CourseInvoices = () => {
                 <Col md={3}>
                   <Form.Label className="small text-muted mb-1">To Date</Form.Label>
                   <Form.Control type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                </Col>
+                <Col md={2}>
+                  <Form.Label className="small text-muted mb-1">Per Page</Form.Label>
+                  <Form.Select value={limit} onChange={handleLimitChange} className="limit-select">
+                    <option value="5">5 per page</option>
+                    <option value="10">10 per page</option>
+                    <option value="20">20 per page</option>
+                    <option value="50">50 per page</option>
+                  </Form.Select>
                 </Col>
               </Row>
             </Card.Body>

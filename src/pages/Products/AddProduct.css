@@ -472,7 +472,7 @@ input:checked + .toggle-slider:before {
   border-top: 1px solid var(--border-color);
 }
 
-.btn {
+.form-actions .btn {
   min-width: 120px;
   justify-content: center;
 }
