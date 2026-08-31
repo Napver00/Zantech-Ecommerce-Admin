@@ -184,6 +184,11 @@ const Transitions = () => {
     return status === "1" ? "Paid" : "Unpaid";
   };
 
+  // Course invoices use their own human-readable status/payment-method strings
+  // (e.g. "due"/"partial"/"paid", "bkash"/"cash") rather than the order flow's
+  // numeric codes, so they get their own display helpers.
+  const capitalize = (text) => (text ? text.charAt(0).toUpperCase() + text.slice(1) : "—");
+
   const renderPagination = () => {
     const items = [];
     const maxPages = 5;
@@ -248,17 +253,53 @@ const Transitions = () => {
     { key: 'transition_id', label: 'ID', render: (row) => `#${row.transition_id}` },
     { key: 'payment_id', label: 'Payment ID' },
     { key: 'amount', label: 'Amount', render: (row) => `৳${parseFloat(row.amount).toLocaleString()}` },
-    { key: 'payment_details.order_id', label: 'Order ID' },
+    {
+      key: 'payment_details.order_id',
+      label: 'Order / Invoice',
+      render: (row) =>
+        row.source === 'course_invoice'
+          ? row.course_invoice_details?.invoice_no ?? '—'
+          : row.payment_details?.order_id ?? '—',
+    },
     {
       key: 'payment_details.status',
       label: 'Status',
-      render: (row) => (
-        <span className={`status-badge ${row.payment_details.status === "1" ? "active" : "inactive"}`}>
-          {getStatusText(row.payment_details.status)}
-        </span>
-      ),
+      render: (row) => {
+        if (row.source === 'course_invoice') {
+          if (!row.course_invoice_details) {
+            return (
+              <span className="status-badge inactive" title="This transition's linked course invoice no longer exists">
+                Unlinked
+              </span>
+            );
+          }
+          return (
+            <span className={`status-badge ${row.course_invoice_details.status === "paid" ? "active" : "inactive"}`}>
+              {capitalize(row.course_invoice_details.status)}
+            </span>
+          );
+        }
+        return row.payment_details ? (
+          <span className={`status-badge ${row.payment_details.status === "1" ? "active" : "inactive"}`}>
+            {getStatusText(row.payment_details.status)}
+          </span>
+        ) : (
+          <span className="status-badge inactive" title="This transition's linked payment/order no longer exists">
+            Unlinked
+          </span>
+        );
+      },
     },
-    { key: 'payment_details.payment_type', label: 'Payment Type', render: (row) => getPaymentTypeText(row.payment_details.payment_type) },
+    {
+      key: 'payment_details.payment_type',
+      label: 'Payment Type',
+      render: (row) => {
+        if (row.source === 'course_invoice') {
+          return row.course_invoice_details ? capitalize(row.course_invoice_details.payment_method) : '—';
+        }
+        return row.payment_details ? getPaymentTypeText(row.payment_details.payment_type) : '—';
+      },
+    },
     { key: 'created_at', label: 'Date', render: (row) => new Date(row.created_at).toLocaleString() },
   ];
 
@@ -413,10 +454,12 @@ const Transitions = () => {
                     <Col md={6}>
                       <div className="mb-3">
                         <label className="text-muted d-block mb-1">
-                          Order ID
+                          {selectedPayment.source === 'course_invoice' ? 'Invoice No' : 'Order ID'}
                         </label>
                         <span className="fw-medium">
-                          {selectedPayment.payment_details.order_id}
+                          {selectedPayment.source === 'course_invoice'
+                            ? selectedPayment.course_invoice_details?.invoice_no ?? '—'
+                            : selectedPayment.payment_details?.order_id ?? '—'}
                         </span>
                       </div>
                       <div className="mb-3">
@@ -434,111 +477,217 @@ const Transitions = () => {
 
               <Card className="border">
                 <Card.Header className="bg-light">
-                  <h5 className="mb-0">Payment Information</h5>
+                  <h5 className="mb-0">
+                    {selectedPayment.source === 'course_invoice' ? 'Course Invoice Information' : 'Payment Information'}
+                  </h5>
                 </Card.Header>
                 <Card.Body>
-                  <Row>
-                    <Col md={6}>
-                      <div className="mb-3">
-                        <label className="text-muted d-block mb-1">
-                          Total Amount
-                        </label>
-                        <span className="fw-medium">
-                          ৳
-                          {parseFloat(
-                            selectedPayment.payment_details.total_amount
-                          ).toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="mb-3">
-                        <label className="text-muted d-block mb-1">
-                          Paid Amount
-                        </label>
-                        <span className="fw-medium text-success">
-                          ৳
-                          {parseFloat(
-                            selectedPayment.payment_details.padi_amount
-                          ).toLocaleString()}
-                        </span>
-                      </div>
-                    </Col>
-                    <Col md={6}>
-                      <div className="mb-3">
-                        <label className="text-muted d-block mb-1">
-                          Due Amount
-                        </label>
-                        <span
-                          className={`fw-medium ${
-                            parseFloat(
-                              selectedPayment.payment_details.due_amount
-                            ) > 0
-                              ? "text-danger"
-                              : "text-success"
-                          }`}
-                        >
-                          ৳
-                          {parseFloat(
-                            selectedPayment.payment_details.due_amount
-                          ).toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="mb-3">
-                        <label className="text-muted d-block mb-1">
-                          Payment Type
-                        </label>
-                        <span className="fw-medium">
-                          {getPaymentTypeText(
-                            selectedPayment.payment_details.payment_type
-                          )}
-                        </span>
-                      </div>
-                    </Col>
-                  </Row>
-                  <Row>
-                    <Col md={6}>
-                      <div className="mb-3">
-                        <label className="text-muted d-block mb-1">
-                          Status
-                        </label>
-                        <span
-                          className={`status-badge ${
-                            selectedPayment.payment_details.status === "1"
-                              ? "active"
-                              : "inactive"
-                          }`}
-                        >
-                          {getStatusText(
-                            selectedPayment.payment_details.status
-                          )}
-                        </span>
-                      </div>
-                    </Col>
-                    {selectedPayment.payment_details.trxed && (
-                      <Col md={6}>
-                        <div className="mb-3">
-                          <label className="text-muted d-block mb-1">
-                            Transaction ID
-                          </label>
-                          <span className="fw-medium">
-                            {selectedPayment.payment_details.trxed}
-                          </span>
-                        </div>
-                      </Col>
-                    )}
-                  </Row>
-                  {selectedPayment.payment_details.phone && (
-                    <Row>
-                      <Col md={6}>
-                        <div className="mb-3">
-                          <label className="text-muted d-block mb-1">
-                            Phone
-                          </label>
-                          <span className="fw-medium">
-                            {selectedPayment.payment_details.phone}
-                          </span>
-                        </div>
-                      </Col>
-                    </Row>
+                  {selectedPayment.source === 'course_invoice' ? (
+                    !selectedPayment.course_invoice_details ? (
+                      <p className="text-muted mb-0">
+                        This transition's linked course invoice no longer exists, so no
+                        further details are available.
+                      </p>
+                    ) : (
+                      <>
+                        <Row>
+                          <Col md={6}>
+                            <div className="mb-3">
+                              <label className="text-muted d-block mb-1">Student</label>
+                              <span className="fw-medium">
+                                {selectedPayment.course_invoice_details.student_name}
+                              </span>
+                            </div>
+                            <div className="mb-3">
+                              <label className="text-muted d-block mb-1">Course</label>
+                              <span className="fw-medium">
+                                {selectedPayment.course_invoice_details.course_title ?? '—'}
+                              </span>
+                            </div>
+                          </Col>
+                          <Col md={6}>
+                            <div className="mb-3">
+                              <label className="text-muted d-block mb-1">Payment For</label>
+                              <span className="fw-medium">
+                                {capitalize(selectedPayment.course_invoice_details.payment_for)}
+                                {selectedPayment.course_invoice_details.month_number
+                                  ? ` (Month ${selectedPayment.course_invoice_details.month_number})`
+                                  : ''}
+                              </span>
+                            </div>
+                            <div className="mb-3">
+                              <label className="text-muted d-block mb-1">Payment Method</label>
+                              <span className="fw-medium">
+                                {capitalize(selectedPayment.course_invoice_details.payment_method)}
+                              </span>
+                            </div>
+                          </Col>
+                        </Row>
+                        <Row>
+                          <Col md={6}>
+                            <div className="mb-3">
+                              <label className="text-muted d-block mb-1">Invoice Amount</label>
+                              <span className="fw-medium">
+                                ৳{parseFloat(selectedPayment.course_invoice_details.amount).toLocaleString()}
+                              </span>
+                            </div>
+                            <div className="mb-3">
+                              <label className="text-muted d-block mb-1">Paid Amount</label>
+                              <span className="fw-medium text-success">
+                                ৳{parseFloat(selectedPayment.course_invoice_details.paid_amount).toLocaleString()}
+                              </span>
+                            </div>
+                          </Col>
+                          <Col md={6}>
+                            <div className="mb-3">
+                              <label className="text-muted d-block mb-1">Due Amount</label>
+                              <span
+                                className={`fw-medium ${
+                                  parseFloat(selectedPayment.course_invoice_details.due_amount) > 0
+                                    ? 'text-danger'
+                                    : 'text-success'
+                                }`}
+                              >
+                                ৳{parseFloat(selectedPayment.course_invoice_details.due_amount).toLocaleString()}
+                              </span>
+                            </div>
+                            <div className="mb-3">
+                              <label className="text-muted d-block mb-1">Status</label>
+                              <span
+                                className={`status-badge ${
+                                  selectedPayment.course_invoice_details.status === 'paid' ? 'active' : 'inactive'
+                                }`}
+                              >
+                                {capitalize(selectedPayment.course_invoice_details.status)}
+                              </span>
+                            </div>
+                          </Col>
+                        </Row>
+                        {selectedPayment.course_invoice_details.trx_id && (
+                          <Row>
+                            <Col md={6}>
+                              <div className="mb-3">
+                                <label className="text-muted d-block mb-1">Transaction ID</label>
+                                <span className="fw-medium">
+                                  {selectedPayment.course_invoice_details.trx_id}
+                                </span>
+                              </div>
+                            </Col>
+                          </Row>
+                        )}
+                      </>
+                    )
+                  ) : !selectedPayment.payment_details ? (
+                    <p className="text-muted mb-0">
+                      This transition's linked payment/order no longer exists, so no
+                      further payment details are available.
+                    </p>
+                  ) : (
+                    <>
+                      <Row>
+                        <Col md={6}>
+                          <div className="mb-3">
+                            <label className="text-muted d-block mb-1">
+                              Total Amount
+                            </label>
+                            <span className="fw-medium">
+                              ৳
+                              {parseFloat(
+                                selectedPayment.payment_details.total_amount
+                              ).toLocaleString()}
+                            </span>
+                          </div>
+                          <div className="mb-3">
+                            <label className="text-muted d-block mb-1">
+                              Paid Amount
+                            </label>
+                            <span className="fw-medium text-success">
+                              ৳
+                              {parseFloat(
+                                selectedPayment.payment_details.padi_amount
+                              ).toLocaleString()}
+                            </span>
+                          </div>
+                        </Col>
+                        <Col md={6}>
+                          <div className="mb-3">
+                            <label className="text-muted d-block mb-1">
+                              Due Amount
+                            </label>
+                            <span
+                              className={`fw-medium ${
+                                parseFloat(
+                                  selectedPayment.payment_details.due_amount
+                                ) > 0
+                                  ? "text-danger"
+                                  : "text-success"
+                              }`}
+                            >
+                              ৳
+                              {parseFloat(
+                                selectedPayment.payment_details.due_amount
+                              ).toLocaleString()}
+                            </span>
+                          </div>
+                          <div className="mb-3">
+                            <label className="text-muted d-block mb-1">
+                              Payment Type
+                            </label>
+                            <span className="fw-medium">
+                              {getPaymentTypeText(
+                                selectedPayment.payment_details.payment_type
+                              )}
+                            </span>
+                          </div>
+                        </Col>
+                      </Row>
+                      <Row>
+                        <Col md={6}>
+                          <div className="mb-3">
+                            <label className="text-muted d-block mb-1">
+                              Status
+                            </label>
+                            <span
+                              className={`status-badge ${
+                                selectedPayment.payment_details.status === "1"
+                                  ? "active"
+                                  : "inactive"
+                              }`}
+                            >
+                              {getStatusText(
+                                selectedPayment.payment_details.status
+                              )}
+                            </span>
+                          </div>
+                        </Col>
+                        {selectedPayment.payment_details.trxed && (
+                          <Col md={6}>
+                            <div className="mb-3">
+                              <label className="text-muted d-block mb-1">
+                                Transaction ID
+                              </label>
+                              <span className="fw-medium">
+                                {selectedPayment.payment_details.trxed}
+                              </span>
+                            </div>
+                          </Col>
+                        )}
+                      </Row>
+                      {selectedPayment.payment_details.phone && (
+                        <Row>
+                          <Col md={6}>
+                            <div className="mb-3">
+                              <label className="text-muted d-block mb-1">
+                                Phone
+                              </label>
+                              <span className="fw-medium">
+                                {selectedPayment.payment_details.phone}
+                              </span>
+                            </div>
+                          </Col>
+                        </Row>
+                      )}
+                    </>
                   )}
                 </Card.Body>
               </Card>
