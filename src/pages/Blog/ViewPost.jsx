@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { FaSave, FaArrowLeft } from "react-icons/fa";
 import axiosInstance from "../../config/axios";
@@ -13,6 +13,16 @@ const ViewPost = () => {
   usePageTitle("View Post");
   const { slug } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  // Go back to whatever page/filters the list was on; only fall back to a
+  // fresh "/blog" if this page was opened directly (no app history to return to).
+  const goBackToList = () => {
+    if (location.key !== "default") {
+      navigate(-1);
+    } else {
+      navigate("/blog");
+    }
+  };
   const [loading, setLoading] = useState(false);
   const [post, setPost] = useState(null);
   const [formData, setFormData] = useState({
@@ -213,7 +223,7 @@ const ViewPost = () => {
           </Col>
         </Row>
         <div className="form-actions">
-          <Button variant="light" onClick={() => navigate("/blog")}>
+          <Button variant="light" onClick={goBackToList}>
             <FaArrowLeft className="me-2" /> Back to Posts
           </Button>
           <Button type="submit" variant="primary" disabled={loading}>

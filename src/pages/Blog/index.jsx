@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   FaPlus,
   FaEdit,
@@ -10,7 +10,7 @@ import {
   FaNewspaper,
   FaCalendarAlt,
 } from "react-icons/fa";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import axiosInstance from "../../config/axios";
 import { Card, Form, InputGroup, Button, Row, Col, Pagination, Badge } from "react-bootstrap";
@@ -27,17 +27,18 @@ const CATEGORY_VARIANT = {
 const Blog = () => {
   usePageTitle("Manage Blog");
   const navigate = useNavigate();
+  const [urlQuery, setUrlQuery] = useSearchParams();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pageLoading, setPageLoading] = useState(true);
   const [tableLoading, setTableLoading] = useState(false);
   const [searchParams, setSearchParams] = useState({
-    search: "",
+    search: urlQuery.get("search") || "",
   });
   const [searchTimeout, setSearchTimeout] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
+  const [page, setPage] = useState(() => parseInt(urlQuery.get("page"), 10) || 1);
+  const [limit, setLimit] = useState(() => parseInt(urlQuery.get("limit"), 10) || 10);
   const [pagination, setPagination] = useState({
     total_rows: 0,
     current_page: 1,
@@ -45,11 +46,27 @@ const Blog = () => {
     total_pages: 1,
     has_more_pages: false,
   });
+  // Tracks the last search value the debounce effect actually acted on, so
+  // that effect can tell "nothing really changed" (including React 18
+  // StrictMode's dev-only double-invoke of mount effects) apart from a real
+  // edit — a simple "have I run yet" boolean flag gets consumed by the
+  // throwaway first invocation and misfires on the second.
+  const lastHandledSearch = useRef(searchParams.search);
+
+  // Keep the current page/limit/search reflected in the URL so the browser's
+  // back button (and any "Back to Posts" link) returns to the same page
+  // instead of always resetting to page 1.
+  useEffect(() => {
+    const next = { page: String(page), limit: String(limit) };
+    if (searchParams.search) next.search = searchParams.search;
+    setUrlQuery(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, limit, searchParams.search]);
 
   useEffect(() => {
     const loadInitialData = async () => {
       try {
-        await fetchPosts(1);
+        await fetchPosts(page);
       } finally {
         setPageLoading(false);
       }
@@ -63,6 +80,14 @@ const Blog = () => {
   }, [page, limit]);
 
   useEffect(() => {
+    // Skip when the search text hasn't actually changed since we last acted
+    // on it — the mount-time fetch above already covers the restored page,
+    // this effect should only reset to page 1 when the user really types.
+    if (lastHandledSearch.current === searchParams.search) {
+      return;
+    }
+    lastHandledSearch.current = searchParams.search;
+
     if (searchTimeout) {
       clearTimeout(searchTimeout);
     }

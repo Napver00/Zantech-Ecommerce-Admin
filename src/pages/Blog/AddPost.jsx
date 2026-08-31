@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { FaSave, FaPlus, FaTrash } from "react-icons/fa";
 import axiosInstance from "../../config/axios";
@@ -12,6 +12,16 @@ import "./Blog.css";
 const AddPost = () => {
   usePageTitle("Add New Post");
   const navigate = useNavigate();
+  const location = useLocation();
+  // Go back to whatever page/filters the list was on; only fall back to a
+  // fresh "/blog" if this page was opened directly (no app history to return to).
+  const goBackToList = () => {
+    if (location.key !== "default") {
+      navigate(-1);
+    } else {
+      navigate("/blog");
+    }
+  };
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
@@ -344,7 +354,7 @@ const AddPost = () => {
           <button
             type="button"
             className="btn btn-light"
-            onClick={() => navigate("/blog")}
+            onClick={goBackToList}
           >
             Cancel
           </button>
