@@ -2,11 +2,11 @@ import React, { useState, useEffect } from "react";
 import { Card, Button, Badge, Form, Row, Col, Pagination } from "react-bootstrap";
 import { toast } from "react-hot-toast";
 import axiosInstance from "../../config/axios";
-import { FaPlus, FaTrash, FaEdit } from "react-icons/fa";
+import { FaPlus, FaTrash, FaEdit, FaImage, FaFolderOpen } from "react-icons/fa";
 import usePageTitle from "../../hooks/usePageTitle";
+import Loading from "../../components/Loading";
 import "./Projects.css";
 import { useNavigate } from "react-router-dom";
-import CommonTable from "../../components/Common/CommonTable";
 
 const Projects = () => {
   usePageTitle("Our Projects");
@@ -63,99 +63,45 @@ const Projects = () => {
     setPage(1);
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this project?")) {
-      try {
-        const response = await axiosInstance.delete(`/projects/${id}`);
-        if (response.data.success) {
-          toast.success("Project deleted successfully!");
-          fetchProjects(page);
-        } else {
-          toast.error("Failed to delete project.");
-        }
-      } catch (error) {
-        toast.error("An error occurred while deleting the project.");
-      }
-    }
-  };
-
-  const headers = [
-    {
-      key: "image_url",
-      label: "Image",
-      render: (row) => (
-        <img
-          src={row.image_url}
-          alt={row.title}
-          className="rounded project-thumb"
-        />
-      ),
-    },
-    {
-      key: "title",
-      label: "Title",
-      render: (row) => <span className="fw-bold">{row.title}</span>,
-    },
-    {
-      key: "description",
-      label: "Description",
-      render: (row) => (
-        <span className="text-muted small line-clamp-2 d-inline-block">
-          {row.description}
-        </span>
-      ),
-    },
-    {
-      key: "technologies",
-      label: "Technologies",
-      render: (row) => (
-        <div className="d-flex flex-wrap gap-1">
-          {row.technologies.slice(0, 3).map((tech) => (
-            <Badge key={tech.id} bg="light" text="dark" className="border fw-normal">
-              {tech.name}
-            </Badge>
-          ))}
-          {row.technologies.length > 3 && (
-            <Badge bg="light" text="muted" className="border fw-normal">
-              +{row.technologies.length - 3}
-            </Badge>
-          )}
+  const handleDelete = (id, title) => {
+    toast(
+      (t) => (
+        <div className="delete-confirm-toast">
+          <p className="mb-2">
+            Delete <strong>{title}</strong>? This can't be undone.
+          </p>
+          <div className="d-flex gap-2 justify-content-end">
+            <Button size="sm" variant="light" onClick={() => toast.dismiss(t.id)}>
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              variant="danger"
+              onClick={async () => {
+                toast.dismiss(t.id);
+                try {
+                  const response = await axiosInstance.delete(`/projects/${id}`);
+                  if (response.data.success) {
+                    toast.success("Project deleted successfully!");
+                    fetchProjects(page);
+                  } else {
+                    toast.error("Failed to delete project.");
+                  }
+                } catch (error) {
+                  toast.error("An error occurred while deleting the project.");
+                }
+              }}
+            >
+              Delete
+            </Button>
+          </div>
         </div>
       ),
-    },
-    {
-      key: "status",
-      label: "Status",
-      render: (row) => (
-        <span
-          className={`badge rounded-pill bg-${
-            row.status === "active" ? "success" : "light text-muted border"
-          }`}
-        >
-          {row.status === "active" ? "Active" : "Inactive"}
-        </span>
-      ),
-    },
-  ];
+      { duration: 8000 }
+    );
+  };
 
-  const renderActions = (project) => (
-    <div className="d-flex gap-2">
-      <Button
-        variant="outline-primary"
-        size="sm"
-        onClick={() => navigate(`/landing/projects/${project.slug}`)}
-      >
-        <FaEdit className="me-1" /> Edit
-      </Button>
-      <Button
-        variant="outline-danger"
-        size="sm"
-        onClick={() => handleDelete(project.id)}
-      >
-        <FaTrash />
-      </Button>
-    </div>
-  );
+  const showEmptyState = !loading && projects.length === 0;
 
   return (
     <div className="tab-content-container">
@@ -164,7 +110,9 @@ const Projects = () => {
           <div>
             <h4 className="mb-1 fw-bold text-primary">Our Projects</h4>
             <p className="text-muted small mb-0">
-              {loading ? "Loading..." : `${pagination.total_rows} project${pagination.total_rows !== 1 ? "s" : ""} found`}
+              {loading
+                ? "Loading..."
+                : `${pagination.total_rows} project${pagination.total_rows !== 1 ? "s" : ""} in your portfolio`}
             </p>
           </div>
           <Button
@@ -176,27 +124,108 @@ const Projects = () => {
           </Button>
         </Card.Header>
         <Card.Body className="p-4">
-          <Row className="mb-4">
-            <Col md={2} className="ms-auto">
-              <Form.Select value={limit} onChange={handleLimitChange} className="limit-select">
+          {!showEmptyState && (
+            <div className="d-flex justify-content-end mb-4">
+              <Form.Select
+                value={limit}
+                onChange={handleLimitChange}
+                className="limit-select project-limit-select"
+              >
                 <option value="5">5 per page</option>
                 <option value="10">10 per page</option>
                 <option value="20">20 per page</option>
                 <option value="50">50 per page</option>
               </Form.Select>
-            </Col>
-          </Row>
+            </div>
+          )}
 
-          <CommonTable
-            headers={headers}
-            data={projects}
-            tableLoading={loading}
-            loading={loading}
-            renderActions={renderActions}
-          />
+          {loading ? (
+            <div className="project-grid-loading">
+              <Loading />
+            </div>
+          ) : showEmptyState ? (
+            <div className="project-empty-state">
+              <div className="project-empty-icon">
+                <FaFolderOpen />
+              </div>
+              <h5 className="mb-1">No projects yet</h5>
+              <p className="text-muted mb-4">
+                Add your first project to showcase it on the public landing page.
+              </p>
+              <Button variant="primary" onClick={() => navigate("/landing/projects/add")}>
+                <FaPlus className="me-2" /> Add Your First Project
+              </Button>
+            </div>
+          ) : (
+            <Row className="g-4 project-grid">
+              {projects.map((project) => (
+                <Col key={project.id} xs={12} sm={6} lg={4} xl={3}>
+                  <div className="project-card">
+                    <div className="project-card-img-wrap">
+                      {project.image_url ? (
+                        <img src={project.image_url} alt={project.title} className="project-card-img" />
+                      ) : (
+                        <div className="project-card-img-placeholder">
+                          <FaImage />
+                        </div>
+                      )}
+                      <span
+                        className={`project-status-badge ${
+                          project.status === "active" ? "is-active" : "is-inactive"
+                        }`}
+                      >
+                        {project.status === "active" ? "Active" : "Inactive"}
+                      </span>
+                    </div>
+
+                    <div className="project-card-body">
+                      <h6 className="project-card-title" title={project.title}>
+                        {project.title}
+                      </h6>
+                      <p className="project-card-desc">{project.description}</p>
+
+                      {project.technologies?.length > 0 && (
+                        <div className="d-flex flex-wrap gap-1 project-card-tags">
+                          {project.technologies.slice(0, 3).map((tech) => (
+                            <Badge key={tech.id} bg="light" text="dark" className="border fw-normal">
+                              {tech.name}
+                            </Badge>
+                          ))}
+                          {project.technologies.length > 3 && (
+                            <Badge bg="light" text="muted" className="border fw-normal">
+                              +{project.technologies.length - 3}
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="project-card-footer">
+                      <Button
+                        variant="outline-primary"
+                        size="sm"
+                        className="flex-grow-1"
+                        onClick={() => navigate(`/landing/projects/${project.slug}`)}
+                      >
+                        <FaEdit className="me-1" /> Edit
+                      </Button>
+                      <Button
+                        variant="outline-danger"
+                        size="sm"
+                        onClick={() => handleDelete(project.id, project.title)}
+                        title="Delete project"
+                      >
+                        <FaTrash />
+                      </Button>
+                    </div>
+                  </div>
+                </Col>
+              ))}
+            </Row>
+          )}
 
           {pagination.total_pages > 1 && (
-            <div className="pagination-container mt-4">
+            <div className="pagination-container mt-4 d-flex justify-content-center">
               <Pagination className="modern-pagination">
                 <Pagination.Prev
                   onClick={() => handlePageChange(pagination.current_page - 1)}

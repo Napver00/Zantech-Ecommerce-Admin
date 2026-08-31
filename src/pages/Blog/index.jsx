@@ -6,16 +6,23 @@ import {
   FaSearch,
   FaSpinner,
   FaTimes,
-  FaEye,
+  FaImage,
+  FaNewspaper,
+  FaCalendarAlt,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import axiosInstance from "../../config/axios";
-import { Card, Form, InputGroup, Button, Row, Col, Pagination } from "react-bootstrap";
+import { Card, Form, InputGroup, Button, Row, Col, Pagination, Badge } from "react-bootstrap";
 import Loading from "../../components/Loading";
 import "./Blog.css";
 import usePageTitle from "../../hooks/usePageTitle";
-import CommonTable from "../../components/Common/CommonTable";
+
+const CATEGORY_VARIANT = {
+  Blog: "primary",
+  Tutorial: "info",
+  workshop: "warning",
+};
 
 const Blog = () => {
   usePageTitle("Manage Blog");
@@ -124,19 +131,41 @@ const Blog = () => {
     setPage(1);
   };
 
-  const handleDeletePost = async (id) => {
-    if (window.confirm("Are you sure you want to delete this post?")) {
-      try {
-        setTableLoading(true);
-        await axiosInstance.delete(`/posts/${id}`);
-        toast.success("Post deleted successfully");
-        fetchPosts(page);
-      } catch (error) {
-        toast.error(error.response?.data?.message || "Failed to delete post");
-      } finally {
-        setTableLoading(false);
-      }
-    }
+  const handleDeletePost = (id, title) => {
+    toast(
+      (t) => (
+        <div className="delete-confirm-toast">
+          <p className="mb-2">
+            Delete <strong>{title}</strong>? This can't be undone.
+          </p>
+          <div className="d-flex gap-2 justify-content-end">
+            <Button size="sm" variant="light" onClick={() => toast.dismiss(t.id)}>
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              variant="danger"
+              onClick={async () => {
+                toast.dismiss(t.id);
+                try {
+                  setTableLoading(true);
+                  await axiosInstance.delete(`/posts/${id}`);
+                  toast.success("Post deleted successfully");
+                  fetchPosts(page);
+                } catch (error) {
+                  toast.error(error.response?.data?.message || "Failed to delete post");
+                } finally {
+                  setTableLoading(false);
+                }
+              }}
+            >
+              Delete
+            </Button>
+          </div>
+        </div>
+      ),
+      { duration: 8000 }
+    );
   };
 
   const handleToggleStatus = async (id) => {
@@ -157,59 +186,11 @@ const Blog = () => {
     }));
   };
 
-  const headers = [
-    { key: "id", label: "ID" },
-    { key: "title", label: "Title" },
-    { key: "category", label: "Category" },
-    { key: "tags", label: "Tags", render: (row) => row.tags.join(", ") },
-    {
-      key: "status",
-      label: "Status",
-      render: (row) => (
-        <Button
-          variant={row.status === "published" ? "success" : "danger"}
-          size="sm"
-          onClick={() => handleToggleStatus(row.id)}
-        >
-          {row.status}
-        </Button>
-      ),
-    },
-    {
-      key: "created_at",
-      label: "Created At",
-      render: (row) => new Date(row.created_at).toLocaleDateString(),
-    },
-  ];
-
-  const renderActions = (post) => (
-    <div className="d-flex gap-2">
-      <Button
-        variant="outline-primary"
-        size="sm"
-        onClick={() => navigate(`/blog/${post.slug}`)}
-        disabled={tableLoading}
-        title="Edit"
-        className="view-btn"
-      >
-        <FaEdit />
-      </Button>
-      <Button
-        variant="outline-danger"
-        size="sm"
-        onClick={() => handleDeletePost(post.id)}
-        disabled={tableLoading}
-        title="Delete"
-        className="delete-btn"
-      >
-        <FaTrash />
-      </Button>
-    </div>
-  );
-
   if (pageLoading) {
     return <Loading />;
   }
+
+  const showEmptyState = !loading && posts.length === 0;
 
   return (
     <div className="blog-container">
@@ -225,7 +206,7 @@ const Blog = () => {
                 </div>
               ) : (
                 <p className="page-subtitle mb-0">
-                  Showing {pagination.total_rows} posts
+                  {pagination.total_rows} post{pagination.total_rows !== 1 ? "s" : ""} published on your blog
                 </p>
               )}
             </div>
@@ -276,27 +257,133 @@ const Blog = () => {
                   </InputGroup>
                 </Form>
               </Col>
-              <Col md={2}>
-                <Form.Select value={limit} onChange={handleLimitChange} className="limit-select">
-                  <option value="5">5 per page</option>
-                  <option value="10">10 per page</option>
-                  <option value="20">20 per page</option>
-                  <option value="50">50 per page</option>
-                </Form.Select>
-              </Col>
+              {!showEmptyState && (
+                <Col md={2} className="ms-auto">
+                  <Form.Select value={limit} onChange={handleLimitChange} className="limit-select">
+                    <option value="5">5 per page</option>
+                    <option value="10">10 per page</option>
+                    <option value="20">20 per page</option>
+                    <option value="50">50 per page</option>
+                  </Form.Select>
+                </Col>
+              )}
             </Row>
           </div>
 
-          <CommonTable
-            headers={headers}
-            data={posts}
-            tableLoading={tableLoading}
-            loading={loading}
-            renderActions={renderActions}
-          />
+          {loading ? (
+            <div className="blog-grid-loading">
+              <Loading />
+            </div>
+          ) : showEmptyState ? (
+            <div className="blog-empty-state">
+              <div className="blog-empty-icon">
+                <FaNewspaper />
+              </div>
+              <h5 className="mb-1">
+                {searchParams.search ? "No posts match your search" : "No blog posts yet"}
+              </h5>
+              <p className="text-muted mb-4">
+                {searchParams.search
+                  ? "Try a different search term."
+                  : "Write your first post to start filling up the blog."}
+              </p>
+              {!searchParams.search && (
+                <Button variant="primary" onClick={() => navigate("/blog/add")}>
+                  <FaPlus className="me-2" /> Write Your First Post
+                </Button>
+              )}
+            </div>
+          ) : (
+            <Row className="g-4 blog-grid">
+              {posts.map((post) => (
+                <Col key={post.id} xs={12} sm={6} lg={4} xl={3}>
+                  <div className="blog-card">
+                    <div className="blog-card-img-wrap">
+                      {post.thumbnail ? (
+                        <img src={post.thumbnail} alt={post.title} className="blog-card-img" />
+                      ) : (
+                        <div className="blog-card-img-placeholder">
+                          <FaImage />
+                        </div>
+                      )}
+                      {post.category && (
+                        <Badge bg={CATEGORY_VARIANT[post.category] || "secondary"} className="blog-category-badge">
+                          {post.category}
+                        </Badge>
+                      )}
+                    </div>
+
+                    <div className="blog-card-body">
+                      <h6 className="blog-card-title" title={post.title}>
+                        {post.title}
+                      </h6>
+
+                      <div className="blog-card-meta">
+                        <FaCalendarAlt className="me-1" />
+                        {new Date(post.created_at).toLocaleDateString(undefined, {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </div>
+
+                      {post.tags?.length > 0 && (
+                        <div className="d-flex flex-wrap gap-1 blog-card-tags">
+                          {post.tags.slice(0, 3).map((tag) => (
+                            <Badge key={tag} bg="light" text="dark" className="border fw-normal">
+                              {tag}
+                            </Badge>
+                          ))}
+                          {post.tags.length > 3 && (
+                            <Badge bg="light" text="muted" className="border fw-normal">
+                              +{post.tags.length - 3}
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="blog-card-footer">
+                      <button
+                        type="button"
+                        className={`blog-status-toggle ${
+                          post.status === "published" ? "is-published" : "is-draft"
+                        }`}
+                        onClick={() => handleToggleStatus(post.id)}
+                        title="Click to toggle status"
+                      >
+                        <span className="blog-status-dot" />
+                        {post.status === "published" ? "Published" : "Draft"}
+                      </button>
+                      <div className="d-flex gap-2">
+                        <Button
+                          variant="outline-primary"
+                          size="sm"
+                          onClick={() => navigate(`/blog/${post.slug}`)}
+                          disabled={tableLoading}
+                          title="Edit"
+                        >
+                          <FaEdit />
+                        </Button>
+                        <Button
+                          variant="outline-danger"
+                          size="sm"
+                          onClick={() => handleDeletePost(post.id, post.title)}
+                          disabled={tableLoading}
+                          title="Delete"
+                        >
+                          <FaTrash />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </Col>
+              ))}
+            </Row>
+          )}
 
           {pagination.total_pages > 1 && (
-            <div className="pagination-container mt-4">
+            <div className="pagination-container mt-4 d-flex justify-content-center">
               <Pagination className="modern-pagination">
                 <Pagination.Prev
                   onClick={() => handlePageChange(pagination.current_page - 1)}

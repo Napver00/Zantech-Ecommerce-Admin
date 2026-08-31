@@ -1,0 +1,33 @@
+.doc-inline-loader {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 320px;
+    background: #fff;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-color);
+}
+
+.doc-unsaved-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--warning-color);
+    font-weight: 500;
+}
+
+.doc-unsaved-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--warning-color);
+    flex-shrink: 0;
+    animation: doc-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes doc-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+}
