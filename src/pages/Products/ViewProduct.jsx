@@ -86,7 +86,10 @@ const ViewProduct = () => {
         const discountedPrice = price - discount;
         const discountPercentage = price > 0 ? (discount / price) * 100 : 0;
 
-        setProduct(data);
+        setProduct({
+          ...data,
+          is_bundle: Number(data.is_bundle) === 1 ? 1 : 0,
+        });
         setEditForm({
           name: data.name || "",
           description: data.description || "",
