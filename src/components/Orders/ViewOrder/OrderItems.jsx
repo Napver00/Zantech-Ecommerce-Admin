@@ -139,7 +139,7 @@ const OrderItems = ({ orderItems, orderId, refreshOrderData }) => {
           value: product.id,
           label: product.name,
           price: product.price,
-          image: product.image_paths?.[0],
+          image: product.image,
           quantity: product.quantity
         }));
       }

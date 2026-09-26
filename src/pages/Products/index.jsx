@@ -221,7 +221,7 @@ const Products = () => {
     setEditForm({
       name: product.name || "",
       price: product.price || "",
-      quantity: product.quantity || "",
+      quantity: product.quantity ?? "",
       discount: product.discount?.toString() || "0",
     });
     setShowQuickEdit(true);
@@ -265,11 +265,20 @@ const Products = () => {
       }
 
       setProducts(
-        products.map((prod) =>
-          prod.id === selectedProduct.id
-            ? { ...prod, ...editForm, quantity: parseInt(editForm.quantity) }
-            : prod
-        )
+        products.map((prod) => {
+          if (prod.id !== selectedProduct.id) return prod;
+          const price = parseFloat(editForm.price) || 0;
+          const discount = parseFloat(editForm.discount) || 0;
+          return {
+            ...prod,
+            ...editForm,
+            quantity: parseInt(editForm.quantity),
+            price,
+            discount,
+            discountedPrice: price - discount,
+            discountPercentage: price > 0 ? (discount / price) * 100 : 0,
+          };
+        })
       );
 
       toast.success("Product updated successfully");
