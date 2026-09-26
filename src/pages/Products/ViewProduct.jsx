@@ -94,7 +94,7 @@ const ViewProduct = () => {
           name: data.name || "",
           description: data.description || "",
           short_description: data.short_description || "",
-          quantity: data.quantity ?? "",
+          quantity: data.quantity || "",
           price: price,
           discount: discount,
           discountedPrice: discountedPrice.toFixed(2),

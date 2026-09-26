@@ -44,7 +44,6 @@ const ViewOrder = () => {
       const response = await axiosInstance.get(`/orders/${id}`);
       if (response.data.success) {
         setOrderData(response.data.data);
-        return true;
       } else {
         throw new Error(response.data.message || "Failed to fetch order");
       }
@@ -53,7 +52,6 @@ const ViewOrder = () => {
         error.response?.data?.message || "Failed to fetch order details"
       );
       navigate("/orders");
-      return false;
     } finally {
       setLoading(false);
     }
@@ -62,8 +60,10 @@ const ViewOrder = () => {
   const refreshOrderData = async () => {
     setIsRefreshing(true);
     try {
-      const success = await fetchOrder();
-      if (success) toast.success("Order data refreshed");
+      await fetchOrder();
+      toast.success("Order data refreshed");
+    } catch (error) {
+      console.error("Refresh error:", error);
     } finally {
       setIsRefreshing(false);
     }
