@@ -31,6 +31,7 @@ const ViewProduct = () => {
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [imageError, setImageError] = useState(null);
   const [deleteImageLoading, setDeleteImageLoading] = useState(null);
+  const [reorderImagesLoading, setReorderImagesLoading] = useState(false);
   const [editForm, setEditForm] = useState({
     name: "",
     description: "",
@@ -212,6 +213,34 @@ const ViewProduct = () => {
         toast.error(err.response?.data?.message || "Failed to delete image");
       } finally {
         setDeleteImageLoading(null);
+      }
+    },
+    [id, fetchProduct]
+  );
+
+  const handleReorderImages = useCallback(
+    async (orderedImageIds) => {
+      // Optimistic update so the drag feels immediate; re-synced from the
+      // server response (or reverted) right after.
+      setProduct((prev) => {
+        if (!prev?.images) return prev;
+        const byId = new Map(prev.images.map((img) => [img.id, img]));
+        return {
+          ...prev,
+          images: orderedImageIds.map((imgId) => byId.get(imgId)).filter(Boolean),
+        };
+      });
+      setReorderImagesLoading(true);
+      try {
+        await axiosInstance.post(`/products/reorder-images/${id}`, {
+          image_ids: orderedImageIds,
+        });
+        toast.success("Image order updated");
+      } catch (err) {
+        toast.error(err.response?.data?.message || "Failed to reorder images");
+        await fetchProduct();
+      } finally {
+        setReorderImagesLoading(false);
       }
     },
     [id, fetchProduct]
@@ -494,6 +523,8 @@ const ViewProduct = () => {
               deleteImageLoading={deleteImageLoading}
               setShowImagePreview={setShowImagePreview}
               setSelectedImage={setSelectedImage}
+              handleReorderImages={handleReorderImages}
+              reorderImagesLoading={reorderImagesLoading}
             />
             <ProductAttributes
               product={product}

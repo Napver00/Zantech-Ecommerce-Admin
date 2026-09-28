@@ -1,30 +1,78 @@
-import React from 'react';
-import { Card, Button, Spinner, Modal, Form, Alert, Image } from 'react-bootstrap';
-import { FaPencilAlt, FaTrash, FaPlus } from 'react-icons/fa';
+import React, { useState } from 'react';
+import { Card, Button, Spinner, Modal, Form, Alert, Image, Badge } from 'react-bootstrap';
+import { FaPencilAlt, FaTrash, FaPlus, FaGripVertical } from 'react-icons/fa';
 
-const ProductImages = ({ 
-    product, 
-    showImageModal, 
-    setShowImageModal, 
-    handleImageUpload, 
-    selectedFiles, 
-    handleImageSelect, 
-    imageError, 
-    imageUploadLoading, 
-    handleDeleteImage, 
-    deleteImageLoading, 
-    setShowImagePreview, 
-    setSelectedImage 
+const ProductImages = ({
+    product,
+    showImageModal,
+    setShowImageModal,
+    handleImageUpload,
+    selectedFiles,
+    handleImageSelect,
+    imageError,
+    imageUploadLoading,
+    handleDeleteImage,
+    deleteImageLoading,
+    setShowImagePreview,
+    setSelectedImage,
+    handleReorderImages,
+    reorderImagesLoading,
 }) => {
+    const [dragIndex, setDragIndex] = useState(null);
+    const [overIndex, setOverIndex] = useState(null);
+
+    const images = product.images || [];
+
+    const handleDragStart = (index) => (e) => {
+        setDragIndex(index);
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
+    const handleDragOver = (index) => (e) => {
+        e.preventDefault();
+        if (index !== overIndex) setOverIndex(index);
+    };
+
+    const handleDragEnd = () => {
+        if (dragIndex !== null && overIndex !== null && dragIndex !== overIndex) {
+            const reordered = [...images];
+            const [moved] = reordered.splice(dragIndex, 1);
+            reordered.splice(overIndex, 0, moved);
+            handleReorderImages(reordered.map((img) => img.id));
+        }
+        setDragIndex(null);
+        setOverIndex(null);
+    };
+
     return (
         <Card className="border mb-4">
-            <Card.Header className="bg-light">
+            <Card.Header className="bg-light d-flex justify-content-between align-items-center">
                 <h5 className="mb-0">Product Images</h5>
+                {images.length > 1 && (
+                    <small className="text-muted">Drag to reorder — first image is featured</small>
+                )}
             </Card.Header>
             <Card.Body>
-                <div className="image-grid-container">
-                    {product.images && product.images.map((image, index) => (
-                        <div key={image.id} className="image-grid-item">
+                <div className={`image-grid-container ${reorderImagesLoading ? 'opacity-50' : ''}`}>
+                    {images.map((image, index) => (
+                        <div
+                            key={image.id}
+                            className={`image-grid-item ${overIndex === index && dragIndex !== index ? 'drag-over' : ''}`}
+                            draggable={!reorderImagesLoading}
+                            onDragStart={handleDragStart(index)}
+                            onDragOver={handleDragOver(index)}
+                            onDrop={(e) => e.preventDefault()}
+                            onDragEnd={handleDragEnd}
+                            style={{ cursor: reorderImagesLoading ? 'default' : 'grab' }}
+                        >
+                            {index === 0 && (
+                                <Badge bg="primary" className="featured-image-badge">
+                                    Featured
+                                </Badge>
+                            )}
+                            <div className="drag-handle">
+                                <FaGripVertical />
+                            </div>
                             <Image
                                 src={image.path}
                                 alt={`${product.name} - ${index + 1}`}

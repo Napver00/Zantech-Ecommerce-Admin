@@ -66,6 +66,42 @@
   border-radius: 50%;
 }
 
+.image-grid-item.drag-over {
+  outline: 2px dashed #0d6efd;
+  outline-offset: -2px;
+}
+
+.featured-image-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 2;
+  font-size: 0.65rem;
+  pointer-events: none;
+}
+
+.drag-handle {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  background-color: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.image-grid-item:hover .drag-handle {
+  opacity: 1;
+}
+
 .add-image-card {
   display: flex;
   align-items: center;
