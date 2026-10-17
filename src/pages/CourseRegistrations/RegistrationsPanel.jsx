@@ -2,10 +2,11 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { format } from "date-fns";
-import { Card, Form, InputGroup, Button, Row, Col, Modal, Badge, Pagination, Spinner, Table } from "react-bootstrap";
+import { Card, Form, InputGroup, Button, Row, Col, Modal, Badge, Pagination, Spinner } from "react-bootstrap";
 import { FaSearch, FaSpinner, FaTimes, FaEye, FaCheck, FaBan, FaTrash, FaFileInvoice } from "react-icons/fa";
 import axiosInstance from "../../config/axios";
 import CommonTable from "../../components/Common/CommonTable";
+import "./RegistrationsPanel.css";
 
 // Registrations submitted from the website's course registration form.
 // Used on its own page (all courses) and inside a course's edit page (courseId set).
@@ -29,10 +30,10 @@ const STATUS_TABS = [
 ];
 
 const InfoRow = ({ label, children }) => (
-  <tr>
-    <th className="text-muted fw-normal" style={{ width: "38%" }}>{label}</th>
-    <td className="fw-medium" style={{ wordBreak: "break-word" }}>{children || "—"}</td>
-  </tr>
+  <div className="reg-info-row">
+    <div className="reg-info-label">{label}</div>
+    <div className="reg-info-value">{children || "—"}</div>
+  </div>
 );
 
 const RegistrationsPanel = ({ courseId = null, openId = null, onChanged }) => {
@@ -282,7 +283,7 @@ const RegistrationsPanel = ({ courseId = null, openId = null, onChanged }) => {
       )}
 
       {/* ── Details ── */}
-      <Modal show={!!selected} onHide={() => setSelected(null)} size="lg" centered scrollable>
+      <Modal show={!!selected} onHide={() => setSelected(null)} size="xl" dialogClassName="registration-modal" className="registration-modal-layer" backdropClassName="registration-modal-layer" centered scrollable>
         {selected && (
           <>
             <Modal.Header closeButton>
@@ -295,62 +296,66 @@ const RegistrationsPanel = ({ courseId = null, openId = null, onChanged }) => {
               <p className="text-muted small mb-3">
                 Submitted {fmtDate(selected.created_at)} for <strong>{selected.course?.title}</strong>
               </p>
-              <Row>
-                <Col md={6}>
-                  <h6 className="fw-bold mb-2">Student</h6>
-                  <Table size="sm" borderless className="mb-3">
-                    <tbody>
-                      <InfoRow label="Full name">{selected.student_name}</InfoRow>
-                      <InfoRow label="Email"><a href={`mailto:${selected.email}`}>{selected.email}</a></InfoRow>
-                      <InfoRow label="Age / Class">{selected.age_class}</InfoRow>
-                      <InfoRow label="School">{selected.school_name}</InfoRow>
-                      <InfoRow label="Class slot">{selected.class_slot}</InfoRow>
-                    </tbody>
-                  </Table>
-                  <h6 className="fw-bold mb-2">Parent / Guardian</h6>
-                  <Table size="sm" borderless className="mb-3">
-                    <tbody>
-                      <InfoRow label="Name">{selected.guardian_name}</InfoRow>
-                      <InfoRow label="Contact (WhatsApp)">
-                        <a href={`tel:${selected.contact_number}`}>{selected.contact_number}</a>{" "}
-                        <a href={`https://wa.me/88${selected.contact_number.replace(/\D/g, "").replace(/^88/, "")}`} target="_blank" rel="noopener noreferrer" className="small">WhatsApp</a>
-                      </InfoRow>
-                      <InfoRow label="Alternative">{selected.alt_contact_number}</InfoRow>
-                    </tbody>
-                  </Table>
+              <Row className="g-3">
+                <Col lg={4} md={6}>
+                  <div className="reg-section">
+                    <div className="reg-section-title">Student</div>
+                    <InfoRow label="Full name">{selected.student_name}</InfoRow>
+                    <InfoRow label="Email"><a href={`mailto:${selected.email}`}>{selected.email}</a></InfoRow>
+                    <InfoRow label="Age / Class">{selected.age_class}</InfoRow>
+                    <InfoRow label="School">{selected.school_name}</InfoRow>
+                    <InfoRow label="Class slot">{selected.class_slot}</InfoRow>
+                  </div>
                 </Col>
-                <Col md={6}>
-                  <h6 className="fw-bold mb-2">Payment</h6>
-                  <Table size="sm" borderless className="mb-3">
-                    <tbody>
-                      <InfoRow label="Method">{selected.payment_method_label}</InfoRow>
-                      <InfoRow label="Paid from">{selected.payer_account}</InfoRow>
-                      <InfoRow label="Transaction ID"><code>{selected.transaction_id}</code></InfoRow>
-                      <InfoRow label="Amount">{fmtMoney(selected.amount)}</InfoRow>
-                    </tbody>
-                  </Table>
-                  <h6 className="fw-bold mb-2">Review</h6>
-                  <Table size="sm" borderless className="mb-3">
-                    <tbody>
-                      <InfoRow label="Reviewed">{selected.reviewed_at ? `${fmtDate(selected.reviewed_at)}${selected.reviewer?.name ? ` by ${selected.reviewer.name}` : ""}` : null}</InfoRow>
-                      <InfoRow label="Student record">
-                        {selected.student_id ? (
-                          <Button variant="link" className="p-0" onClick={() => navigate(`/students/${selected.student_id}`)}>
-                            {selected.student?.name || `#${selected.student_id}`}
-                          </Button>
-                        ) : null}
-                      </InfoRow>
-                    </tbody>
-                  </Table>
-                  <Form.Group>
-                    <Form.Label className="small fw-semibold">Admin note</Form.Label>
-                    <Form.Control as="textarea" rows={2} value={note} onChange={(e) => setNote(e.target.value)}
-                      placeholder="e.g. Payment verified in bKash statement" disabled={selected.status === "approved"} />
-                  </Form.Group>
+                <Col lg={4} md={6}>
+                  <div className="reg-section">
+                    <div className="reg-section-title">Parent / Guardian</div>
+                    <InfoRow label="Name">{selected.guardian_name}</InfoRow>
+                    <InfoRow label="Contact">
+                      <a href={`tel:${selected.contact_number}`}>{selected.contact_number}</a>
+                      <a href={`https://wa.me/88${selected.contact_number.replace(/\D/g, "").replace(/^88/, "")}`} target="_blank" rel="noopener noreferrer" className="small ms-2">WhatsApp</a>
+                    </InfoRow>
+                    <InfoRow label="Alternative">
+                      {selected.alt_contact_number ? <a href={`tel:${selected.alt_contact_number}`}>{selected.alt_contact_number}</a> : null}
+                    </InfoRow>
+                  </div>
+                </Col>
+                <Col lg={4} md={12}>
+                  <div className="reg-section">
+                    <div className="reg-section-title">Payment</div>
+                    <InfoRow label="Method">{selected.payment_method_label}</InfoRow>
+                    <InfoRow label="Paid from">{selected.payer_account}</InfoRow>
+                    <InfoRow label="Transaction ID"><code>{selected.transaction_id}</code></InfoRow>
+                    <InfoRow label="Amount"><span className="reg-amount">{fmtMoney(selected.amount)}</span></InfoRow>
+                  </div>
+                </Col>
+                <Col md={12}>
+                  <div className="reg-section">
+                    <div className="reg-section-title">Review</div>
+                    <Row className="g-3">
+                      <Col md={6}>
+                        <InfoRow label="Reviewed">{selected.reviewed_at ? `${fmtDate(selected.reviewed_at)}${selected.reviewer?.name ? ` by ${selected.reviewer.name}` : ""}` : null}</InfoRow>
+                        <InfoRow label="Student record">
+                          {selected.student_id ? (
+                            <Button variant="link" className="p-0" onClick={() => navigate(`/students/${selected.student_id}`)}>
+                              {selected.student?.name || `#${selected.student_id}`}
+                            </Button>
+                          ) : null}
+                        </InfoRow>
+                      </Col>
+                      <Col md={6}>
+                        <Form.Group>
+                          <Form.Label className="small fw-semibold">Admin note</Form.Label>
+                          <Form.Control as="textarea" rows={2} value={note} onChange={(e) => setNote(e.target.value)}
+                            placeholder="e.g. Payment verified in bKash statement" disabled={selected.status === "approved"} />
+                        </Form.Group>
+                      </Col>
+                    </Row>
+                  </div>
                 </Col>
               </Row>
               {selected.status === "pending" && (
-                <p className="small text-muted mb-0 mt-2">
+                <p className="small text-muted mb-0 mt-3">
                   Check that <strong>{fmtMoney(selected.amount)}</strong> with TrxID <code>{selected.transaction_id}</code> arrived before approving.
                   Approving creates the student and enrolls them in this course.
                 </p>

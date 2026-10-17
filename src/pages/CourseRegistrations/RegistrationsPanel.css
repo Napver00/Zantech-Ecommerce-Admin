@@ -1,0 +1,73 @@
+/* Registration details modal.
+   Some page stylesheets cap every .modal-content at 500px globally, so this
+   modal sets its own width with a more specific selector. */
+.registration-modal {
+  max-width: min(1140px, 96vw);
+}
+
+/* The fixed sidebar sits at z-index 1100, above Bootstrap's modal layer;
+   a wide modal reaches under it, so lift this modal and its backdrop. */
+.modal.registration-modal-layer {
+  z-index: 1210;
+}
+
+.modal-backdrop.registration-modal-layer {
+  z-index: 1200;
+}
+
+.registration-modal .modal-content {
+  max-width: none;
+  width: 100%;
+}
+
+.reg-section {
+  height: 100%;
+  padding: 1rem 1.25rem;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+}
+
+.reg-section-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bs-primary, #0d6efd);
+  margin-bottom: 0.5rem;
+}
+
+.reg-info-row {
+  display: flex;
+  gap: 1rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.reg-info-row:last-child {
+  border-bottom: 0;
+}
+
+.reg-info-label {
+  flex: 0 0 120px;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #6c757d;
+  padding-top: 0.1rem;
+}
+
+.reg-info-value {
+  flex: 1;
+  min-width: 0;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.reg-info-value code {
+  font-size: 0.95em;
+}
+
+.reg-amount {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
