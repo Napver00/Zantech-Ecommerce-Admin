@@ -9,6 +9,7 @@ import AsyncSelect from "react-select/async";
 import JoditEditor from "jodit-react";
 import usePageTitle from "../../hooks/usePageTitle";
 import { CurriculumEditor, CourseDetailFields } from "./CourseDetailFields";
+import { RegistrationsCard } from "../CourseRegistrations/RegistrationsPanel";
 import {
   emptyCurriculum,
   emptyDetails,
@@ -765,6 +766,9 @@ const ViewCourse = () => {
           </button>
         </div>
       </form>
+
+      {/* ── Registrations from the website ── */}
+      {courseId && <RegistrationsCard courseId={courseId} />}
 
       {/* ── Enrolled Students ── */}
       <Card className="border mb-4">

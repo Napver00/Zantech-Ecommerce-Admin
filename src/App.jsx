@@ -48,6 +48,8 @@ import ViewPost from "./pages/Blog/ViewPost";
 import FAQ from "./pages/FAQ";
 import Documents from "./pages/Documents";
 import CourseInvoices from "./pages/CourseInvoices";
+import CourseRegistrations from "./pages/CourseRegistrations";
+import PaymentMethods from "./pages/PaymentMethods";
 import AddCourseInvoice from "./pages/CourseInvoices/AddCourseInvoice";
 import ViewCourseInvoice from "./pages/CourseInvoices/ViewCourseInvoice";
 import Students from "./pages/Students";
@@ -178,6 +180,8 @@ const App = () => {
                         <Route path="/faq" element={<FAQ />} />
                         <Route path="/students" element={<Students />} />
                         <Route path="/students/:id" element={<ViewStudent />} />
+                        <Route path="/course-registrations" element={<CourseRegistrations />} />
+                        <Route path="/payment-methods" element={<PaymentMethods />} />
                         <Route path="/course-invoices" element={<CourseInvoices />} />
                         <Route
                           path="/course-invoices/add"

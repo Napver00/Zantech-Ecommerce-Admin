@@ -1,7 +1,9 @@
-import React, { useEffect, useState } from "react";
-import { Bell, User, LogOut, Menu, UserCircle, Search } from "lucide-react";
+import React, { useEffect, useState, useCallback } from "react";
+import { Bell, User, LogOut, Menu, UserCircle, Search, GraduationCap } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Dropdown } from "react-bootstrap";
+import { formatDistanceToNow } from "date-fns";
+import axiosInstance from "../../config/axios";
 import logo from "../../assets/zantechLogo.png";
 import "./Header.css";
 
@@ -9,6 +11,7 @@ const Header = ({ onToggleSidebar, onOpenSearch }) => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [notifications, setNotifications] = useState([]);
+  const [unseenCount, setUnseenCount] = useState(0);
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
@@ -16,6 +19,44 @@ const Header = ({ onToggleSidebar, onOpenSearch }) => {
       setUser(JSON.parse(userData));
     }
   }, []);
+
+  // New course registrations from the website (polled; refreshed when one is reviewed)
+  const fetchNotifications = useCallback(async () => {
+    if (!localStorage.getItem("token")) return;
+    try {
+      const res = await axiosInstance.get("/course-registrations/notifications");
+      const d = res.data.data || {};
+      setUnseenCount(d.unseen_count || 0);
+      setNotifications(
+        (d.items || []).map((r) => ({
+          id: r.id,
+          message: `New registration: ${r.student_name} — ${r.course?.title || "Course"}`,
+          time: formatDistanceToNow(new Date(r.created_at), { addSuffix: true }),
+        }))
+      );
+    } catch {
+      // keep the last known state; the next poll retries
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchNotifications();
+    const id = setInterval(fetchNotifications, 60000);
+    window.addEventListener("registrations:changed", fetchNotifications);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("registrations:changed", fetchNotifications);
+    };
+  }, [fetchNotifications]);
+
+  const markAllRead = async () => {
+    try {
+      await axiosInstance.post("/course-registrations/mark-seen");
+      fetchNotifications();
+    } catch {
+      // ignore
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem("user");
@@ -63,23 +104,29 @@ const Header = ({ onToggleSidebar, onOpenSearch }) => {
           <Dropdown.Toggle as={CustomToggle}>
             <div className="action-button">
               <Bell size={20} />
-              {notifications.length > 0 && (
+              {unseenCount > 0 && (
                 <span className="notification-badge">
-                  {notifications.length}
+                  {unseenCount > 99 ? "99+" : unseenCount}
                 </span>
               )}
             </div>
           </Dropdown.Toggle>
 
           <Dropdown.Menu className="mt-2" style={{ minWidth: "300px" }}>
-            <div className="px-3 py-2 border-bottom border-secondary border-opacity-10">
+            <div className="px-3 py-2 border-bottom border-secondary border-opacity-10 d-flex justify-content-between align-items-center gap-2">
               <h6 className="mb-0 fw-semibold">Notifications</h6>
+              {unseenCount > 0 && (
+                <button type="button" className="btn btn-link btn-sm p-0 text-decoration-none" onClick={markAllRead}>
+                  Mark all read
+                </button>
+              )}
             </div>
             {notifications.length > 0 ? (
-              notifications.map((notification, index) => (
-                <Dropdown.Item key={index}>
+              notifications.map((notification) => (
+                <Dropdown.Item key={notification.id} as={Link} to={`/course-registrations?id=${notification.id}`}>
                   <div className="d-flex align-items-center gap-2">
-                    <div className="flex-grow-1">
+                    <GraduationCap size={18} className="text-primary flex-shrink-0" />
+                    <div className="flex-grow-1" style={{ whiteSpace: "normal" }}>
                       <p className="mb-0 small text-white">
                         {notification.message}
                       </p>
@@ -94,6 +141,10 @@ const Header = ({ onToggleSidebar, onOpenSearch }) => {
                 <p className="mb-0 text-muted small">No new notifications</p>
               </div>
             )}
+            <Dropdown.Divider className="my-1" />
+            <Dropdown.Item as={Link} to="/course-registrations" className="text-center small">
+              View all registrations
+            </Dropdown.Item>
           </Dropdown.Menu>
         </Dropdown>
 

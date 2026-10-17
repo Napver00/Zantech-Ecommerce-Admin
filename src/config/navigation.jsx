@@ -101,9 +101,11 @@ export const NAV_SECTIONS = [
         badgeText: "NEW",
         subItems: [
           { path: "/landing?tab=courses", label: "Manage Courses" },
+          { path: "/course-registrations", label: "Registrations" },
           { path: "/students", label: "Students" },
           { path: "/course-invoices", label: "Course Invoices" },
           { path: "/course-invoices/add", label: "New Invoice" },
+          { path: "/payment-methods", label: "Payment Methods" },
         ],
       },
     ],

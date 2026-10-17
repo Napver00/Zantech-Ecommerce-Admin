@@ -106,6 +106,7 @@ export const emptyDetails = () => ({
   skills: [""],
   projects: [{ title: "", description: "" }],
   faqs: [{ question: "", answer: "" }],
+  class_slots: [""],
 });
 
 export const detailsFromCourse = (d) => ({
@@ -124,6 +125,7 @@ export const detailsFromCourse = (d) => ({
   faqs: d.faqs?.length
     ? d.faqs.map((f) => ({ question: f.question || "", answer: f.answer || "" }))
     : [{ question: "", answer: "" }],
+  class_slots: d.class_slots?.length ? d.class_slots : [""],
 });
 
 // Empty values are sent as "" so clearing a field on edit saves it as empty
@@ -148,4 +150,6 @@ export const appendDetails = (fd, details) => {
     fd.append(`faqs[${i}][question]`, f.question);
     if (f.answer) fd.append(`faqs[${i}][answer]`, f.answer);
   });
+  appendList("class_slots", details.class_slots.map((s) => s.trim()).filter(Boolean),
+    (s) => fd.append("class_slots[]", s));
 };

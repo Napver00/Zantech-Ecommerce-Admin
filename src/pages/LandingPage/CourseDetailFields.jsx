@@ -272,6 +272,20 @@ export const CourseDetailFields = ({ details, setDetails }) => {
         </Card.Body>
       </Card>
 
+      {/* ── Registration form ── */}
+      <Card className="border mb-4">
+        <Card.Header className="bg-light"><h5 className="mb-0">Registration Form — Class Slots</h5></Card.Header>
+        <Card.Body>
+          <StringListEditor
+            label='"Preferred Class Slot" options'
+            help="Parents pick one of these on the website registration form. Leave empty if this course has no slot choice."
+            items={details.class_slots}
+            onChange={(v) => set("class_slots", v)}
+            placeholder="e.g. Slot A — Friday 4:00–5:30 PM & Saturday 4:00–5:30 PM"
+          />
+        </Card.Body>
+      </Card>
+
       {/* ── Includes + Skills ── */}
       <Card className="border mb-4">
         <Card.Header className="bg-light"><h5 className="mb-0">Includes & Skills</h5></Card.Header>

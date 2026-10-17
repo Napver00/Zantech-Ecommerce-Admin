@@ -300,6 +300,7 @@ const AddCourseInvoice = () => {
                   <Form.Label>Course <span className="text-danger">*</span></Form.Label>
                   <Select
                     options={courseOptions}
+                    value={courseOptions.find((o) => o.value === selectedCourse?.id) || null}
                     isLoading={coursesLoading}
                     onChange={handleCourseChange}
                     placeholder="Select a course..."
@@ -399,6 +400,7 @@ const AddCourseInvoice = () => {
                       <Select
                         key={enrolledStudents.length}
                         options={studentOptions}
+                        value={studentOptions.find((o) => o.value === studentId) || null}
                         isLoading={enrolledLoading}
                         onChange={handleStudentSelect}
                         placeholder={enrolledStudents.length ? "Select an enrolled student..." : "No students enrolled in this course yet"}
