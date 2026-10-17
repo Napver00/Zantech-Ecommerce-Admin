@@ -8,6 +8,15 @@ import { Row, Col, Card, Form, Button, Badge, Spinner } from "react-bootstrap";
 import AsyncSelect from "react-select/async";
 import JoditEditor from "jodit-react";
 import usePageTitle from "../../hooks/usePageTitle";
+import { CurriculumEditor, CourseDetailFields } from "./CourseDetailFields";
+import {
+  emptyCurriculum,
+  emptyDetails,
+  curriculumsFromCourse,
+  detailsFromCourse,
+  appendCurriculums,
+  appendDetails,
+} from "./courseDetailUtils";
 
 const studentSelectMenuProps = {
   menuPortalTarget: typeof document !== "undefined" ? document.body : null,
@@ -23,7 +32,6 @@ const COURSE_TYPES = [
   { value: "hybrid", label: "Hybrid" },
 ];
 
-const emptyCurriculum = () => ({ title: "", description: "" });
 const emptySchedule = () => ({ course_type: "online_live", start_datetime: "" });
 const emptyMentor = () => ({
   name: "", description: "", experience: "",
@@ -63,6 +71,7 @@ const ViewCourse = () => {
       : null;
 
   const [curriculums, setCurriculums] = useState([emptyCurriculum()]);
+  const [details, setDetails] = useState(emptyDetails());
   const [schedules, setSchedules] = useState([emptySchedule()]);
   const [mentors, setMentors] = useState([emptyMentor()]);
 
@@ -177,16 +186,8 @@ const ViewCourse = () => {
           thumbnailUrl: d.thumbnail || null,
         });
 
-        setCurriculums(
-          d.curriculums?.length
-            ? [...d.curriculums]
-                .sort((a, b) => (a.module_no ?? 0) - (b.module_no ?? 0))
-                .map((c) => ({
-                  title: c.title || "",
-                  description: c.description || "",
-                }))
-            : [emptyCurriculum()]
-        );
+        setCurriculums(curriculumsFromCourse(d));
+        setDetails(detailsFromCourse(d));
 
         setSchedules(
           d.schedules?.length
@@ -233,12 +234,6 @@ const ViewCourse = () => {
     if (!file) return;
     setForm((p) => ({ ...p, thumbnail: file, thumbnailPreview: URL.createObjectURL(file) }));
   };
-
-  // ── Curriculum ────────────────────────────────────────────────────────────────
-  const setCurriculum = (i, field, value) =>
-    setCurriculums((p) => p.map((c, idx) => idx === i ? { ...c, [field]: value } : c));
-  const addCurriculum = () => setCurriculums((p) => [...p, emptyCurriculum()]);
-  const removeCurriculum = (i) => setCurriculums((p) => p.filter((_, idx) => idx !== i));
 
   // ── Schedule ──────────────────────────────────────────────────────────────────
   const setSchedule = (i, field, value) =>
@@ -296,13 +291,9 @@ const ViewCourse = () => {
     const tagList = form.tags.split(",").map((t) => t.trim()).filter(Boolean);
     tagList.forEach((tag) => fd.append("tags[]", tag));
 
-    // Curriculums — only filled rows; module_no is auto-assigned by order
-    const filledCurriculums = curriculums.filter((c) => c.title.trim());
-    filledCurriculums.forEach((c, i) => {
-      fd.append(`curriculums[${i}][module_no]`, i + 1);
-      fd.append(`curriculums[${i}][title]`, c.title);
-      if (c.description) fd.append(`curriculums[${i}][description]`, c.description);
-    });
+    // Curriculums (with lessons) + course page sections
+    appendCurriculums(fd, curriculums);
+    appendDetails(fd, details);
 
     // Schedules — only rows with datetime
     const filledSchedules = schedules.filter((s) => s.start_datetime);
@@ -603,48 +594,15 @@ const ViewCourse = () => {
         </Card>
 
         {/* ── Curriculum ── */}
-        <Card className="border mb-4">
-          <SectionHeader title="Curriculum" badge={curriculums.length} />
-          <Card.Body>
-            {curriculums.map((c, i) => (
-              <div key={i} className="border rounded p-3 mb-3">
-                <div className="d-flex justify-content-between align-items-center mb-2">
-                  <strong className="text-muted" style={{ fontSize: "0.85rem" }}>Module {i + 1}</strong>
-                  {curriculums.length > 1 && (
-                    <Button variant="outline-danger" size="sm" onClick={() => removeCurriculum(i)}>
-                      <FaTrash />
-                    </Button>
-                  )}
-                </div>
-                <Row>
-                  <Col md={12}>
-                    <Form.Group className="mb-2">
-                      <Form.Label>Title <span className="text-danger">*</span></Form.Label>
-                      <Form.Control
-                        value={c.title}
-                        onChange={(e) => setCurriculum(i, "title", e.target.value)}
-                        placeholder="Module title"
-                      />
-                    </Form.Group>
-                  </Col>
-                </Row>
-                <Form.Group>
-                  <Form.Label>Description</Form.Label>
-                  <Form.Control
-                    as="textarea"
-                    rows={2}
-                    value={c.description}
-                    onChange={(e) => setCurriculum(i, "description", e.target.value)}
-                    placeholder="What will students learn in this module?"
-                  />
-                </Form.Group>
-              </div>
-            ))}
-            <Button variant="outline-primary" size="sm" onClick={addCurriculum}>
-              <FaPlus className="me-1" /> Add Module
-            </Button>
-          </Card.Body>
-        </Card>
+        <CurriculumEditor
+          curriculums={curriculums}
+          setCurriculums={setCurriculums}
+          curriculumLink={details.curriculum_link}
+          onCurriculumLinkChange={(v) => setDetails((p) => ({ ...p, curriculum_link: v }))}
+        />
+
+        {/* ── Course page sections ── */}
+        <CourseDetailFields details={details} setDetails={setDetails} />
 
         {/* ── Schedules ── */}
         <Card className="border mb-4">

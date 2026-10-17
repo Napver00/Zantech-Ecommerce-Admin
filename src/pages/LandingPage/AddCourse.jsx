@@ -6,6 +6,8 @@ import axiosInstance from "../../config/axios";
 import { Row, Col, Card, Form, Button, Badge } from "react-bootstrap";
 import JoditEditor from "jodit-react";
 import usePageTitle from "../../hooks/usePageTitle";
+import { CurriculumEditor, CourseDetailFields } from "./CourseDetailFields";
+import { emptyCurriculum, emptyDetails, appendCurriculums, appendDetails } from "./courseDetailUtils";
 
 const COURSE_TYPES = [
   { value: "online_live", label: "Online Live" },
@@ -14,7 +16,6 @@ const COURSE_TYPES = [
   { value: "hybrid", label: "Hybrid" },
 ];
 
-const emptyCurriculum = () => ({ title: "", description: "" });
 const emptySchedule = () => ({ course_type: "online_live", start_datetime: "" });
 const emptyMentor = () => ({
   name: "",
@@ -55,6 +56,7 @@ const AddCourse = () => {
       : null;
 
   const [curriculums, setCurriculums] = useState([emptyCurriculum()]);
+  const [details, setDetails] = useState(emptyDetails());
   const [schedules, setSchedules] = useState([emptySchedule()]);
   const [mentors, setMentors] = useState([emptyMentor()]);
 
@@ -78,12 +80,6 @@ const AddCourse = () => {
       thumbnailPreview: URL.createObjectURL(file),
     }));
   };
-
-  // ─── Curriculum handlers ────────────────────────────────────────────────────
-  const setCurriculum = (i, field, value) =>
-    setCurriculums((p) => p.map((c, idx) => (idx === i ? { ...c, [field]: value } : c)));
-  const addCurriculum = () => setCurriculums((p) => [...p, emptyCurriculum()]);
-  const removeCurriculum = (i) => setCurriculums((p) => p.filter((_, idx) => idx !== i));
 
   // ─── Schedule handlers ──────────────────────────────────────────────────────
   const setSchedule = (i, field, value) =>
@@ -143,13 +139,9 @@ const AddCourse = () => {
       .filter(Boolean);
     tagList.forEach((tag) => fd.append("tags[]", tag));
 
-    // Curriculums — only include rows that have a title; module_no is auto-assigned by order
-    const filledCurriculums = curriculums.filter((c) => c.title.trim());
-    filledCurriculums.forEach((c, i) => {
-      fd.append(`curriculums[${i}][module_no]`, i + 1);
-      fd.append(`curriculums[${i}][title]`, c.title);
-      if (c.description) fd.append(`curriculums[${i}][description]`, c.description);
-    });
+    // Curriculums (with lessons) + course page sections
+    appendCurriculums(fd, curriculums);
+    appendDetails(fd, details);
 
     // Schedules — only include rows that have a start_datetime
     const filledSchedules = schedules.filter((s) => s.start_datetime);
@@ -409,52 +401,15 @@ const AddCourse = () => {
         </Card>
 
         {/* ── Curriculum ── */}
-        <Card className="border mb-4">
-          <SectionHeader title="Curriculum" badge={curriculums.length} />
-          <Card.Body>
-            {curriculums.map((c, i) => (
-              <div key={i} className="border rounded p-3 mb-3 position-relative">
-                <div className="d-flex justify-content-between align-items-center mb-2">
-                  <strong className="text-muted" style={{ fontSize: "0.85rem" }}>Module {i + 1}</strong>
-                  {curriculums.length > 1 && (
-                    <Button
-                      variant="outline-danger"
-                      size="sm"
-                      onClick={() => removeCurriculum(i)}
-                    >
-                      <FaTrash />
-                    </Button>
-                  )}
-                </div>
-                <Row>
-                  <Col md={12}>
-                    <Form.Group className="mb-2">
-                      <Form.Label>Title <span className="text-danger">*</span></Form.Label>
-                      <Form.Control
-                        value={c.title}
-                        onChange={(e) => setCurriculum(i, "title", e.target.value)}
-                        placeholder="Module title"
-                      />
-                    </Form.Group>
-                  </Col>
-                </Row>
-                <Form.Group>
-                  <Form.Label>Description</Form.Label>
-                  <Form.Control
-                    as="textarea"
-                    rows={2}
-                    value={c.description}
-                    onChange={(e) => setCurriculum(i, "description", e.target.value)}
-                    placeholder="What will students learn in this module?"
-                  />
-                </Form.Group>
-              </div>
-            ))}
-            <Button variant="outline-primary" size="sm" onClick={addCurriculum}>
-              <FaPlus className="me-1" /> Add Module
-            </Button>
-          </Card.Body>
-        </Card>
+        <CurriculumEditor
+          curriculums={curriculums}
+          setCurriculums={setCurriculums}
+          curriculumLink={details.curriculum_link}
+          onCurriculumLinkChange={(v) => setDetails((p) => ({ ...p, curriculum_link: v }))}
+        />
+
+        {/* ── Course page sections ── */}
+        <CourseDetailFields details={details} setDetails={setDetails} />
 
         {/* ── Schedules ── */}
         <Card className="border mb-4">
