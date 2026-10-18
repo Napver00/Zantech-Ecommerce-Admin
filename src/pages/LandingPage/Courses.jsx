@@ -9,8 +9,12 @@ import usePageTitle from "../../hooks/usePageTitle";
 
 const STATUS_VARIANT = { published: "success", draft: "secondary" };
 
-const Courses = () => {
-  usePageTitle("Courses");
+const fmtDate = (d) => (d ? new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "");
+
+const Courses = ({ kind = "course" }) => {
+  const isBootcamp = kind === "bootcamp";
+  const noun = isBootcamp ? "bootcamp" : "course";
+  usePageTitle(isBootcamp ? "Bootcamps" : "Courses");
   const navigate = useNavigate();
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,7 +34,7 @@ const Courses = () => {
   const fetchCourses = useCallback(async (title = "", pageNum = 1) => {
     setTableLoading(true);
     try {
-      const params = { page: pageNum, limit };
+      const params = { page: pageNum, limit, kind };
       if (title) params.title = title;
       const res = await axiosInstance.get("/courses", { params });
       if (!res.data.success) throw new Error(res.data.message);
@@ -53,7 +57,7 @@ const Courses = () => {
       setTableLoading(false);
       setIsSearching(false);
     }
-  }, [limit]);
+  }, [limit, kind]);
 
   useEffect(() => { fetchCourses(search, page); }, [page, limit]);
 
@@ -127,6 +131,27 @@ const Courses = () => {
     { key: "id", label: "ID" },
     { key: "title", label: "Title" },
     { key: "category", label: "Category", render: (row) => row.category || "—" },
+    ...(isBootcamp ? [
+      {
+        key: "start_date",
+        label: "Dates",
+        render: (row) => (
+          <span className="small">
+            {row.start_date ? `${fmtDate(row.start_date)}${row.end_date && row.end_date !== row.start_date ? ` – ${fmtDate(row.end_date)}` : ""}` : "—"}
+            {row.end_date && new Date(row.end_date) < new Date(new Date().toDateString()) && <Badge bg="secondary" className="ms-1">Ended</Badge>}
+          </span>
+        ),
+      },
+      {
+        key: "seats",
+        label: "Seats",
+        render: (row) => (
+          <span className={row.seats && row.seats_taken >= row.seats ? "text-danger fw-bold" : ""}>
+            {row.seats_taken ?? 0}{row.seats ? ` / ${row.seats}` : " registered"}
+          </span>
+        ),
+      },
+    ] : []),
     {
       key: "payment_type",
       label: "Type",
@@ -213,13 +238,13 @@ const Courses = () => {
         <Card.Body className="p-4">
           <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
             <div>
-              <h4 className="mb-1 fw-bold text-primary">Courses</h4>
+              <h4 className="mb-1 fw-bold text-primary">{isBootcamp ? "Bootcamps" : "Courses"}</h4>
               <p className="text-muted small mb-0">
-                {loading ? "Loading..." : `${pagination.total_rows} course${pagination.total_rows !== 1 ? "s" : ""} found`}
+                {loading ? "Loading..." : `${pagination.total_rows} ${noun}${pagination.total_rows !== 1 ? "s" : ""} found`}
               </p>
             </div>
-            <Button variant="primary" onClick={() => navigate("/landing/courses/add")}>
-              <FaPlus className="me-2" /> Add Course
+            <Button variant="primary" onClick={() => navigate(`/landing/courses/add${isBootcamp ? "?kind=bootcamp" : ""}`)}>
+              <FaPlus className="me-2" /> {isBootcamp ? "Add Bootcamp" : "Add Course"}
             </Button>
           </div>
 

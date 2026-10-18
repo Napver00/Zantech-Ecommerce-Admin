@@ -1,12 +1,12 @@
 import React, { useState, useRef, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { FaSave, FaArrowLeft, FaPlus, FaTrash } from "react-icons/fa";
 import axiosInstance from "../../config/axios";
 import { Row, Col, Card, Form, Button, Badge } from "react-bootstrap";
 import JoditEditor from "jodit-react";
 import usePageTitle from "../../hooks/usePageTitle";
-import { CurriculumEditor, CourseDetailFields } from "./CourseDetailFields";
+import { CurriculumEditor, CourseDetailFields, BootcampFields } from "./CourseDetailFields";
 import { emptyCurriculum, emptyDetails, appendCurriculums, appendDetails } from "./courseDetailUtils";
 
 const COURSE_TYPES = [
@@ -27,12 +27,20 @@ const emptyMentor = () => ({
 });
 
 const AddCourse = () => {
-  usePageTitle("Add New Course");
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialKind = searchParams.get("kind") === "bootcamp" ? "bootcamp" : "course";
+  usePageTitle(initialKind === "bootcamp" ? "Add New Bootcamp" : "Add New Course");
   const editorRef = useRef(null);
   const [loading, setLoading] = useState(false);
 
   const [form, setForm] = useState({
+    kind: initialKind,
+    start_date: "",
+    end_date: "",
+    registration_deadline: "",
+    venue: "",
+    seats: "",
     title: "",
     description: "",
     short_description: "",
@@ -51,6 +59,7 @@ const AddCourse = () => {
   });
 
   const isMonthly = form.payment_type === "monthly";
+  const isBootcamp = form.kind === "bootcamp";
   // Monthly fee = discount (real) price ÷ months; the admission/kit fee is separate
   const computedMonthlyFee =
     isMonthly && form.discount_price !== "" && Number(form.duration_months) > 0
@@ -113,6 +122,7 @@ const AddCourse = () => {
       if (form.duration_months === "" || Number(form.duration_months) <= 0)
         return toast.error("Duration (months) is required for monthly payment type");
     }
+    if (isBootcamp && !form.start_date) return toast.error("Start date is required for a bootcamp");
     if (form.has_admission && !(Number(form.admission_fee) > 0))
       return toast.error("Enter the admission / kit fee amount, or turn the fee off");
 
@@ -121,6 +131,11 @@ const AddCourse = () => {
 
     // Basic fields
     fd.append("title", form.title);
+    // Course vs bootcamp; bootcamp dates/venue/seats ("" clears them)
+    fd.append("kind", form.kind);
+    ["start_date", "end_date", "registration_deadline", "venue", "seats"].forEach((k) =>
+      fd.append(k, isBootcamp ? form[k] ?? "" : "")
+    );
     fd.append("description", form.description);
     if (form.short_description) fd.append("short_description", form.short_description);
     if (form.category) fd.append("category", form.category);
@@ -166,8 +181,8 @@ const AddCourse = () => {
       await axiosInstance.post("/courses", fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      toast.success("Course created successfully");
-      navigate("/landing?tab=courses");
+      toast.success(isBootcamp ? "Bootcamp created successfully" : "Course created successfully");
+      navigate(`/landing?tab=${isBootcamp ? "bootcamps" : "courses"}`);
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to create course");
     } finally {
@@ -188,8 +203,8 @@ const AddCourse = () => {
   return (
     <div className="add-blog-container">
       <div className="add-blog-header">
-        <h2>Add New Course</h2>
-        <p className="text-muted">Fill in all the details to create a new course</p>
+        <h2>{isBootcamp ? "Add New Bootcamp" : "Add New Course"}</h2>
+        <p className="text-muted">Fill in all the details to create a new {isBootcamp ? "bootcamp" : "course"}</p>
       </div>
 
       <form onSubmit={handleSubmit}>
@@ -198,6 +213,17 @@ const AddCourse = () => {
         <Card className="border mb-4">
           <SectionHeader title="Basic Information" />
           <Card.Body>
+            <Row>
+              <Col md={4}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Program type</Form.Label>
+                  <Form.Select name="kind" value={form.kind} onChange={handleChange}>
+                    <option value="course">Course</option>
+                    <option value="bootcamp">Bootcamp</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+            </Row>
             <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
@@ -418,8 +444,12 @@ const AddCourse = () => {
           </Card.Body>
         </Card>
 
+        {/* ── Bootcamp dates / venue / seats ── */}
+        {isBootcamp && <BootcampFields form={form} onChange={handleChange} />}
+
         {/* ── Curriculum ── */}
         <CurriculumEditor
+          title={isBootcamp ? "Agenda (day by day)" : "Curriculum"}
           curriculums={curriculums}
           setCurriculums={setCurriculums}
           curriculumLink={details.curriculum_link}
@@ -578,7 +608,7 @@ const AddCourse = () => {
           <button
             type="button"
             className="btn btn-light"
-            onClick={() => navigate("/landing?tab=courses")}
+            onClick={() => navigate(`/landing?tab=${isBootcamp ? "bootcamps" : "courses"}`)}
           >
             <FaArrowLeft className="me-2" /> Back to Courses
           </button>

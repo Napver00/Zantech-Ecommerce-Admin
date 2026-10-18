@@ -8,7 +8,7 @@ import { Row, Col, Card, Form, Button, Badge, Spinner } from "react-bootstrap";
 import AsyncSelect from "react-select/async";
 import JoditEditor from "jodit-react";
 import usePageTitle from "../../hooks/usePageTitle";
-import { CurriculumEditor, CourseDetailFields } from "./CourseDetailFields";
+import { CurriculumEditor, CourseDetailFields, BootcampFields } from "./CourseDetailFields";
 import { RegistrationsCard } from "../CourseRegistrations/RegistrationsPanel";
 import {
   emptyCurriculum,
@@ -57,6 +57,7 @@ const ViewCourse = () => {
   const [courseId, setCourseId] = useState(null);
 
   const [form, setForm] = useState({
+    kind: "course", start_date: "", end_date: "", registration_deadline: "", venue: "", seats: "",
     title: "", description: "", short_description: "",
     category: "", tags: "", price: "", discount_price: "",
     payment_type: "one_time", admission_fee: "", admission_fee_label: "", has_admission: false, duration_months: "",
@@ -66,6 +67,7 @@ const ViewCourse = () => {
   });
 
   const isMonthly = form.payment_type === "monthly";
+  const isBootcamp = form.kind === "bootcamp";
   // Monthly fee = discount (real) price ÷ months; the admission/kit fee is separate
   const computedMonthlyFee =
     isMonthly && form.discount_price !== "" && Number(form.duration_months) > 0
@@ -168,6 +170,12 @@ const ViewCourse = () => {
         const d = res.data.data;
         setCourseId(d.id);
         setForm({
+          kind: d.kind || "course",
+          start_date: d.start_date || "",
+          end_date: d.end_date || "",
+          registration_deadline: d.registration_deadline || "",
+          venue: d.venue || "",
+          seats: d.seats ?? "",
           title: d.title || "",
           description: d.description || "",
           short_description: d.short_description || "",
@@ -267,6 +275,7 @@ const ViewCourse = () => {
       if (form.duration_months === "" || Number(form.duration_months) <= 0)
         return toast.error("Duration (months) is required for monthly payment type");
     }
+    if (isBootcamp && !form.start_date) return toast.error("Start date is required for a bootcamp");
     if (form.has_admission && !(Number(form.admission_fee) > 0))
       return toast.error("Enter the admission / kit fee amount, or turn the fee off");
 
@@ -275,6 +284,11 @@ const ViewCourse = () => {
 
     // Basic fields
     fd.append("title", form.title);
+    // Course vs bootcamp; bootcamp dates/venue/seats ("" clears them)
+    fd.append("kind", form.kind);
+    ["start_date", "end_date", "registration_deadline", "venue", "seats"].forEach((k) =>
+      fd.append(k, isBootcamp ? form[k] ?? "" : "")
+    );
     if (form.description) fd.append("description", form.description);
     if (form.short_description) fd.append("short_description", form.short_description);
     if (form.category) fd.append("category", form.category);
@@ -335,8 +349,8 @@ const ViewCourse = () => {
   return (
     <div className="add-blog-container">
       <div className="add-blog-header">
-        <h2>Edit Course</h2>
-        <p className="text-muted">Update the details of this course</p>
+        <h2>{isBootcamp ? "Edit Bootcamp" : "Edit Course"}</h2>
+        <p className="text-muted">Update the details of this {isBootcamp ? "bootcamp" : "course"}</p>
       </div>
 
       <form onSubmit={handleSubmit}>
@@ -345,6 +359,17 @@ const ViewCourse = () => {
         <Card className="border mb-4">
           <SectionHeader title="Basic Information" />
           <Card.Body>
+            <Row>
+              <Col md={4}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Program type</Form.Label>
+                  <Form.Select name="kind" value={form.kind} onChange={handleChange}>
+                    <option value="course">Course</option>
+                    <option value="bootcamp">Bootcamp</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+            </Row>
             <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
@@ -615,8 +640,12 @@ const ViewCourse = () => {
           </Card.Body>
         </Card>
 
+        {/* ── Bootcamp dates / venue / seats ── */}
+        {isBootcamp && <BootcampFields form={form} onChange={handleChange} />}
+
         {/* ── Curriculum ── */}
         <CurriculumEditor
+          title={isBootcamp ? "Agenda (day by day)" : "Curriculum"}
           curriculums={curriculums}
           setCurriculums={setCurriculums}
           curriculumLink={details.curriculum_link}
@@ -771,7 +800,7 @@ const ViewCourse = () => {
           <button
             type="button"
             className="btn btn-light"
-            onClick={() => navigate("/landing?tab=courses")}
+            onClick={() => navigate(`/landing?tab=${isBootcamp ? "bootcamps" : "courses"}`)}
           >
             <FaArrowLeft className="me-2" /> Back to Courses
           </button>

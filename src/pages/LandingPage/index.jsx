@@ -1,7 +1,7 @@
 import React from "react";
 import { useSearchParams } from "react-router-dom";
 import { Tabs, Tab } from "react-bootstrap";
-import { FaProjectDiagram, FaGraduationCap, FaBuilding } from "react-icons/fa";
+import { FaProjectDiagram, FaGraduationCap, FaBuilding, FaCampground } from "react-icons/fa";
 import "./Landing.css";
 import usePageTitle from "../../hooks/usePageTitle";
 
@@ -53,6 +53,16 @@ const LandingPage = () => {
           }
         >
           <Courses />
+        </Tab>
+        <Tab
+          eventKey="bootcamps"
+          title={
+            <span className="landing-tab-title">
+              <FaCampground className="me-2" /> Bootcamps
+            </span>
+          }
+        >
+          <Courses kind="bootcamp" />
         </Tab>
         <Tab
           eventKey="company-info"

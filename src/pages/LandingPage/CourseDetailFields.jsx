@@ -67,7 +67,7 @@ const CurriculumImport = ({ onImport, hasExisting }) => {
   );
 };
 
-export const CurriculumEditor = ({ curriculums, setCurriculums, curriculumLink, onCurriculumLinkChange }) => {
+export const CurriculumEditor = ({ curriculums, setCurriculums, curriculumLink, onCurriculumLinkChange, title = "Curriculum" }) => {
   const setModule = (i, field, value) =>
     setCurriculums((p) => p.map((c, idx) => (idx === i ? { ...c, [field]: value } : c)));
   const removeModule = (i) => setCurriculums((p) => p.filter((_, idx) => idx !== i));
@@ -93,7 +93,7 @@ export const CurriculumEditor = ({ curriculums, setCurriculums, curriculumLink, 
   return (
     <Card className="border mb-4">
       <Card.Header className="bg-light d-flex align-items-center gap-2">
-        <h5 className="mb-0">Curriculum</h5>
+        <h5 className="mb-0">{title}</h5>
         <Badge bg="secondary" pill>{curriculums.length} modules</Badge>
         <Badge bg="secondary" pill>{lessonTotal} lessons</Badge>
       </Card.Header>
@@ -185,6 +185,55 @@ export const CurriculumEditor = ({ curriculums, setCurriculums, curriculumLink, 
     </Card>
   );
 };
+
+// ─── Bootcamp details (dates, venue, seats) ───────────────────────────────────
+
+export const BootcampFields = ({ form, onChange }) => (
+  <Card className="border mb-4">
+    <Card.Header className="bg-light"><h5 className="mb-0">Bootcamp Details</h5></Card.Header>
+    <Card.Body>
+      <Row>
+        <Col md={4}>
+          <Form.Group className="mb-3">
+            <Form.Label>Start date <span className="text-danger">*</span></Form.Label>
+            <Form.Control type="date" name="start_date" value={form.start_date} onChange={onChange} />
+          </Form.Group>
+        </Col>
+        <Col md={4}>
+          <Form.Group className="mb-3">
+            <Form.Label>End date</Form.Label>
+            <Form.Control type="date" name="end_date" value={form.end_date} onChange={onChange} min={form.start_date || undefined} />
+          </Form.Group>
+        </Col>
+        <Col md={4}>
+          <Form.Group className="mb-3">
+            <Form.Label>Registration closes</Form.Label>
+            <Form.Control type="date" name="registration_deadline" value={form.registration_deadline} onChange={onChange} />
+            <Form.Text className="text-muted">Leave empty to close on the last day.</Form.Text>
+          </Form.Group>
+        </Col>
+      </Row>
+      <Row>
+        <Col md={8}>
+          <Form.Group className="mb-3">
+            <Form.Label>Venue</Form.Label>
+            <Form.Control name="venue" value={form.venue} onChange={onChange} placeholder='e.g. ZAN Tech Lab, Dhanmondi — or "Online"' />
+          </Form.Group>
+        </Col>
+        <Col md={4}>
+          <Form.Group className="mb-3">
+            <Form.Label>Total seats</Form.Label>
+            <Form.Control type="number" min={1} name="seats" value={form.seats} onChange={onChange} placeholder="Unlimited" />
+            <Form.Text className="text-muted">Registration stops when seats are full.</Form.Text>
+          </Form.Group>
+        </Col>
+      </Row>
+      <Form.Text className="text-muted">
+        Use the class slots below for batches/timings, the agenda for the day-by-day plan, and the price fields for the bootcamp fee.
+      </Form.Text>
+    </Card.Body>
+  </Card>
+);
 
 // ─── Course page details ──────────────────────────────────────────────────────
 
