@@ -19,10 +19,17 @@ const CourseInvoiceDocument = ({ invoice }) => {
   const paid = parseFloat(invoice.paid_amount || 0);
   const due = parseFloat(invoice.due_amount ?? Math.max(amount - discount - paid, 0));
 
+  const admissionLabel = invoice.course?.admission_fee_label || "Admission Fee";
   const lineItemLabel =
     invoice.payment_for === "monthly"
       ? `${courseName} — Month ${invoice.month_number} Installment`
-      : `${courseName} — Full Course Fee`;
+      : invoice.payment_for === "admission"
+        ? `${courseName} — ${admissionLabel}`
+        : `${courseName} — Full Course Fee`;
+  // Itemised invoices (first payment + kit fee) list each part on its own row
+  const lineItems = Array.isArray(invoice.items) && invoice.items.length
+    ? invoice.items.map((i) => ({ label: `${courseName} — ${i.label}`, amount: parseFloat(i.amount || 0) }))
+    : [{ label: lineItemLabel, amount }];
 
   return `
     <!DOCTYPE html>
@@ -127,7 +134,7 @@ const CourseInvoiceDocument = ({ invoice }) => {
           <div class="shipping-to">
             <strong>Course</strong>
             <span>${courseName}</span>
-            <span>${invoice.payment_for === "monthly" ? `Monthly Plan — Month ${invoice.month_number}` : "One-time / Full Payment"}</span>
+            <span>${invoice.payment_for === "monthly" ? `Monthly Plan — Month ${invoice.month_number}` : invoice.payment_for === "admission" ? `${admissionLabel} (one-time)` : invoice.payment_for === "enrollment" ? "First Payment (Enrollment)" : "One-time / Full Payment"}</span>
             ${invoice.payment_method ? `<span>Payment Method: ${invoice.payment_method}</span>` : ""}
             ${invoice.trx_id ? `<span>Transaction ID: ${invoice.trx_id}</span>` : ""}
           </div>
@@ -142,10 +149,11 @@ const CourseInvoiceDocument = ({ invoice }) => {
             </tr>
           </thead>
           <tbody>
+            ${lineItems.map((i) => `
             <tr>
-              <td>${lineItemLabel}</td>
-              <td class="text-right">৳${amount.toLocaleString()}</td>
-            </tr>
+              <td>${i.label}</td>
+              <td class="text-right">৳${i.amount.toLocaleString()}</td>
+            </tr>`).join("")}
           </tbody>
         </table>
 

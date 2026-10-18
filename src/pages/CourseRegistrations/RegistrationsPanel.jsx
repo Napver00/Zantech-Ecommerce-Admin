@@ -157,8 +157,21 @@ const RegistrationsPanel = ({ courseId = null, openId = null, onChanged }) => {
     }
   };
 
-  const createInvoice = (r) =>
-    navigate(`/course-invoices/add?course_id=${r.course_id}&student_id=${r.student_id}`);
+  // Invoice for the first payment (+ kit/admission fee), marked with what was paid at registration
+  const createInvoice = (r) => {
+    const label = (r.payment_method_label || "").toLowerCase();
+    const method = ["bkash", "nagad", "bank"].find((m) => label.includes(m)) || (label ? "other" : "");
+    const params = new URLSearchParams({
+      course_id: r.course_id,
+      student_id: r.student_id,
+      payment_for: "enrollment",
+      ...(r.amount ? { paid: r.amount } : {}),
+      ...(method ? { method } : {}),
+      ...(r.transaction_id ? { trx: r.transaction_id } : {}),
+      note: `Paid at website registration REG-${String(r.id).padStart(5, "0")}${r.payer_account ? ` from ${r.payer_account}` : ""}.`,
+    });
+    navigate(`/course-invoices/add?${params.toString()}`);
+  };
 
   const headers = [
     {

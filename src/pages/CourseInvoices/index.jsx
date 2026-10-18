@@ -153,8 +153,8 @@ const CourseInvoices = () => {
       key: "payment_for",
       label: "For",
       render: (row) => (
-        <Badge bg={row.payment_for === "monthly" ? "info" : "secondary"}>
-          {row.payment_for === "monthly" ? `Month ${row.month_number}` : "Full"}
+        <Badge bg={row.payment_for === "monthly" ? "info" : row.payment_for === "admission" ? "warning" : row.payment_for === "enrollment" ? "primary" : "secondary"}>
+          {row.payment_for === "monthly" ? `Month ${row.month_number}` : row.payment_for === "admission" ? "Admission / Kit" : row.payment_for === "enrollment" ? "First Payment" : "Full"}
         </Badge>
       ),
     },
@@ -274,6 +274,8 @@ const CourseInvoices = () => {
                     <option value="">All</option>
                     <option value="monthly">Monthly</option>
                     <option value="full">Full</option>
+                    <option value="admission">Admission / Kit</option>
+                    <option value="enrollment">First Payment + Kit</option>
                   </Form.Select>
                 </Col>
                 <Col md={2}>

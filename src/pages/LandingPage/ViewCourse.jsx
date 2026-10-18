@@ -59,16 +59,17 @@ const ViewCourse = () => {
   const [form, setForm] = useState({
     title: "", description: "", short_description: "",
     category: "", tags: "", price: "", discount_price: "",
-    payment_type: "one_time", admission_fee: "", duration_months: "",
+    payment_type: "one_time", admission_fee: "", admission_fee_label: "", has_admission: false, duration_months: "",
     serial_number: "", is_active: true,
     meta_title: "", meta_description: "",
     thumbnail: null, thumbnailPreview: null, thumbnailUrl: null,
   });
 
   const isMonthly = form.payment_type === "monthly";
+  // Monthly fee = discount (real) price ÷ months; the admission/kit fee is separate
   const computedMonthlyFee =
-    isMonthly && form.discount_price !== "" && form.admission_fee !== "" && Number(form.duration_months) > 0
-      ? Math.round(((Number(form.discount_price) - Number(form.admission_fee)) / Number(form.duration_months)) * 100) / 100
+    isMonthly && form.discount_price !== "" && Number(form.duration_months) > 0
+      ? Math.round((Number(form.discount_price) / Number(form.duration_months)) * 100) / 100
       : null;
 
   const [curriculums, setCurriculums] = useState([emptyCurriculum()]);
@@ -176,6 +177,8 @@ const ViewCourse = () => {
           discount_price: d.discount_price ?? "",
           payment_type: d.payment_type || "one_time",
           admission_fee: d.admission_fee ?? "",
+          admission_fee_label: d.admission_fee_label || "",
+          has_admission: Number(d.admission_fee) > 0,
           duration_months: d.duration_months ?? "",
           serial_number: d.serial_number ?? "",
           is_active: d.is_active ?? true,
@@ -261,10 +264,11 @@ const ViewCourse = () => {
     if (!form.title.trim()) return toast.error("Title is required");
     if (isMonthly) {
       if (form.discount_price === "") return toast.error("Discount price is required for monthly payment type");
-      if (form.admission_fee === "") return toast.error("Admission fee is required for monthly payment type");
       if (form.duration_months === "" || Number(form.duration_months) <= 0)
         return toast.error("Duration (months) is required for monthly payment type");
     }
+    if (form.has_admission && !(Number(form.admission_fee) > 0))
+      return toast.error("Enter the admission / kit fee amount, or turn the fee off");
 
     setSaving(true);
     const fd = new FormData();
@@ -277,10 +281,10 @@ const ViewCourse = () => {
     if (form.price !== "") fd.append("price", form.price);
     if (form.discount_price !== "") fd.append("discount_price", form.discount_price);
     fd.append("payment_type", form.payment_type);
-    if (isMonthly) {
-      fd.append("admission_fee", form.admission_fee);
-      fd.append("duration_months", form.duration_months);
-    }
+    if (isMonthly) fd.append("duration_months", form.duration_months);
+    // Optional one-time admission/kit fee, separate from the course price ("" clears it)
+    fd.append("admission_fee", form.has_admission ? form.admission_fee : "");
+    fd.append("admission_fee_label", form.has_admission ? form.admission_fee_label.trim() : "");
     if (form.serial_number !== "") fd.append("serial_number", form.serial_number);
     fd.append("is_active", form.is_active ? 1 : 0);
     if (form.meta_title) fd.append("meta_title", form.meta_title);
@@ -421,7 +425,7 @@ const ViewCourse = () => {
               </Col>
               <Col md={4}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Price (৳)</Form.Label>
+                  <Form.Label>Price (৳) <span className="text-muted fw-normal">— display price</span></Form.Label>
                   <Form.Control
                     type="number"
                     name="price"
@@ -431,12 +435,13 @@ const ViewCourse = () => {
                     min={0}
                     step="0.01"
                   />
+                  <Form.Text className="text-muted">Shown crossed out next to the real price to draw attention.</Form.Text>
                 </Form.Group>
               </Col>
               <Col md={4}>
                 <Form.Group className="mb-3">
                   <Form.Label>
-                    Discount Price (৳) {isMonthly && <span className="text-danger">*</span>}
+                    Discount Price (৳) <span className="text-muted fw-normal">— real price</span> {isMonthly && <span className="text-danger">*</span>}
                   </Form.Label>
                   <Form.Control
                     type="number"
@@ -448,9 +453,9 @@ const ViewCourse = () => {
                     step="0.01"
                     required={isMonthly}
                   />
-                  {isMonthly && (
-                    <Form.Text className="text-muted">Used as the base price for monthly fee calculation.</Form.Text>
-                  )}
+                  <Form.Text className="text-muted">
+                    {isMonthly ? "The full course price; split evenly across the months." : "What students actually pay. Leave empty to charge the Price."}
+                  </Form.Text>
                 </Form.Group>
               </Col>
             </Row>
@@ -459,43 +464,72 @@ const ViewCourse = () => {
               <Row>
                 <Col md={4}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Admission Fee (৳) <span className="text-danger">*</span></Form.Label>
-                    <Form.Control
-                      type="number"
-                      name="admission_fee"
-                      value={form.admission_fee}
-                      onChange={handleChange}
-                      placeholder="0.00"
-                      min={0}
-                      step="0.01"
-                      required
-                    />
-                  </Form.Group>
-                </Col>
-                <Col md={4}>
-                  <Form.Group className="mb-3">
                     <Form.Label>Duration (Months) <span className="text-danger">*</span></Form.Label>
                     <Form.Control
                       type="number"
                       name="duration_months"
                       value={form.duration_months}
                       onChange={handleChange}
-                      placeholder="e.g. 6"
+                      placeholder="e.g. 4"
                       min={1}
                       required
                     />
                   </Form.Group>
                 </Col>
-                <Col md={4} className="d-flex align-items-center">
+                <Col md={8} className="d-flex align-items-center">
                   <div className="mb-3">
                     <Form.Label className="d-block">Monthly Fee (preview)</Form.Label>
                     <Badge bg="success" style={{ fontSize: "0.95rem" }}>
                       {computedMonthlyFee != null ? `৳${computedMonthlyFee.toLocaleString()}/mo` : "—"}
                     </Badge>
+                    <Form.Text className="text-muted ms-2">= Discount Price ÷ Duration</Form.Text>
                   </div>
                 </Col>
               </Row>
             )}
+
+            <div className="border rounded p-3 mb-3">
+              <Form.Check
+                type="switch"
+                id="has-admission-switch"
+                label="This course has a one-time admission / kit fee"
+                checked={form.has_admission}
+                onChange={(e) => setForm((p) => ({ ...p, has_admission: e.target.checked }))}
+              />
+              <Form.Text className="text-muted d-block">
+                Charged once, on top of the course price (e.g. a robotics kit). It does not change the price or the monthly fee.
+              </Form.Text>
+              {form.has_admission && (
+                <Row className="mt-2">
+                  <Col md={6}>
+                    <Form.Group className="mb-2">
+                      <Form.Label>Fee name</Form.Label>
+                      <Form.Control
+                        name="admission_fee_label"
+                        value={form.admission_fee_label}
+                        onChange={handleChange}
+                        placeholder="e.g. Robotics Kit, Admission Fee"
+                        maxLength={100}
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={4}>
+                    <Form.Group className="mb-2">
+                      <Form.Label>Amount (৳) <span className="text-danger">*</span></Form.Label>
+                      <Form.Control
+                        type="number"
+                        name="admission_fee"
+                        value={form.admission_fee}
+                        onChange={handleChange}
+                        placeholder="0.00"
+                        min={0}
+                        step="0.01"
+                      />
+                    </Form.Group>
+                  </Col>
+                </Row>
+              )}
+            </div>
 
             <Row>
               <Col md={6} className="d-flex align-items-end">

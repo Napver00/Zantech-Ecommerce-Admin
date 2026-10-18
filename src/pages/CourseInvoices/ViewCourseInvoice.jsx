@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
-import { FaArrowLeft, FaEdit, FaBan, FaMoneyBillWave, FaSave, FaTimes, FaFilePdf } from "react-icons/fa";
+import { FaArrowLeft, FaEdit, FaBan, FaMoneyBillWave, FaSave, FaTimes, FaFilePdf, FaWhatsapp } from "react-icons/fa";
 import { Card, Row, Col, Button, Form, Badge, Modal, Spinner } from "react-bootstrap";
 import axiosInstance from "../../config/axios";
 import Loading from "../../components/Loading";
@@ -87,6 +87,36 @@ const ViewCourseInvoice = () => {
     }
   };
 
+  // Send the invoice summary to the parent on WhatsApp (attach the PDF from "Print / PDF" if needed)
+  const shareOnWhatsApp = () => {
+    if (!invoice) return;
+    const tk = (n) => `৳${Number(n || 0).toLocaleString()}`;
+    const course = invoice.course?.title || "";
+    const lines = Array.isArray(invoice.items) && invoice.items.length
+      ? invoice.items.map((i) => `• ${i.label}: ${tk(i.amount)}`)
+      : [`• ${invoice.payment_for === "monthly" ? `Month ${invoice.month_number} installment`
+          : invoice.payment_for === "admission" ? invoice.course?.admission_fee_label || "Admission fee"
+          : "Course fee"}: ${tk(invoice.amount)}`];
+    const text = [
+      "Dear Parent,",
+      "",
+      `Invoice ${invoice.invoice_no} — ZAN Tech`,
+      `Student: ${invoice.student_name || invoice.student?.name || ""}`,
+      `Course: ${course}`,
+      "",
+      ...lines,
+      ...(Number(invoice.discount) > 0 ? [`Discount: -${tk(invoice.discount)}`] : []),
+      `Total: ${tk(Number(invoice.amount) - Number(invoice.discount || 0))}`,
+      `Paid: ${tk(invoice.paid_amount)}`,
+      `Due: ${tk(invoice.due_amount)}`,
+      "",
+      "Thank you — ZAN Tech",
+    ].join("\n");
+    const phone = String(invoice.student_phone || invoice.student?.parent_phone || "").replace(/\D/g, "").replace(/^88/, "");
+    const url = `https://wa.me/${phone ? `88${phone}` : ""}?text=${encodeURIComponent(text)}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
   const handleGeneratePdf = () => {
     if (generatingPdf || !invoice) return;
     setGeneratingPdf(true);
@@ -157,6 +187,9 @@ const ViewCourseInvoice = () => {
             <div className="d-flex gap-2">
               <Button variant="outline-secondary" onClick={handleGeneratePdf} disabled={generatingPdf}>
                 <FaFilePdf className="me-2" /> {generatingPdf ? "Preparing..." : "Print / PDF"}
+              </Button>
+              <Button variant="outline-success" onClick={shareOnWhatsApp}>
+                <FaWhatsapp className="me-2" /> Share on WhatsApp
               </Button>
               {!isLocked && !isEditing && (
                 <Button variant="success" onClick={openPayModal}>
@@ -267,7 +300,13 @@ const ViewCourseInvoice = () => {
                       <div className="mb-3">
                         <label className="detail-label">Payment For</label>
                         <div className="detail-value">
-                          {invoice.payment_for === "monthly" ? `Month ${invoice.month_number}` : "Full Course Fee"}
+                          {invoice.payment_for === "monthly"
+                            ? `Month ${invoice.month_number}`
+                            : invoice.payment_for === "admission"
+                              ? invoice.course?.admission_fee_label || "Admission Fee"
+                              : invoice.payment_for === "enrollment"
+                                ? (invoice.items || []).map((i) => i.label).join(" + ") || "First Payment"
+                                : "Full Course Fee"}
                         </div>
                       </div>
                     </Col>

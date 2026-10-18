@@ -23,6 +23,12 @@ const AddCourseInvoice = () => {
   const [searchParams] = useSearchParams();
   const prefillCourseId = searchParams.get("course_id");
   const prefillStudentId = searchParams.get("student_id");
+  // From an approved website registration: what the parent already paid
+  const prefillPaymentFor = searchParams.get("payment_for");
+  const prefillPaid = searchParams.get("paid");
+  const prefillMethod = searchParams.get("method");
+  const prefillTrx = searchParams.get("trx");
+  const prefillNote = searchParams.get("note");
 
   const [courses, setCourses] = useState([]);
   const [coursesLoading, setCoursesLoading] = useState(true);
@@ -76,9 +82,20 @@ const AddCourseInvoice = () => {
     [courses]
   );
 
+  // First payment (month 1, or the full course fee) + the optional admission/kit fee
+  const enrollmentItems = (course) => {
+    if (!course) return [];
+    const monthly = course.payment_type === "monthly";
+    const items = [{ label: monthly ? "Month 1 installment" : "Course fee", amount: Number(monthly ? course.monthly_fee : course.discount_price ?? course.price) || 0 }];
+    if (Number(course.admission_fee) > 0) items.push({ label: course.admission_fee_label || "Admission fee", amount: Number(course.admission_fee) });
+    return items;
+  };
+
   const computeDefaultAmount = (course, payFor) => {
     if (!course) return "";
     if (payFor === "monthly") return course.monthly_fee ?? "";
+    if (payFor === "admission") return course.admission_fee ?? "";
+    if (payFor === "enrollment") return enrollmentItems(course).reduce((n, i) => n + i.amount, 0);
     return course.discount_price ?? course.price ?? "";
   };
 
@@ -121,7 +138,16 @@ const AddCourseInvoice = () => {
   useEffect(() => {
     if (!prefillCourseId || !courseOptions.length || selectedCourse) return;
     const opt = courseOptions.find((o) => String(o.value) === String(prefillCourseId));
-    if (opt) handleCourseChange(opt);
+    if (!opt) return;
+    handleCourseChange(opt);
+    if (["monthly", "full", "admission", "enrollment"].includes(prefillPaymentFor)) {
+      setPaymentFor(prefillPaymentFor);
+      setAmount(computeDefaultAmount(opt.course, prefillPaymentFor));
+    }
+    if (prefillPaid) setPaidAmount(prefillPaid);
+    if (prefillMethod) setPaymentMethod(prefillMethod);
+    if (prefillTrx) setTrxId(prefillTrx);
+    if (prefillNote) setNote(prefillNote);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prefillCourseId, courseOptions]);
 
@@ -317,8 +343,16 @@ const AddCourseInvoice = () => {
                     onChange={(e) => handlePaymentForChange(e.target.value)}
                     disabled={!selectedCourse}
                   >
+                    {selectedCourse && (
+                      <option value="enrollment">
+                        First Payment{Number(selectedCourse.admission_fee) > 0 ? ` + ${selectedCourse.admission_fee_label || "Admission Fee"}` : ""}
+                      </option>
+                    )}
                     {isMonthlyCourse && <option value="monthly">Monthly Installment</option>}
                     <option value="full">Full Course Fee</option>
+                    {Number(selectedCourse?.admission_fee) > 0 && (
+                      <option value="admission">{selectedCourse.admission_fee_label || "Admission Fee"} (one-time)</option>
+                    )}
                   </Form.Select>
                 </Form.Group>
               </Col>
@@ -516,9 +550,14 @@ const AddCourseInvoice = () => {
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     disabled={!selectedCourse}
+                    readOnly={paymentFor === "enrollment"}
                     required
                   />
-                  {selectedCourse && (
+                  {selectedCourse && paymentFor === "enrollment" ? (
+                    <Form.Text className="text-muted">
+                      {enrollmentItems(selectedCourse).map((i) => `${i.label} ৳${i.amount.toLocaleString()}`).join(" + ")}. Use Discount to reduce it.
+                    </Form.Text>
+                  ) : selectedCourse && (
                     <Form.Text className="text-muted">
                       Auto-filled from course price. Edit if needed.
                     </Form.Text>

@@ -139,23 +139,27 @@ const Courses = () => {
     {
       key: "price",
       label: "Price",
-      render: (row) =>
-        row.payment_type === "monthly" ? (
-          row.monthly_fee != null ? (
-            <span className="text-success fw-bold">৳{Number(row.monthly_fee).toLocaleString()}/mo</span>
-          ) : "—"
-        ) : row.price != null ? (
-          <span>
-            {row.discount_price ? (
-              <>
-                <span className="text-decoration-line-through text-muted me-1">৳{Number(row.price).toLocaleString()}</span>
-                <span className="text-success fw-bold">৳{Number(row.discount_price).toLocaleString()}</span>
-              </>
-            ) : (
-              <span>৳{Number(row.price).toLocaleString()}</span>
+      render: (row) => {
+        const real = row.discount_price ?? row.price;
+        const showStrike = row.price != null && row.discount_price != null && Number(row.discount_price) < Number(row.price);
+        return (
+          <div className="small">
+            {row.payment_type === "monthly" && row.monthly_fee != null && (
+              <div className="text-success fw-bold">৳{Number(row.monthly_fee).toLocaleString()}/mo</div>
             )}
-          </span>
-        ) : "—",
+            {real != null ? (
+              <div>
+                {showStrike && <span className="text-decoration-line-through text-muted me-1">৳{Number(row.price).toLocaleString()}</span>}
+                <span className={row.payment_type === "monthly" ? "" : "text-success fw-bold"}>৳{Number(real).toLocaleString()}</span>
+                {row.payment_type === "monthly" && row.duration_months ? <span className="text-muted"> / {row.duration_months} mo</span> : null}
+              </div>
+            ) : "—"}
+            {Number(row.admission_fee) > 0 && (
+              <div className="text-muted">+ ৳{Number(row.admission_fee).toLocaleString()} {row.admission_fee_label || "admission"}</div>
+            )}
+          </div>
+        );
+      },
     },
     { key: "serial_number", label: "Serial", render: (row) => row.serial_number ?? "—" },
     {
