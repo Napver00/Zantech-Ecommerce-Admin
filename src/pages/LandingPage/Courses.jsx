@@ -157,14 +157,6 @@ const Courses = () => {
           </span>
         ) : "—",
     },
-    {
-      key: "reg_link",
-      label: "Reg Link",
-      render: (row) =>
-        row.reg_link ? (
-          <a href={row.reg_link} target="_blank" rel="noreferrer" className="btn btn-sm btn-outline-secondary py-0">Link</a>
-        ) : "—",
-    },
     { key: "serial_number", label: "Serial", render: (row) => row.serial_number ?? "—" },
     {
       key: "status",

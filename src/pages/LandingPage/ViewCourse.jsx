@@ -60,7 +60,7 @@ const ViewCourse = () => {
     title: "", description: "", short_description: "",
     category: "", tags: "", price: "", discount_price: "",
     payment_type: "one_time", admission_fee: "", duration_months: "",
-    reg_link: "", serial_number: "", is_active: true,
+    serial_number: "", is_active: true,
     meta_title: "", meta_description: "",
     thumbnail: null, thumbnailPreview: null, thumbnailUrl: null,
   });
@@ -177,7 +177,6 @@ const ViewCourse = () => {
           payment_type: d.payment_type || "one_time",
           admission_fee: d.admission_fee ?? "",
           duration_months: d.duration_months ?? "",
-          reg_link: d.reg_link || "",
           serial_number: d.serial_number ?? "",
           is_active: d.is_active ?? true,
           meta_title: d.meta_title || "",
@@ -275,7 +274,6 @@ const ViewCourse = () => {
     if (form.description) fd.append("description", form.description);
     if (form.short_description) fd.append("short_description", form.short_description);
     if (form.category) fd.append("category", form.category);
-    if (form.reg_link) fd.append("reg_link", form.reg_link);
     if (form.price !== "") fd.append("price", form.price);
     if (form.discount_price !== "") fd.append("discount_price", form.discount_price);
     fd.append("payment_type", form.payment_type);
@@ -500,17 +498,6 @@ const ViewCourse = () => {
             )}
 
             <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Registration Link</Form.Label>
-                  <Form.Control
-                    name="reg_link"
-                    value={form.reg_link}
-                    onChange={handleChange}
-                    placeholder="https://..."
-                  />
-                </Form.Group>
-              </Col>
               <Col md={6} className="d-flex align-items-end">
                 <Form.Group className="mb-3">
                   <Form.Check

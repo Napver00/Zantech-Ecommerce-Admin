@@ -43,7 +43,6 @@ const AddCourse = () => {
     payment_type: "one_time",
     admission_fee: "",
     duration_months: "",
-    reg_link: "",
     serial_number: "",
     thumbnail: null,
     thumbnailPreview: null,
@@ -121,7 +120,6 @@ const AddCourse = () => {
     fd.append("description", form.description);
     if (form.short_description) fd.append("short_description", form.short_description);
     if (form.category) fd.append("category", form.category);
-    if (form.reg_link) fd.append("reg_link", form.reg_link);
     if (form.price !== "") fd.append("price", form.price);
     if (form.discount_price !== "") fd.append("discount_price", form.discount_price);
     fd.append("payment_type", form.payment_type);
@@ -351,20 +349,6 @@ const AddCourse = () => {
                 </Col>
               </Row>
             )}
-
-            <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Registration Link</Form.Label>
-                  <Form.Control
-                    name="reg_link"
-                    value={form.reg_link}
-                    onChange={handleChange}
-                    placeholder="https://..."
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
 
             <Row>
               <Col md={6}>
