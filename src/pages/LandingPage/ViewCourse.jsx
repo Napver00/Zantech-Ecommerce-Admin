@@ -57,7 +57,7 @@ const ViewCourse = () => {
   const [courseId, setCourseId] = useState(null);
 
   const [form, setForm] = useState({
-    kind: "course", start_date: "", end_date: "", registration_deadline: "", venue: "", seats: "",
+    kind: "course", start_date: "", end_date: "", registration_deadline: "", venue: "", seats: "", recap_link: "",
     title: "", description: "", short_description: "",
     category: "", tags: "", price: "", discount_price: "",
     payment_type: "one_time", admission_fee: "", admission_fee_label: "", has_admission: false, duration_months: "",
@@ -176,6 +176,7 @@ const ViewCourse = () => {
           registration_deadline: d.registration_deadline || "",
           venue: d.venue || "",
           seats: d.seats ?? "",
+          recap_link: d.recap_link || "",
           title: d.title || "",
           description: d.description || "",
           short_description: d.short_description || "",
@@ -286,7 +287,7 @@ const ViewCourse = () => {
     fd.append("title", form.title);
     // Course vs bootcamp; bootcamp dates/venue/seats ("" clears them)
     fd.append("kind", form.kind);
-    ["start_date", "end_date", "registration_deadline", "venue", "seats"].forEach((k) =>
+    ["start_date", "end_date", "registration_deadline", "venue", "seats", "recap_link"].forEach((k) =>
       fd.append(k, isBootcamp ? form[k] ?? "" : "")
     );
     if (form.description) fd.append("description", form.description);

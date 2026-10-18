@@ -228,6 +228,14 @@ export const BootcampFields = ({ form, onChange }) => (
           </Form.Group>
         </Col>
       </Row>
+      <Form.Group className="mb-3">
+        <Form.Label>Highlights post link <span className="text-muted fw-normal">(after the bootcamp ends)</span></Form.Label>
+        <Form.Control name="recap_link" value={form.recap_link} onChange={onChange}
+          placeholder="/workshop/young-innovators-boot-camp-session-1 — or paste the full link" />
+        <Form.Text className="text-muted">
+          Post the bootcamp photos/activities in Workshops, then paste that post's link here. Completed bootcamps show a "See Bootcamp Highlights" button.
+        </Form.Text>
+      </Form.Group>
       <Form.Text className="text-muted">
         Use the class slots below for batches/timings, the agenda for the day-by-day plan, and the price fields for the bootcamp fee.
       </Form.Text>

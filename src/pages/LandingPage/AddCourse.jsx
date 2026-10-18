@@ -41,6 +41,7 @@ const AddCourse = () => {
     registration_deadline: "",
     venue: "",
     seats: "",
+    recap_link: "",
     title: "",
     description: "",
     short_description: "",
@@ -133,7 +134,7 @@ const AddCourse = () => {
     fd.append("title", form.title);
     // Course vs bootcamp; bootcamp dates/venue/seats ("" clears them)
     fd.append("kind", form.kind);
-    ["start_date", "end_date", "registration_deadline", "venue", "seats"].forEach((k) =>
+    ["start_date", "end_date", "registration_deadline", "venue", "seats", "recap_link"].forEach((k) =>
       fd.append(k, isBootcamp ? form[k] ?? "" : "")
     );
     fd.append("description", form.description);
