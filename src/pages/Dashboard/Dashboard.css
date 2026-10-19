@@ -1,191 +1,186 @@
 .dashboard-container {
-    padding: 2rem;
-    background-color: var(--light-bg);
-    min-height: calc(100vh - 70px);
-    animation: fadeIn 0.5s ease-out;
+  animation: fadeIn 0.35s ease-out;
 }
 
-/* .dashboard-title removed - using global .landing-header */
-/* .dashboard-card removed - using global .modern-card */
+/* ── Welcome banner ── */
+.dash-hero {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+  padding: 1.5rem 1.75rem;
+  border-radius: 1rem;
+  background: var(--zt-navy);
+  color: #cbd5e1;
+  overflow: hidden;
+}
+.dash-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgb(255 255 255 / 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+.dash-hero::after {
+  content: "";
+  position: absolute;
+  right: -80px;
+  top: -120px;
+  width: 340px;
+  height: 340px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(0 240 255 / 0.18), transparent 65%);
+}
+.dash-hero > * { position: relative; z-index: 1; }
+.dash-eyebrow {
+  margin: 0 0 0.35rem;
+  font-family: var(--zt-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--zt-cyan);
+}
+.dash-hero h2 { color: #fff; margin: 0; font-size: 1.75rem; }
+.dash-hero-sub { margin: 0.4rem 0 0; font-size: 0.9rem; }
+.dash-hero-sub strong { color: #fff; }
 
-.dashboard-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
+.dash-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.dash-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 38px;
+  padding: 0 0.9rem;
+  border-radius: 0.6rem;
+  border: 1px solid rgb(255 255 255 / 0.14);
+  background: rgb(255 255 255 / 0.05);
+  color: #e2e8f0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+.dash-action:hover {
+  color: #fff;
+  border-color: rgb(0 240 255 / 0.5);
+  background: rgb(0 240 255 / 0.08);
+}
+.dash-action-primary {
+  background: var(--zt-cyan);
+  border-color: var(--zt-cyan);
+  color: var(--zt-navy);
+}
+.dash-action-primary:hover {
+  background: #fff;
+  border-color: #fff;
+  color: var(--zt-navy);
 }
 
-.dashboard-icon svg {
-    color: white;
+/* ── Stat cards ── */
+.stat-card {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 1rem 1.1rem;
+  background: var(--zt-surface);
+  border: 1px solid var(--zt-border);
+  border-radius: var(--zt-radius);
+  box-shadow: var(--zt-shadow);
+  position: relative;
+  overflow: hidden;
+}
+.stat-card::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--stat-color);
+}
+.stat-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 0.7rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 1.15rem;
+  color: var(--stat-color);
+  background: var(--stat-soft);
+}
+.stat-label {
+  margin: 0 0 0.25rem;
+  font-family: var(--zt-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--zt-muted);
+  line-height: 1;
+}
+.stat-value {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--zt-ink);
+  line-height: 1.15;
+  white-space: nowrap;
+}
+.stat-cyan { --stat-color: var(--zt-primary); --stat-soft: rgb(8 145 178 / 0.1); }
+.stat-green { --stat-color: var(--zt-green); --stat-soft: rgb(5 150 105 / 0.1); }
+.stat-navy { --stat-color: #334155; --stat-soft: rgb(51 65 85 / 0.08); }
+.stat-amber { --stat-color: var(--zt-amber); --stat-soft: rgb(217 119 6 / 0.12); }
+.stat-red { --stat-color: var(--zt-red); --stat-soft: rgb(237 38 38 / 0.1); }
+
+/* ── Panels ── */
+.modern-card .card-header {
+  background: var(--zt-surface);
+  border-bottom: 1px solid var(--zt-border);
+  padding: 1rem 1.25rem;
+}
+.modern-card .card-header h5 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--zt-ink);
+  margin: 0;
 }
 
-.dashboard-icon.total-orders {
-    background-color: #4e73df;
+.due-orders-table-container {
+  max-height: 320px;
+  overflow-y: auto;
+  position: relative;
 }
-
-.dashboard-icon.new-orders {
-    background-color: #1cc88a;
+.due-orders-table-container table { width: 100%; }
+.due-orders-table-container thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
-
-.dashboard-icon.revenue {
-    background-color: #36b9cc;
-}
-
-.dashboard-icon.today-orders {
-    background-color: #f6c23e;
-}
-
-.dashboard-icon.today-revenue {
-    background-color: #e74a3b;
-}
-
-.card-subtitle {
-    font-size: 0.875rem;
-    font-weight: 500;
-}
-
-.card-title {
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: #2c3e50;
-}
+.due-orders-table-container thead th { background-color: var(--zt-subtle); }
 
 .dashboard-loading {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 400px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
 }
 
-.loading-text {
-    color: #6c757d;
-    font-size: 1.1rem;
-    font-weight: 500;
+@media (max-width: 767.98px) {
+  .dash-hero { padding: 1.25rem; align-items: flex-start; }
+  .dash-hero h2 { font-size: 1.4rem; }
+  .dash-actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
+  .dash-action { justify-content: center; }
+  .stat-value { font-size: 1.15rem; }
 }
 
-.due-orders-table-container {
-    max-height: 220px;
-    /* Approximately 3 rows */
-    overflow-y: auto;
-    position: relative;
-}
-
-.due-orders-table-container table {
-    table-layout: fixed;
-    width: 100%;
-}
-
-.due-orders-table-container thead {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-}
-
-.due-orders-table-container thead th {
-    background-color: #f8f9fa;
-}
-
-.dashboard-container {
-    padding: 1.5rem;
-}
-
-.dashboard-title {
-    color: #2c3e50;
-    font-weight: 600;
-}
-
-.dashboard-card {
-    border: none;
-    border-radius: 10px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-    height: 100%;
-}
-
-.dashboard-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-.dashboard-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.25rem;
-}
-
-.dashboard-icon svg {
-    color: white;
-}
-
-.dashboard-icon.total-orders {
-    background-color: #4e73df;
-}
-
-.dashboard-icon.new-orders {
-    background-color: #1cc88a;
-}
-
-.dashboard-icon.revenue {
-    background-color: #36b9cc;
-}
-
-.dashboard-icon.today-orders {
-    background-color: #f6c23e;
-}
-
-.dashboard-icon.today-revenue {
-    background-color: #e74a3b;
-}
-
-.card-subtitle-small {
-    font-size: 0.8rem;
-    font-weight: 500;
-}
-
-.card-title-small {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: #2c3e50;
-}
-
-.due-orders-table-container {
-    max-height: 300px;
-    overflow-y: auto;
-    position: relative;
-}
-
-.due-orders-table-container table {
-    table-layout: fixed;
-    width: 100%;
-}
-
-.due-orders-table-container thead {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-}
-
-.due-orders-table-container thead th {
-    background-color: #f8f9fa;
-}
-
-.modern-card .card-header {
-    background-color: #f8fafc;
-    border-bottom: 1px solid #e2e8f0;
-    padding: 1rem 1.5rem;
-    border-top-left-radius: 12px;
-    border-top-right-radius: 12px;
-}
-
-.modern-card .card-header h5 {
-    font-size: 1.125rem;
-    font-weight: 600;
-    color: #1e293b;
+@media (max-width: 575.98px) {
+  .stat-card { flex-direction: column; align-items: flex-start; gap: 0.6rem; padding: 0.85rem; }
+  .stat-icon { width: 36px; height: 36px; font-size: 1rem; }
 }

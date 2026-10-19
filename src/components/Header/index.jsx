@@ -2,10 +2,17 @@ import React, { useEffect, useState, useCallback } from "react";
 import { Bell, User, LogOut, Menu, UserCircle, Search, GraduationCap } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Dropdown } from "react-bootstrap";
-import { formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import axiosInstance from "../../config/axios";
 import logo from "../../assets/zantechLogo.png";
 import "./Header.css";
+
+const greeting = () => {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+};
 
 const Header = ({ onToggleSidebar, onOpenSearch }) => {
   const navigate = useNavigate();
@@ -85,8 +92,12 @@ const Header = ({ onToggleSidebar, onOpenSearch }) => {
         </button>
         <Link to="/dashboard" className="brand-container">
           <img src={logo} alt="ZAN Tech Logo" className="logo" />
-          <span className="brand-name">ZAN Tech</span>
+          <span className="brand-name">ZAN<span>TECH</span></span>
         </Link>
+        <div className="header-page-title">
+          <span className="header-greeting">{greeting()}{user?.name ? `, ${user.name.split(" ")[0]}` : ""}</span>
+          <span className="header-date">{format(new Date(), "EEEE, d MMM yyyy")}</span>
+        </div>
       </div>
 
       <button className="header-search-trigger" onClick={onOpenSearch} aria-label="Search pages">
@@ -112,8 +123,8 @@ const Header = ({ onToggleSidebar, onOpenSearch }) => {
             </div>
           </Dropdown.Toggle>
 
-          <Dropdown.Menu className="mt-2" style={{ minWidth: "300px" }}>
-            <div className="px-3 py-2 border-bottom border-secondary border-opacity-10 d-flex justify-content-between align-items-center gap-2">
+          <Dropdown.Menu className="mt-2 header-notifications">
+            <div className="px-2 py-2 border-bottom d-flex justify-content-between align-items-center gap-2">
               <h6 className="mb-0 fw-semibold">Notifications</h6>
               {unseenCount > 0 && (
                 <button type="button" className="btn btn-link btn-sm p-0 text-decoration-none" onClick={markAllRead}>
@@ -127,7 +138,7 @@ const Header = ({ onToggleSidebar, onOpenSearch }) => {
                   <div className="d-flex align-items-center gap-2">
                     <GraduationCap size={18} className="text-primary flex-shrink-0" />
                     <div className="flex-grow-1" style={{ whiteSpace: "normal" }}>
-                      <p className="mb-0 small text-white">
+                      <p className="notif-text">
                         {notification.message}
                       </p>
                       <small className="text-muted">{notification.time}</small>

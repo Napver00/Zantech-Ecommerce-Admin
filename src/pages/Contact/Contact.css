@@ -11,7 +11,7 @@
 .page-title {
   font-size: 1.5rem;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--zt-ink);
 }
 
 .search-box {
@@ -19,9 +19,9 @@
 }
 
 .search-icon {
-  background-color: #f8f9fa;
+  background-color: var(--zt-subtle);
   border-right: none;
-  color: #6c757d;
+  color: var(--zt-muted);
 }
 
 .search-input {
@@ -43,13 +43,13 @@
   right: 10px;
   top: 50%;
   transform: translateY(-50%);
-  color: #6c757d;
+  color: var(--zt-muted);
   padding: 0;
   z-index: 10;
 }
 
 .clear-search:hover {
-  color: #dc3545;
+  color: var(--zt-red);
 }
 
 .spinner {
@@ -70,9 +70,9 @@
 }
 
 .modern-table thead th {
-  background-color: #f8f9fa;
-  border-bottom: 2px solid #dee2e6;
-  color: #495057;
+  background-color: var(--zt-subtle);
+  border-bottom: 2px solid var(--zt-border);
+  color: #334155;
   font-weight: 600;
   padding: 1rem;
 }
@@ -80,11 +80,11 @@
 .modern-table tbody td {
   padding: 1rem;
   vertical-align: middle;
-  border-bottom: 1px solid #dee2e6;
+  border-bottom: 1px solid var(--zt-border);
 }
 
 .modern-table tbody tr:hover {
-  background-color: #f8f9fa;
+  background-color: var(--zt-subtle);
 }
 
 .delete-btn {
@@ -94,9 +94,9 @@
 }
 
 .delete-btn:hover {
-  background-color: #dc3545;
+  background-color: var(--zt-red);
   color: white;
-  border-color: #dc3545;
+  border-color: var(--zt-red);
 }
 
 .table-container {
@@ -114,7 +114,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: #6c757d;
+  color: var(--zt-muted);
 }
 
 .view-message-btn {
@@ -125,9 +125,9 @@
 }
 
 .view-message-btn:hover {
-  background-color: #0d6efd;
+  background-color: var(--zt-primary);
   color: white;
-  border-color: #0d6efd;
+  border-color: var(--zt-primary);
 }
 
 /* Message Modal Styles */
@@ -138,16 +138,16 @@
 }
 
 .message-modal .modal-header {
-  border-bottom: 1px solid #e9ecef;
+  border-bottom: 1px solid var(--zt-border);
   padding: 1rem 1.5rem;
-  background-color: #f8f9fa;
+  background-color: var(--zt-subtle);
   border-radius: 10px 10px 0 0;
 }
 
 .message-modal .modal-title {
   font-size: 1.1rem;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--zt-ink);
 }
 
 .message-modal .modal-body {
@@ -155,42 +155,42 @@
 }
 
 .message-modal .modal-footer {
-  border-top: 1px solid #e9ecef;
+  border-top: 1px solid var(--zt-border);
   padding: 1rem 1.5rem;
-  background-color: #f8f9fa;
+  background-color: var(--zt-subtle);
   border-radius: 0 0 10px 10px;
 }
 
 .message-details .contact-info {
-  background-color: #f8f9fa;
+  background-color: var(--zt-subtle);
   padding: 1rem;
   border-radius: 8px;
-  border: 1px solid #e9ecef;
+  border: 1px solid var(--zt-border);
 }
 
 .message-details .contact-info p {
   margin-bottom: 0.5rem;
-  color: #495057;
+  color: #334155;
 }
 
 .message-details .contact-info strong {
-  color: #2c3e50;
+  color: var(--zt-ink);
   font-weight: 600;
 }
 
 .message-content .message-text {
-  background-color: #f8f9fa;
-  border: 1px solid #e9ecef;
+  background-color: var(--zt-subtle);
+  border: 1px solid var(--zt-border);
   border-radius: 8px;
   font-size: 0.95rem;
   line-height: 1.6;
-  color: #495057;
+  color: #334155;
   white-space: pre-wrap;
   word-break: break-word;
 }
 
 .message-content h6 {
-  color: #2c3e50;
+  color: var(--zt-ink);
   font-weight: 600;
   font-size: 0.95rem;
   text-transform: uppercase;

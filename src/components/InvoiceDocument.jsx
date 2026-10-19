@@ -99,7 +99,7 @@ const InvoiceDocument = ({ orderData }) => {
         .totals-table .total-row { background-color: #007bff; color: white; font-weight: 700; font-size: 20px; }
         .totals-table .total-row td { color: white; padding: 15px 12px; }
         
-        .text-right { text-align: right; }
+        .text-end { text-align: right; }
         .text-center { text-align: center; }
         
         .thank-you { margin-top: 40px; margin-bottom: 20px; font-size: 20px; font-weight: 600; color: #333; text-align: center; }
@@ -175,9 +175,9 @@ const InvoiceDocument = ({ orderData }) => {
           <thead>
             <tr>
               <th>ITEM NAME</th>
-              <th class="text-right">PRICE</th>
+              <th class="text-end">PRICE</th>
               <th class="text-center">QTY</th>
-              <th class="text-right">TOTAL</th>
+              <th class="text-end">TOTAL</th>
             </tr>
           </thead>
           <tbody>
@@ -186,11 +186,11 @@ const InvoiceDocument = ({ orderData }) => {
                 (item) => `
               <tr>
                 <td>${item.name}${item.is_bundle === 1 ? " (Bundle)" : ""}</td>
-                <td class="text-right">৳${parseFloat(
+                <td class="text-end">৳${parseFloat(
                   item.price
                 ).toLocaleString()}</td>
                 <td class="text-center">${item.quantity}</td>
-                <td class="text-right">৳${(
+                <td class="text-end">৳${(
                   parseFloat(item.price) * parseInt(item.quantity)
                 ).toLocaleString()}</td>
               </tr>

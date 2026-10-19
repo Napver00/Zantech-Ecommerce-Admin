@@ -1,6 +1,6 @@
 .faq-container {
   padding: 1.5rem;
-  background-color: #f8f9fa;
+  background-color: var(--zt-subtle);
   min-height: calc(100vh - 60px);
 }
 
@@ -14,12 +14,12 @@
 .page-title {
   font-size: 1.75rem;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--zt-ink);
 }
 
 .page-subtitle {
   font-size: 1rem;
-  color: #6c757d;
+  color: var(--zt-muted);
 }
 
 .create-faq-btn {
@@ -27,18 +27,18 @@
   border-radius: 8px;
   font-weight: 500;
   transition: all 0.2s ease;
-  background: #4361ee;
+  background: var(--zt-primary);
   border: none;
 }
 
 .create-faq-btn:hover {
-  background: #3a56d4;
+  background: var(--zt-primary-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(67, 97, 238, 0.15);
+  box-shadow: 0 4px 12px rgba(8, 145, 178, 0.15);
 }
 
 .filters-section {
-  background: #f8f9fa;
+  background: var(--zt-subtle);
   padding: 1.25rem;
   border-radius: 10px;
   margin-bottom: 1.5rem;
@@ -53,29 +53,29 @@
 
 .search-box .input-group-text {
   background: #fff;
-  border: 1px solid #e9ecef;
+  border: 1px solid var(--zt-border);
   border-right: none;
-  color: #6c757d;
+  color: var(--zt-muted);
 }
 
 .search-input {
-  border: 1px solid #e9ecef;
+  border: 1px solid var(--zt-border);
   border-left: none;
   padding: 0.6rem 1rem;
 }
 
 .search-input:focus {
   box-shadow: none;
-  border-color: #e9ecef;
+  border-color: var(--zt-border);
 }
 
 .clear-search {
-  color: #6c757d;
+  color: var(--zt-muted);
   padding: 0.6rem 1rem;
 }
 
 .clear-search:hover {
-  color: #dc3545;
+  color: var(--zt-red);
 }
 
 .table-container {
@@ -90,9 +90,9 @@
 }
 
 .modern-table thead th {
-  background: #f8f9fa;
-  border-bottom: 2px solid #e9ecef;
-  color: #495057;
+  background: var(--zt-subtle);
+  border-bottom: 2px solid var(--zt-border);
+  color: #334155;
   font-weight: 600;
   padding: 1rem;
   font-size: 0.9rem;
@@ -103,11 +103,11 @@
 .modern-table tbody td {
   padding: 1rem;
   vertical-align: middle;
-  border-bottom: 1px solid #e9ecef;
-  color: #495057;
+  border-bottom: 1px solid var(--zt-border);
+  color: #334155;
   font-size: 0.95rem;
 }
 
 .modern-table tbody tr:hover {
-  background-color: #f8f9fa;
+  background-color: var(--zt-subtle);
 }

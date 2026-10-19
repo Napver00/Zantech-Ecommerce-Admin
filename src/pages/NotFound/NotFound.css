@@ -3,7 +3,7 @@
   align-items: center;
   justify-content: center;
   min-height: calc(100vh - 70px); /* Full height minus header */
-  background-color: #f8f9fa;
+  background-color: var(--zt-subtle);
   text-align: center;
   padding: 2rem;
 }
@@ -37,7 +37,7 @@
 .not-found-title {
   font-size: 6rem;
   font-weight: 700;
-  color: #0d6efd;
+  color: var(--zt-primary);
   margin: 0;
   line-height: 1;
 }
@@ -45,13 +45,13 @@
 .not-found-subtitle {
   font-size: 1.75rem;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--zt-ink);
   margin-top: 0.5rem;
   margin-bottom: 1rem;
 }
 
 .not-found-text {
-  color: #6c757d;
+  color: var(--zt-muted);
   margin-bottom: 2rem;
   font-size: 1rem;
 }
@@ -61,7 +61,7 @@
   font-size: 1rem;
   font-weight: 500;
   border-radius: 10px;
-  background: #0d6efd;
+  background: var(--zt-primary);
   border: none;
   transition: all 0.3s;
 }
@@ -69,5 +69,5 @@
 .not-found-button:hover {
   background: #0a58ca;
   transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(13, 110, 253, 0.25);
+  box-shadow: 0 4px 15px rgba(8, 145, 178, 0.25);
 }

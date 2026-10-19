@@ -10,7 +10,7 @@
 }
 
 .profile-header h2 {
-  color: #2d3748;
+  color: var(--zt-ink);
   margin-bottom: 10px;
   font-weight: 600;
 }
@@ -68,7 +68,7 @@
 }
 
 .info-value {
-  color: #2d3748;
+  color: var(--zt-ink);
   font-size: 16px;
   padding-left: 34px;
 }

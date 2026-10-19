@@ -5,7 +5,7 @@ import {
 const usePageTitle = (title) => {
     useEffect(() => {
         const prevTitle = document.title;
-        document.title = `ZAN Tech Dashboard | ${title}`;
+        document.title = `${title} · ZAN Tech Admin`;
 
         return () => {
             document.title = prevTitle;

@@ -28,8 +28,8 @@ const MonthlyComparisonChart = ({ data }) => {
             <YAxis />
             <Tooltip formatter={(value) => `৳${value.toLocaleString()}`} />
             <Legend />
-            <Bar dataKey="sales" fill="#3b82f6" name="Total Sales" />
-            <Bar dataKey="expenses" fill="#ef4444" name="Total Expenses" />
+            <Bar dataKey="sales" fill="#0891b2" name="Total Sales" />
+            <Bar dataKey="expenses" fill="#ed2626" name="Total Expenses" />
           </BarChart>
         </ResponsiveContainer>
       </Card.Body>

@@ -98,10 +98,10 @@ const Analytics = () => {
 
       <Row className="g-3 mb-4">
         <Col md={4}>
-          <StatCard label="Total Revenue" value={`৳${totalSales.toLocaleString()}`} color="#4e73df" />
+          <StatCard label="Total Revenue" value={`৳${totalSales.toLocaleString()}`} color="#0891b2" />
         </Col>
         <Col md={4}>
-          <StatCard label="Total Expenses" value={`৳${totalExpenses.toLocaleString()}`} color="#e74a3b" />
+          <StatCard label="Total Expenses" value={`৳${totalExpenses.toLocaleString()}`} color="#ed2626" />
         </Col>
         <Col md={4}>
           <StatCard label="Net Profit" value={`৳${profit.toLocaleString()}`} color={profit >= 0 ? '#1cc88a' : '#e74a3b'} />
@@ -109,13 +109,13 @@ const Analytics = () => {
         {dashboardData && (
           <>
             <Col md={4}>
-              <StatCard label="Total Orders" value={dashboardData.total_order_count ?? 0} color="#36b9cc" />
+              <StatCard label="Total Orders" value={dashboardData.total_order_count ?? 0} color="#0e7490" />
             </Col>
             <Col md={4}>
-              <StatCard label="Today's Orders" value={dashboardData.today_order_count ?? 0} color="#f6c23e" />
+              <StatCard label="Today's Orders" value={dashboardData.today_order_count ?? 0} color="#d97706" />
             </Col>
             <Col md={4}>
-              <StatCard label="Today's Sales" value={`৳${Number(dashboardData.today_revenue ?? 0).toLocaleString()}`} color="#858796" />
+              <StatCard label="Today's Sales" value={`৳${Number(dashboardData.today_revenue ?? 0).toLocaleString()}`} color="#64748b" />
             </Col>
           </>
         )}
@@ -135,8 +135,8 @@ const Analytics = () => {
                   <YAxis tickFormatter={v => `৳${(v / 1000).toFixed(0)}k`} />
                   <Tooltip formatter={v => `৳${Number(v).toLocaleString()}`} />
                   <Legend />
-                  <Bar dataKey="sales" name="Sales" fill="#4e73df" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="expenses" name="Expenses" fill="#e74a3b" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="sales" name="Sales" fill="#0891b2" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="expenses" name="Expenses" fill="#ed2626" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </Card.Body>

@@ -1,6 +1,6 @@
 .transitions-container {
   padding: 1.5rem;
-  background-color: #f8f9fa;
+  background-color: var(--zt-subtle);
   min-height: calc(100vh - 60px);
 }
 
@@ -14,11 +14,11 @@
 .page-title {
   font-size: 1.75rem;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--zt-ink);
 }
 
 .filters-section {
-  background: #f8f9fa;
+  background: var(--zt-subtle);
   padding: 1.25rem;
   border-radius: 10px;
   margin-bottom: 1.5rem;
@@ -33,20 +33,20 @@
 
 .search-box .input-group-text {
   background: #fff;
-  border: 1px solid #e9ecef;
+  border: 1px solid var(--zt-border);
   border-right: none;
-  color: #6c757d;
+  color: var(--zt-muted);
 }
 
 .search-input {
-  border: 1px solid #e9ecef;
+  border: 1px solid var(--zt-border);
   border-left: none;
   padding: 0.6rem 1rem;
 }
 
 .search-input:focus {
   box-shadow: none;
-  border-color: #e9ecef;
+  border-color: var(--zt-border);
 }
 
 .date-filter-box .input-group {
@@ -57,13 +57,13 @@
 }
 
 .date-picker-input {
-  border: 1px solid #e9ecef;
+  border: 1px solid var(--zt-border);
   padding: 0.6rem 1rem;
 }
 
 .status-filter,
 .limit-select {
-  border: 1px solid #e9ecef;
+  border: 1px solid var(--zt-border);
   border-radius: 8px;
   padding: 0.6rem 1rem;
   background: #fff;
@@ -77,7 +77,7 @@
 }
 
 .clear-dates-btn:hover {
-  background: #e9ecef;
+  background: var(--zt-border);
 }
 
 .table-container {
@@ -92,9 +92,9 @@
 }
 
 .modern-table thead th {
-  background: #f8f9fa;
-  border-bottom: 2px solid #e9ecef;
-  color: #495057;
+  background: var(--zt-subtle);
+  border-bottom: 2px solid var(--zt-border);
+  color: #334155;
   font-weight: 600;
   padding: 1rem;
   font-size: 0.9rem;
@@ -105,13 +105,13 @@
 .modern-table tbody td {
   padding: 1rem;
   vertical-align: middle;
-  border-bottom: 1px solid #e9ecef;
-  color: #495057;
+  border-bottom: 1px solid var(--zt-border);
+  color: #334155;
   font-size: 0.95rem;
 }
 
 .modern-table tbody tr:hover {
-  background-color: #f8f9fa;
+  background-color: var(--zt-subtle);
 }
 
 .status-badge {
@@ -137,15 +137,15 @@
   border-radius: 6px;
   font-size: 0.9rem;
   transition: all 0.2s ease;
-  border-color: #4361ee;
-  color: #4361ee;
+  border-color: var(--zt-primary);
+  color: var(--zt-primary);
 }
 
 .view-btn:hover {
-  background: #4361ee;
+  background: var(--zt-primary);
   color: #fff;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(67, 97, 238, 0.15);
+  box-shadow: 0 4px 12px rgba(8, 145, 178, 0.15);
 }
 
 .pagination-container {
@@ -163,18 +163,18 @@
   padding: 0.5rem 0.75rem;
   margin: 0 0.125rem;
   border-radius: 6px;
-  color: #495057;
+  color: #334155;
   transition: all 0.2s ease;
 }
 
 .modern-pagination .page-item.active .page-link {
-  background: #4361ee;
+  background: var(--zt-primary);
   color: #fff;
 }
 
 .modern-pagination .page-item:not(.active) .page-link:hover {
-  background: #f8f9fa;
-  color: #4361ee;
+  background: var(--zt-subtle);
+  color: var(--zt-primary);
 }
 
 .modern-pagination .page-item.disabled .page-link {
@@ -189,7 +189,7 @@
 }
 
 .modern-modal .modal-header {
-  border-bottom: 1px solid #e9ecef;
+  border-bottom: 1px solid var(--zt-border);
   padding: 1.25rem;
 }
 
@@ -198,7 +198,7 @@
 }
 
 .modern-modal .modal-footer {
-  border-top: 1px solid #e9ecef;
+  border-top: 1px solid var(--zt-border);
   padding: 1.25rem;
 }
 
@@ -219,7 +219,7 @@
   .modern-table tbody tr {
     display: block;
     margin-bottom: 1rem;
-    border: 1px solid #e9ecef;
+    border: 1px solid var(--zt-border);
     border-radius: 8px;
   }
 
@@ -227,7 +227,7 @@
     display: block;
     text-align: right;
     padding: 0.75rem 1rem;
-    border-bottom: 1px solid #e9ecef;
+    border-bottom: 1px solid var(--zt-border);
   }
 
   .modern-table tbody td:last-child {
@@ -238,7 +238,7 @@
     content: attr(data-label);
     float: left;
     font-weight: 600;
-    color: #495057;
+    color: #334155;
   }
 }
 
@@ -248,7 +248,7 @@
   background: #fff;
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e9ecef;
+  border: 1px solid var(--zt-border);
 }
 
 .date-range-popper .react-datepicker {
@@ -258,8 +258,8 @@
 }
 
 .date-range-popper .react-datepicker__header {
-  background: #f8f9fa;
-  border-bottom: 1px solid #e9ecef;
+  background: var(--zt-subtle);
+  border-bottom: 1px solid var(--zt-border);
   border-top-left-radius: 12px;
   border-top-right-radius: 12px;
   padding-top: 1rem;
@@ -275,20 +275,20 @@
   margin: 0.2rem;
   width: 2rem;
   line-height: 2rem;
-  color: #495057;
+  color: #334155;
 }
 
 .date-range-popper .react-datepicker__day:hover {
-  background-color: #e9ecef;
+  background-color: var(--zt-border);
 }
 
 .date-range-popper .react-datepicker__day--selected,
 .date-range-popper .react-datepicker__day--in-range {
-  background-color: #4361ee !important;
+  background-color: var(--zt-primary) !important;
   color: #fff !important;
 }
 
 .date-range-popper .react-datepicker__day--keyboard-selected {
-  background-color: rgba(67, 97, 238, 0.1);
-  color: #4361ee;
+  background-color: rgba(8, 145, 178, 0.1);
+  color: var(--zt-primary);
 } 

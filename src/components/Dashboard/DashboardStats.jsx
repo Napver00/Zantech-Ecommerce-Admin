@@ -1,5 +1,5 @@
 import React from "react";
-import { Row, Col, Card } from "react-bootstrap";
+import { Row, Col } from "react-bootstrap";
 import {
   FaShoppingCart,
   FaBox,
@@ -7,23 +7,14 @@ import {
   FaCalendarDay,
 } from "react-icons/fa";
 
-const StatCard = ({ icon, title, value, colorClass }) => (
-  <Card className="modern-card h-100 border-0">
-    <Card.Body className="d-flex align-items-center gap-3 p-3">
-      <div
-        className={`dashboard-icon ${colorClass} flex-shrink-0 shadow-sm`}
-        style={{ width: 46, height: 46, borderRadius: 12, fontSize: "1.2rem", color: "#fff" }}
-      >
-        {icon}
-      </div>
-      <div className="min-w-0">
-        <p className="text-muted fw-semibold mb-1 text-uppercase" style={{ fontSize: "0.68rem", letterSpacing: "0.05em", lineHeight: 1 }}>
-          {title}
-        </p>
-        <h4 className="fw-bold text-dark mb-0" style={{ fontSize: "1.25rem", lineHeight: 1.2 }}>{value}</h4>
-      </div>
-    </Card.Body>
-  </Card>
+const StatCard = ({ icon, title, value, tone }) => (
+  <div className={`stat-card stat-${tone}`}>
+    <div className="stat-icon">{icon}</div>
+    <div className="min-w-0">
+      <p className="stat-label">{title}</p>
+      <p className="stat-value">{value}</p>
+    </div>
+  </div>
 );
 
 const DashboardStats = ({ data }) => {
@@ -31,39 +22,39 @@ const DashboardStats = ({ data }) => {
     {
       icon: <FaShoppingCart />,
       title: "Total Orders",
-      value: data?.total_order_count ?? 0,
-      colorClass: "total-orders",
+      value: (data?.total_order_count ?? 0).toLocaleString(),
+      tone: "cyan",
     },
     {
       icon: <FaBox />,
       title: "New Orders",
-      value: data?.new_order_count ?? 0,
-      colorClass: "new-orders",
+      value: (data?.new_order_count ?? 0).toLocaleString(),
+      tone: "red",
     },
     {
       icon: <FaMoneyBillWave />,
       title: "Total Sales",
       value: `৳${(data?.total_revenue ?? 0).toLocaleString()}`,
-      colorClass: "revenue",
+      tone: "green",
     },
     {
       icon: <FaCalendarDay />,
       title: "Today's Orders",
-      value: data?.today_order_count ?? 0,
-      colorClass: "today-orders",
+      value: (data?.today_order_count ?? 0).toLocaleString(),
+      tone: "amber",
     },
     {
       icon: <FaMoneyBillWave />,
       title: "Today's Sales",
       value: `৳${(data?.today_revenue ?? 0).toLocaleString()}`,
-      colorClass: "today-revenue",
+      tone: "navy",
     },
   ];
 
   return (
-    <Row xs={1} sm={2} lg={3} xl={5} className="g-3">
-      {stats.map((stat, index) => (
-        <Col key={index}>
+    <Row xs={2} lg={3} xl={5} className="g-2 g-md-3">
+      {stats.map((stat) => (
+        <Col key={stat.title}>
           <StatCard {...stat} />
         </Col>
       ))}

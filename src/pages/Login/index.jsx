@@ -1,12 +1,18 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
-import { Eye, EyeOff, Loader2, ArrowRight } from "lucide-react";
+import { Eye, EyeOff, Loader2, ArrowRight, ShoppingBag, GraduationCap, BarChart3 } from "lucide-react";
 import { motion } from "framer-motion";
 import logo from "../../assets/zantechLogo.png";
 import { authService } from "../../services/api";
 import "./Login.css";
 import usePageTitle from "../../hooks/usePageTitle";
+
+const HIGHLIGHTS = [
+  { icon: ShoppingBag, text: "Store orders, products & stock" },
+  { icon: GraduationCap, text: "Courses, bootcamps & registrations" },
+  { icon: BarChart3, text: "Sales, expenses & reports" },
+];
 
 const Login = () => {
   usePageTitle("Login to Your Account");
@@ -52,36 +58,51 @@ const Login = () => {
 
   return (
     <div className="login-container">
-      <motion.div
-        className="login-box"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <div className="login-header">
-          <motion.div
-            className="logo-container"
-            initial={{ scale: 0.8 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-          >
-            <img src={logo} alt="ZAN Tech Logo" className="login-logo" />
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-          >
-            <h2>Welcome Back</h2>
-            <p>Enter your credentials to access the command center</p>
-          </motion.div>
+      {/* Brand panel */}
+      <aside className="login-brand">
+        <div className="login-brand-top">
+          <img src={logo} alt="" className="login-brand-logo" />
+          <div>
+            <div className="login-brand-name">ZAN<span>TECH</span></div>
+            <div className="login-brand-sub">Admin Console</div>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="login-form">
-          <div className="form-group">
-            <label htmlFor="email">Email Address</label>
-            <div className="input-wrapper">
+        <div className="login-brand-copy">
+          <p className="login-eyebrow">&lt;Command center /&gt;</p>
+          <h1>
+            Run ZAN Tech <span>from one place.</span>
+          </h1>
+          <ul>
+            {HIGHLIGHTS.map(({ icon: Icon, text }) => (
+              <li key={text}>
+                <span><Icon size={16} /></span>
+                {text}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <p className="login-brand-foot">© {new Date().getFullYear()} ZAN Tech · Robotics · IoT · Education</p>
+      </aside>
+
+      {/* Form */}
+      <main className="login-main">
+        <motion.div
+          className="login-box"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+        >
+          <div className="login-header">
+            <img src={logo} alt="ZAN Tech Logo" className="login-logo" />
+            <h2>Welcome back</h2>
+            <p>Sign in to manage the store, courses and more.</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="login-form">
+            <div className="login-field">
+              <label htmlFor="email">Email address</label>
               <input
                 type="email"
                 id="email"
@@ -89,62 +110,57 @@ const Login = () => {
                 className="form-control"
                 value={formData.email}
                 onChange={handleChange}
-                placeholder="name@company.com"
+                placeholder="name@zantechbd.com"
+                autoComplete="username"
                 required
               />
             </div>
-          </div>
 
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <div className="input-wrapper">
-              <input
-                type={showPassword ? "text" : "password"}
-                id="password"
-                name="password"
-                className="form-control"
-                value={formData.password}
-                onChange={handleChange}
-                placeholder="Enter your password"
-                required
-              />
-              <button
-                type="button"
-                className="password-toggle"
-                onClick={() => setShowPassword(!showPassword)}
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
+            <div className="login-field">
+              <label htmlFor="password">Password</label>
+              <div className="input-wrapper">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  id="password"
+                  name="password"
+                  className="form-control"
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="Enter your password"
+                  autoComplete="current-password"
+                  required
+                />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
-          </div>
 
-          <div className="form-options">
-            <div className="remember-me">
-              <input type="checkbox" id="remember" />
-              <label htmlFor="remember">Remember me</label>
+            <div className="form-options">
+              <label className="remember-me" htmlFor="remember">
+                <input type="checkbox" id="remember" className="form-check-input" />
+                Remember me
+              </label>
+              <span className="forgot-hint">Forgot it? Ask a super admin.</span>
             </div>
-            <a href="#" className="forgot-password">
-              Forgot Password?
-            </a>
-          </div>
 
-          <motion.button
-            type="submit"
-            className="login-button"
-            disabled={loading}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            {loading ? (
-              <Loader2 className="animate-spin mx-auto" />
-            ) : (
-              <span className="flex items-center justify-center gap-2">
-                Sign In <ArrowRight size={18} />
-              </span>
-            )}
-          </motion.button>
-        </form>
-      </motion.div>
+            <button type="submit" className="login-button" disabled={loading}>
+              {loading ? (
+                <Loader2 size={20} className="spin" />
+              ) : (
+                <>
+                  Sign in <ArrowRight size={18} />
+                </>
+              )}
+            </button>
+          </form>
+        </motion.div>
+      </main>
     </div>
   );
 };

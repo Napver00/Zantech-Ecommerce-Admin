@@ -75,7 +75,7 @@ const CourseInvoiceDocument = ({ invoice }) => {
         .totals-table .total-row { background-color: #007bff; color: white; font-weight: 700; font-size: 20px; }
         .totals-table .total-row td { color: white; padding: 15px 12px; }
 
-        .text-right { text-align: right; }
+        .text-end { text-align: right; }
         .text-center { text-align: center; }
 
         .note-box { background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px; padding: 15px 20px; margin-bottom: 30px; font-size: 14px; color: #555; }
@@ -145,14 +145,14 @@ const CourseInvoiceDocument = ({ invoice }) => {
           <thead>
             <tr>
               <th>DESCRIPTION</th>
-              <th class="text-right">AMOUNT</th>
+              <th class="text-end">AMOUNT</th>
             </tr>
           </thead>
           <tbody>
             ${lineItems.map((i) => `
             <tr>
               <td>${i.label}</td>
-              <td class="text-right">৳${i.amount.toLocaleString()}</td>
+              <td class="text-end">৳${i.amount.toLocaleString()}</td>
             </tr>`).join("")}
           </tbody>
         </table>

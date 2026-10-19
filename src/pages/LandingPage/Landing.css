@@ -61,7 +61,7 @@
 }
 
 .landing-tabs .nav-link:hover {
-    background-color: rgba(59, 130, 246, 0.08);
+    background-color: rgba(8, 145, 178, 0.08);
     color: var(--primary-color);
 }
 
@@ -100,7 +100,7 @@
 .form-control:focus,
 .form-select:focus {
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+    box-shadow: 0 0 0 4px rgba(8, 145, 178, 0.1);
 }
 
 /* Social Icon List */

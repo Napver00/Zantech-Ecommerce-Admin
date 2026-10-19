@@ -1,6 +1,6 @@
 .ambassador-card {
     transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--zt-border);
     border-radius: 12px;
     overflow: hidden;
 }
@@ -13,13 +13,13 @@
 .ambassador-card-img {
     height: 160px;
     object-fit: cover;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid var(--zt-border);
 }
 
 .ambassador-name {
     font-weight: 700;
     font-size: 1rem;
-    color: #1e293b;
+    color: var(--zt-ink);
     margin-bottom: 0.25rem;
 }
 
@@ -32,7 +32,7 @@
 
 .ambassador-card {
     transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--zt-border);
     border-radius: 12px;
     overflow: hidden;
     position: relative;
@@ -50,7 +50,7 @@
 .ambassador-card-img {
     height: 160px;
     object-fit: cover;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid var(--zt-border);
     width: 100%;
 }
 
@@ -73,7 +73,7 @@
 .ambassador-name {
     font-weight: 700;
     font-size: 1rem;
-    color: #1e293b;
+    color: var(--zt-ink);
     margin-bottom: 0.25rem;
 }
 

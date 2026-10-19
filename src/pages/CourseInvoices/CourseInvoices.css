@@ -15,9 +15,9 @@
   border-radius: 6px;
   font-size: 0.8rem;
   font-weight: 600;
-  border: 1px solid #dee2e6;
-  background: #f8f9fa;
-  color: #6c757d;
+  border: 1px solid var(--zt-border);
+  background: var(--zt-subtle);
+  color: var(--zt-muted);
 }
 
 .ledger-month-chip.paid {
@@ -39,7 +39,7 @@
 }
 
 .invoice-summary-item {
-  background: #f8f9fa;
+  background: var(--zt-subtle);
   border-radius: 10px;
   padding: 0.9rem 1rem;
   text-align: center;
@@ -49,7 +49,7 @@
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #6c757d;
+  color: var(--zt-muted);
   margin-bottom: 0.25rem;
 }
 

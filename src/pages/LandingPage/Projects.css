@@ -84,7 +84,7 @@
     justify-content: center;
     color: var(--text-muted);
     font-size: 1.75rem;
-    background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+    background: linear-gradient(135deg, #f1f5f9, var(--zt-border));
 }
 
 .project-status-badge {

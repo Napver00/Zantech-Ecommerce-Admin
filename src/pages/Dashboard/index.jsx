@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Row, Col } from "react-bootstrap";
+import { Link } from "react-router-dom";
+import { Plus, PackagePlus, GraduationCap, ReceiptText } from "lucide-react";
 import axiosInstance from "../../config/axios";
 import { toast } from "react-hot-toast";
 import "./Dashboard.css";
@@ -9,6 +11,13 @@ import DueOrdersTable from "../../components/Dashboard/DueOrdersTable";
 import MonthlyComparisonChart from "../../components/Dashboard/MonthlyComparisonChart";
 import SalesOverTimeChart from "../../components/Dashboard/SalesOverTimeChart";
 import usePageTitle from "../../hooks/usePageTitle";
+
+const QUICK_ACTIONS = [
+  { to: "/orders/create", label: "New order", icon: Plus, primary: true },
+  { to: "/products/add", label: "Add product", icon: PackagePlus },
+  { to: "/course-registrations", label: "Registrations", icon: GraduationCap },
+  { to: "/course-invoices/add", label: "Course invoice", icon: ReceiptText },
+];
 
 const Dashboard = () => {
   usePageTitle("Dashboard Overview");
@@ -163,12 +172,23 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard-container">
-      <div className="landing-header mb-4">
-        <h2 className="mb-1 text-dark fw-bold">Dashboard Overview</h2>
-        <p className="text-muted lead fs-6 mb-0">
-          Welcome back, here's what's happening today.
-        </p>
-      </div>
+      <section className="dash-hero">
+        <div className="dash-hero-text">
+          <p className="dash-eyebrow">&lt;Overview /&gt;</p>
+          <h2>Dashboard</h2>
+          <p className="dash-hero-sub">
+            Today: <strong>{dashboardData.today_order_count ?? 0}</strong> orders ·{" "}
+            <strong>৳{(dashboardData.today_revenue ?? 0).toLocaleString()}</strong> in sales
+          </p>
+        </div>
+        <div className="dash-actions">
+          {QUICK_ACTIONS.map(({ to, label, icon: Icon, primary }) => (
+            <Link key={to} to={to} className={`dash-action ${primary ? "dash-action-primary" : ""}`}>
+              <Icon size={16} /> {label}
+            </Link>
+          ))}
+        </div>
+      </section>
 
       <DashboardStats data={dashboardData} />
 

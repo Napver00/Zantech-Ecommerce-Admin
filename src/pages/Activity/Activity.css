@@ -12,12 +12,12 @@
 .page-title {
   font-size: 1.5rem;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--zt-ink);
 }
 
 /* Filters Section */
 .filters-section {
-  background-color: #f8f9fa;
+  background-color: var(--zt-subtle);
   padding: 1rem;
   border-radius: 8px;
   margin-bottom: 1.5rem;
@@ -30,7 +30,7 @@
 .search-icon {
   background-color: #fff;
   border-right: none;
-  color: #6c757d;
+  color: var(--zt-muted);
 }
 
 .search-input {
@@ -48,13 +48,13 @@
   right: 10px;
   top: 50%;
   transform: translateY(-50%);
-  color: #6c757d;
+  color: var(--zt-muted);
   padding: 0;
   z-index: 10;
 }
 
 .clear-search:hover {
-  color: #dc3545;
+  color: var(--zt-red);
 }
 
 .date-filter-box .date-picker-input {
@@ -64,25 +64,25 @@
 .date-filter-box .input-group-text {
   background-color: #fff;
   border-right: none;
-  color: #6c757d;
+  color: var(--zt-muted);
 }
 
 .type-filter,
 .limit-select {
   border-radius: 4px;
   border-color: #ced4da;
-  color: #495057;
+  color: #334155;
 }
 
 .clear-dates-btn {
   border-color: #ced4da;
-  color: #6c757d;
+  color: var(--zt-muted);
 }
 
 .clear-dates-btn:hover {
-  background-color: #f8f9fa;
+  background-color: var(--zt-subtle);
   border-color: #ced4da;
-  color: #495057;
+  color: #334155;
 }
 
 /* Table Styles */
@@ -97,9 +97,9 @@
 }
 
 .modern-table thead th {
-  background-color: #f8f9fa;
-  border-bottom: 2px solid #dee2e6;
-  color: #495057;
+  background-color: var(--zt-subtle);
+  border-bottom: 2px solid var(--zt-border);
+  color: #334155;
   font-weight: 600;
   padding: 1rem;
   white-space: nowrap;
@@ -108,16 +108,16 @@
 .modern-table tbody td {
   padding: 1rem;
   vertical-align: middle;
-  border-bottom: 1px solid #dee2e6;
-  color: #2c3e50;
+  border-bottom: 1px solid var(--zt-border);
+  color: var(--zt-ink);
 }
 
 .modern-table tbody tr:hover {
-  background-color: #f8f9fa;
+  background-color: var(--zt-subtle);
 }
 
 .user-link {
-  color: #0d6efd;
+  color: var(--zt-primary);
   font-weight: 500;
 }
 
@@ -145,24 +145,24 @@
 
 .modern-pagination .page-link {
   border: none;
-  color: #495057;
+  color: #334155;
   padding: 0.5rem 0.75rem;
   border-radius: 4px;
   margin: 0 2px;
 }
 
 .modern-pagination .page-item.active .page-link {
-  background-color: #0d6efd;
+  background-color: var(--zt-primary);
   color: #fff;
 }
 
 .modern-pagination .page-item:not(.active) .page-link:hover {
-  background-color: #e9ecef;
-  color: #0d6efd;
+  background-color: var(--zt-border);
+  color: var(--zt-primary);
 }
 
 .modern-pagination .page-item.disabled .page-link {
-  color: #6c757d;
+  color: var(--zt-muted);
   background-color: transparent;
 }
 
@@ -174,14 +174,14 @@
 }
 
 .modal-header {
-  border-bottom: 1px solid #dee2e6;
+  border-bottom: 1px solid var(--zt-border);
   padding: 1rem 1.5rem;
 }
 
 .modal-title {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--zt-ink);
 }
 
 .modal-body {
@@ -191,7 +191,7 @@
 .user-details h6 {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #6c757d;
+  color: var(--zt-muted);
   margin-bottom: 1rem;
 }
 
