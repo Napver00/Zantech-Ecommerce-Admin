@@ -2,6 +2,7 @@ import React from 'react';
 import { Table } from 'react-bootstrap';
 import Loading from '../Loading';
 import TableRow from './TableRow';
+import { MdInbox } from 'react-icons/md';
 
 const CommonTable = ({ headers, data, tableLoading, loading, renderActions }) => {
   return (
@@ -33,7 +34,8 @@ const CommonTable = ({ headers, data, tableLoading, loading, renderActions }) =>
         </div>
       ) : data.length > 0 ? (
         <div className="table-responsive">
-          <Table hover className="align-middle modern-table">
+          {/* On phones each row becomes a labelled card (see .table-mobile-stack) */}
+          <Table hover className="align-middle modern-table table-mobile-stack">
             <thead className="bg-light">
               <tr>
                 {headers.map((header) => (
@@ -50,8 +52,10 @@ const CommonTable = ({ headers, data, tableLoading, loading, renderActions }) =>
           </Table>
         </div>
       ) : (
-        <div className="text-center py-5">
-          <p className="text-muted mb-0">No data found</p>
+        <div className="empty-state">
+          <span className="empty-state-icon"><MdInbox size={26} /></span>
+          <p className="empty-state-title">Nothing to show yet</p>
+          <p className="empty-state-text">No records match right now. Try clearing the search or filters.</p>
         </div>
       )}
     </div>

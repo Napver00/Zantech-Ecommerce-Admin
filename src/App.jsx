@@ -53,6 +53,8 @@ import ViewCourseInvoice from "./pages/CourseInvoices/ViewCourseInvoice";
 import Students from "./pages/Students";
 import ViewStudent from "./pages/Students/ViewStudent";
 import CommandPalette from "./components/CommandPalette";
+import PageTrail from "./components/PageTrail";
+import MobileTabBar from "./components/MobileTabBar";
 
 const PrivateRoute = ({ children }) => {
   const token = localStorage.getItem("token");
@@ -77,7 +79,14 @@ const App = () => {
 
   return (
     <BrowserRouter>
-      <Toaster position="top-right" />
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          style: { fontFamily: "var(--zt-font)", fontSize: "0.9rem", borderRadius: "0.75rem", border: "1px solid var(--zt-border)" },
+          success: { iconTheme: { primary: "#059669", secondary: "#fff" } },
+          error: { iconTheme: { primary: "#ed2626", secondary: "#fff" } },
+        }}
+      />
       <OrderProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
@@ -91,6 +100,7 @@ const App = () => {
                     onOpenSearch={() => setShowCommandPalette(true)}
                   />
                   <CommandPalette show={showCommandPalette} onClose={() => setShowCommandPalette(false)} />
+                  <MobileTabBar onOpenMenu={() => setSidebarOpen(true)} />
                   <div className="main d-flex">
                     {sidebarOpen && (
                       <div
@@ -102,6 +112,7 @@ const App = () => {
                       <Sidebar onClose={() => setSidebarOpen(false)} />
                     </div>
                     <div className="contentwrapper">
+                      <PageTrail />
                       <Routes>
                         <Route
                           path="/"

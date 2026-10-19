@@ -12,9 +12,14 @@ const CommandPalette = ({ show, onClose }) => {
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return FLAT_NAV_ITEMS;
-    return FLAT_NAV_ITEMS.filter(
-      (item) => item.label.toLowerCase().includes(q) || item.group.toLowerCase().includes(q)
+    // Create shortcuts first, then every page
+    const ordered = [
+      ...FLAT_NAV_ITEMS.filter((i) => i.section === "Create"),
+      ...FLAT_NAV_ITEMS.filter((i) => i.section !== "Create"),
+    ];
+    if (!q) return ordered;
+    return ordered.filter((item) =>
+      `${item.label} ${item.group} ${item.keywords || ""}`.toLowerCase().includes(q)
     );
   }, [query]);
 
@@ -66,7 +71,7 @@ const CommandPalette = ({ show, onClose }) => {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Jump to a page... (Products, Course Invoices, Reports, ...)"
+            placeholder="Search pages or actions… e.g. new order, invoices, reports"
             aria-label="Search all pages"
           />
           <button className="command-palette-close" onClick={onClose} aria-label="Close">

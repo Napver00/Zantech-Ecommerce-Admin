@@ -1,0 +1,58 @@
+.page-trail {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: -0.25rem 0 1rem;
+  min-height: 32px;
+}
+
+.page-trail-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  height: 32px;
+  padding: 0 0.7rem;
+  border: 1px solid var(--zt-border);
+  border-radius: 0.5rem;
+  background: var(--zt-surface);
+  color: var(--zt-text);
+  font-family: var(--zt-font);
+  font-size: 0.8rem;
+  font-weight: 600;
+  flex-shrink: 0;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.page-trail-back:hover {
+  border-color: var(--zt-primary);
+  color: var(--zt-primary);
+}
+
+.page-trail-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  color: var(--zt-muted);
+}
+.page-trail-crumbs svg { flex-shrink: 0; color: #b6c0cf; }
+.page-trail-crumbs a { color: var(--zt-muted); }
+.page-trail-crumbs a:hover { color: var(--zt-primary); }
+.page-trail-crumbs strong {
+  color: var(--zt-ink);
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 575.98px) {
+  /* Phones: keep just the last crumbs, Back button does the rest */
+  .page-trail-crumbs > a:first-child,
+  .page-trail-crumbs > a:first-child + svg,
+  .page-trail-crumbs > span:nth-of-type(1),
+  .page-trail-crumbs > span:nth-of-type(1) + svg {
+    display: none;
+  }
+}

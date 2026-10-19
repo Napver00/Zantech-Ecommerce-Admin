@@ -33,7 +33,11 @@ const Header = ({ onToggleSidebar, onOpenSearch }) => {
     try {
       const res = await axiosInstance.get("/course-registrations/notifications");
       const d = res.data.data || {};
-      setUnseenCount(d.unseen_count || 0);
+      const unseen = d.unseen_count || 0;
+      setUnseenCount(unseen);
+      // Let the sidebar show the same count next to "Registrations"
+      window.__ztRegistrationCount = unseen;
+      window.dispatchEvent(new CustomEvent("registrations:count", { detail: unseen }));
       setNotifications(
         (d.items || []).map((r) => ({
           id: r.id,
