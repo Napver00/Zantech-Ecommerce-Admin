@@ -18,8 +18,33 @@ import OrderItems from "../../components/Orders/ViewOrder/OrderItems";
 import StatusUpdateModal from "../../components/Orders/ViewOrder/StatusUpdateModal";
 import EmailModal from "../../components/Orders/ViewOrder/EmailModal";
 import InvoiceDocument from "../../components/InvoiceDocument";
+import InvoiceShareActions from "../../components/InvoiceShareActions";
 import EditShippingAddressModal from "../../components/Orders/EditShippingAddressModal";
 import usePageTitle from "../../hooks/usePageTitle";
+
+const tk = (n) => `৳${Number(n || 0).toLocaleString()}`;
+
+// Message that goes with the invoice PDF on WhatsApp.
+const orderWhatsAppText = (orderData) => {
+  const { order, user, order_items = [], payments = [] } = orderData || {};
+  if (!order) return "";
+  const payment = payments[0];
+  const items = order_items.map(
+    (i) => `• ${i.product_name || i.name || "Item"} × ${i.quantity}`
+  );
+  return [
+    `Dear ${user?.name || order.user_name || "Customer"},`,
+    "",
+    `Your ZAN Tech invoice ${order.invoice_code} is attached.`,
+    "",
+    ...items,
+    "",
+    `Total: ${tk(order.total_amount)}`,
+    ...(payment ? [`Paid: ${tk(payment.paid_amount)}`, `Due: ${tk(payment.due_amount)}`] : []),
+    "",
+    "Thank you for shopping with ZAN Tech.",
+  ].join("\n");
+};
 
 const ViewOrder = () => {
   usePageTitle("View Order Details");
@@ -181,7 +206,7 @@ const ViewOrder = () => {
         onUpdate={handleAddressUpdated}
       />
 
-      <div className="landing-header mb-4 d-flex justify-content-between align-items-center">
+      <div className="landing-header mb-4 d-flex flex-wrap gap-3 justify-content-between align-items-center">
         <div>
           <Button
             variant="link"
@@ -195,7 +220,7 @@ const ViewOrder = () => {
             View and manage order information
           </p>
         </div>
-        <div className="d-flex gap-2">
+        <div className="d-flex flex-wrap gap-2">
           <Button
             variant="white"
             onClick={refreshOrderData}
@@ -220,15 +245,25 @@ const ViewOrder = () => {
             ) : (
               <FaFileInvoice />
             )}
-            <span className="d-none d-md-inline">Invoice</span>
+            <span className="d-none d-md-inline">Print</span>
           </Button>
+          <InvoiceShareActions
+            buildHtml={() => InvoiceDocument({ orderData })}
+            invoiceNo={order.invoice_code}
+            emailEndpoint={`/orders/${order.id}/email-invoice`}
+            defaultEmail={user?.email || ""}
+            phone={user?.phone || shipping_address?.phone || order.user_phone || order.phone || ""}
+            customerName={user?.name || order.user_name || ""}
+            whatsappText={orderWhatsAppText(orderData)}
+          />
           <Button
             variant="white"
             onClick={() => setShowEmailModal(true)}
             className="d-flex align-items-center gap-2 shadow-sm border"
+            title="Send the order details email"
           >
             <FaEnvelope />
-            <span className="d-none d-md-inline">Email</span>
+            <span className="d-none d-md-inline">Order email</span>
           </Button>
           <Form.Select
             value={orderData?.order?.status?.toString() || "0"}

@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
-import { FaArrowLeft, FaEdit, FaBan, FaMoneyBillWave, FaSave, FaTimes, FaFilePdf, FaWhatsapp } from "react-icons/fa";
+import { FaArrowLeft, FaEdit, FaBan, FaMoneyBillWave, FaSave, FaTimes, FaFilePdf } from "react-icons/fa";
 import { Card, Row, Col, Button, Form, Badge, Modal, Spinner } from "react-bootstrap";
 import axiosInstance from "../../config/axios";
 import Loading from "../../components/Loading";
 import usePageTitle from "../../hooks/usePageTitle";
 import CourseInvoiceDocument from "../../components/CourseInvoiceDocument";
+import InvoiceShareActions from "../../components/InvoiceShareActions";
 import "./CourseInvoices.css";
 
 const STATUS_VARIANT = { due: "warning", partial: "info", paid: "success", void: "secondary" };
@@ -87,9 +88,9 @@ const ViewCourseInvoice = () => {
     }
   };
 
-  // Send the invoice summary to the parent on WhatsApp (attach the PDF from "Print / PDF" if needed)
-  const shareOnWhatsApp = () => {
-    if (!invoice) return;
+  // Message that goes to the parent on WhatsApp along with the invoice PDF
+  const whatsappText = () => {
+    if (!invoice) return "";
     const tk = (n) => `৳${Number(n || 0).toLocaleString()}`;
     const course = invoice.course?.title || "";
     const lines = Array.isArray(invoice.items) && invoice.items.length
@@ -97,7 +98,7 @@ const ViewCourseInvoice = () => {
       : [`• ${invoice.payment_for === "monthly" ? `Month ${invoice.month_number} installment`
           : invoice.payment_for === "admission" ? invoice.course?.admission_fee_label || "Admission fee"
           : "Course fee"}: ${tk(invoice.amount)}`];
-    const text = [
+    return [
       "Dear Parent,",
       "",
       `Invoice ${invoice.invoice_no} — ZAN Tech`,
@@ -112,9 +113,6 @@ const ViewCourseInvoice = () => {
       "",
       "Thank you — ZAN Tech",
     ].join("\n");
-    const phone = String(invoice.student_phone || invoice.student?.parent_phone || "").replace(/\D/g, "").replace(/^88/, "");
-    const url = `https://wa.me/${phone ? `88${phone}` : ""}?text=${encodeURIComponent(text)}`;
-    window.open(url, "_blank", "noopener,noreferrer");
   };
 
   const handleGeneratePdf = () => {
@@ -184,13 +182,21 @@ const ViewCourseInvoice = () => {
                 {invoice.status}
               </Badge>
             </div>
-            <div className="d-flex gap-2">
+            <div className="d-flex flex-wrap gap-2">
               <Button variant="outline-secondary" onClick={handleGeneratePdf} disabled={generatingPdf}>
-                <FaFilePdf className="me-2" /> {generatingPdf ? "Preparing..." : "Print / PDF"}
+                <FaFilePdf className="me-2" /> {generatingPdf ? "Preparing..." : "Print"}
               </Button>
-              <Button variant="outline-success" onClick={shareOnWhatsApp}>
-                <FaWhatsapp className="me-2" /> Share on WhatsApp
-              </Button>
+              <InvoiceShareActions
+                buildHtml={() => CourseInvoiceDocument({ invoice })}
+                invoiceNo={invoice.invoice_no || `INV-${invoice.id}`}
+                emailEndpoint={`/course-invoices/${invoice.id}/email`}
+                defaultEmail={invoice.student_email || ""}
+                phone={invoice.student_phone || invoice.student?.parent_phone || ""}
+                customerName={invoice.student_name || invoice.student?.name || ""}
+                whatsappText={whatsappText()}
+                buttonVariant="outline-secondary"
+                buttonClassName="d-flex align-items-center gap-2"
+              />
               {!isLocked && !isEditing && (
                 <Button variant="success" onClick={openPayModal}>
                   <FaMoneyBillWave className="me-2" /> Add Payment

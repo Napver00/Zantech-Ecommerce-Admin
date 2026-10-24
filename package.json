@@ -27,6 +27,8 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "framer-motion": "^12.12.1",
+    "html2canvas": "1.4.1",
+    "html2pdf.js": "0.12.1",
     "jodit-react": "^5.2.19",
     "lodash": "^4.17.21",
     "lucide-react": "^0.510.0",
