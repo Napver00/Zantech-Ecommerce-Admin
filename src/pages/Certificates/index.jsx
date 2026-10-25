@@ -1,18 +1,27 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
-import { Badge, Button, Card, Col, Form, InputGroup, Pagination, Row, Spinner } from "react-bootstrap";
-import { FaCertificate, FaDownload, FaEnvelope, FaEye, FaPlus, FaSearch, FaSignature, FaTimes } from "react-icons/fa";
+import { Badge, Button, Card, Col, Form, InputGroup, Pagination, ProgressBar, Row, Spinner } from "react-bootstrap";
+import { FaCertificate, FaDownload, FaEnvelope, FaEye, FaFilePdf, FaPaperPlane, FaPlus, FaSearch, FaSignature, FaTimes } from "react-icons/fa";
 import axiosInstance from "../../config/axios";
 import Loading from "../../components/Loading";
 import CommonTable from "../../components/Common/CommonTable";
 import usePageTitle from "../../hooks/usePageTitle";
 import CertificateEmailModal from "../../components/Certificates/CertificateEmailModal";
-import { PROGRAM_TYPES, certificateFilename, createCertificatePdf } from "../../utils/certificate";
-import { downloadBlob } from "../../utils/invoicePdf";
+import { PROGRAM_TYPES, certificateFilename, createCertificatePdf, createCombinedPdf } from "../../utils/certificate";
+import { downloadBlob, emailInvoicePdf } from "../../utils/invoicePdf";
 import "./Certificates.css";
 
 const fmt = (d) => (d ? new Date(`${String(d).slice(0, 10)}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—");
+
+// Filters as API params; "issued" (one day) becomes a date range.
+const filterParams = ({ issued, ...rest }) => {
+  const params = Object.fromEntries(Object.entries(rest).filter(([, v]) => v));
+  if (issued) Object.assign(params, { start_date: issued, end_date: issued });
+  return params;
+};
+
+const BATCH_LIMIT = 300;
 
 const Certificates = () => {
   usePageTitle("Certificates");
@@ -20,7 +29,8 @@ const Certificates = () => {
   const [rows, setRows] = useState([]);
   const [pagination, setPagination] = useState({ total_rows: 0, current_page: 1, total_pages: 1, has_more_pages: false });
   const [page, setPage] = useState(1);
-  const [filters, setFilters] = useState({ search: "", program_type: "", status: "" });
+  const [filters, setFilters] = useState({ search: "", program_type: "", status: "", issued: "" });
+  const [batch, setBatch] = useState(null); // { label, done, total }
   const [firstLoad, setFirstLoad] = useState(true);
   const [loading, setLoading] = useState(false);
   const [busyId, setBusyId] = useState(null);
@@ -30,7 +40,7 @@ const Certificates = () => {
     setLoading(true);
     try {
       const params = { page: p, limit: 20 };
-      Object.entries(f).forEach(([k, v]) => v && (params[k] = v));
+      Object.assign(params, filterParams(f));
       const { data } = await axiosInstance.get("/certificates", { params });
       setRows(data.data || []);
       setPagination(data.pagination);
@@ -76,6 +86,79 @@ const Certificates = () => {
       toast.error("Could not load the certificate");
     } finally {
       setBusyId(null);
+    }
+  };
+
+  // Batch actions work on every certificate matching the current filters
+  // (e.g. one bootcamp, or the custom certificates issued on one day).
+  const loadMatching = async () => {
+    const { data } = await axiosInstance.get("/certificates", { params: { ...filterParams(filters), page: 1, limit: BATCH_LIMIT } });
+    const list = (data.data || []).filter((c) => c.status !== "revoked");
+    if ((data.pagination?.total_rows || 0) > BATCH_LIMIT) {
+      toast(`Only the newest ${BATCH_LIMIT} are included. Narrow the filters to get the rest.`, { duration: 6000 });
+    }
+    const fulls = [];
+    for (let i = 0; i < list.length; i++) {
+      setBatch({ label: "Loading", done: i, total: list.length });
+      fulls.push(await full(list[i]));
+    }
+    return fulls;
+  };
+
+  const downloadMatching = async () => {
+    setBatch({ label: "Loading", done: 0, total: 1 });
+    try {
+      const certs = await loadMatching();
+      if (!certs.length) return toast("No valid certificates match these filters.");
+      const blob = await createCombinedPdf(certs, (done, total) => setBatch({ label: "Making PDF", done, total }));
+      const label = filters.search || certs[0].program_title || filters.issued || "certificates";
+      downloadBlob(blob, `ZAN-Tech-Certificates-${String(label).replace(/[^\w-]+/g, "_")}.pdf`);
+      toast.success(`${certs.length} certificates in one PDF`);
+    } catch (err) {
+      console.error(err);
+      toast.error("Could not create the PDF");
+    } finally {
+      setBatch(null);
+    }
+  };
+
+  const emailMatching = async () => {
+    setBatch({ label: "Loading", done: 0, total: 1 });
+    try {
+      const certs = await loadMatching();
+      const withEmail = certs.filter((c) => c.recipient_email);
+      const notYet = withEmail.filter((c) => !c.emailed_at);
+      if (!withEmail.length) return toast("None of these certificates has an email address.");
+      let targets = notYet;
+      if (notYet.length < withEmail.length) {
+        const again = window.confirm(
+          `${withEmail.length - notYet.length} of ${withEmail.length} were emailed before.\n\nOK = send to all ${withEmail.length}\nCancel = only the ${notYet.length} not sent yet`
+        );
+        targets = again ? withEmail : notYet;
+      }
+      if (!targets.length) return toast("Everyone here has already been emailed.");
+      if (!window.confirm(`Email ${targets.length} certificate${targets.length === 1 ? "" : "s"} (PDF attached) from info@zantechbd.com?`)) return;
+
+      let sent = 0;
+      const failed = [];
+      for (const c of targets) {
+        setBatch({ label: "Emailing", done: sent + failed.length, total: targets.length });
+        try {
+          const blob = await createCertificatePdf(c);
+          await emailInvoicePdf(axiosInstance, `/certificates/${c.id}/email`, { blob, filename: certificateFilename(c) });
+          sent++;
+        } catch {
+          failed.push(c.recipient_name);
+        }
+      }
+      if (failed.length) toast.error(`Sent ${sent}. Failed: ${failed.join(", ")}`, { duration: 10000 });
+      else toast.success(`Sent ${sent} certificate${sent === 1 ? "" : "s"}`);
+      fetchRows(page, filters);
+    } catch (err) {
+      console.error(err);
+      toast.error("Could not send the certificates");
+    } finally {
+      setBatch(null);
     }
   };
 
@@ -169,7 +252,29 @@ const Certificates = () => {
                 <option value="revoked">Revoked</option>
               </Form.Select>
             </Col>
+            <Col md={2}>
+              <Form.Control type="date" value={filters.issued} onChange={(e) => setFilter("issued", e.target.value)} title="Issued on" />
+            </Col>
           </Row>
+
+          {pagination.total_rows > 0 && (
+            <div className="cert-batch mb-4">
+              <div className="small">
+                <strong>All {pagination.total_rows} shown{Object.values(filters).some(Boolean) ? " with these filters" : ""}:</strong>{" "}
+                <span className="text-muted">tip: search a programme name or pick an issue date to get one batch.</span>
+              </div>
+              <div className="d-flex flex-wrap gap-2">
+                <Button size="sm" variant="primary" onClick={downloadMatching} disabled={!!batch}><FaFilePdf className="me-2" />Download all (one PDF)</Button>
+                <Button size="sm" variant="outline-primary" onClick={emailMatching} disabled={!!batch}><FaPaperPlane className="me-2" />Email all</Button>
+              </div>
+              {batch && (
+                <div className="w-100">
+                  <div className="small text-muted mb-1">{batch.label} {batch.done} / {batch.total}… keep this tab open.</div>
+                  <ProgressBar now={batch.total ? (batch.done / batch.total) * 100 : 0} animated />
+                </div>
+              )}
+            </div>
+          )}
 
           {rows.length === 0 && !loading ? (
             <div className="text-center py-5">
