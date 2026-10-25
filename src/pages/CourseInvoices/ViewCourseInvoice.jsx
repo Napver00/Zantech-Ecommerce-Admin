@@ -10,6 +10,7 @@ import CourseInvoiceDocument from "../../components/CourseInvoiceDocument";
 import InvoiceShareActions from "../../components/InvoiceShareActions";
 import "./CourseInvoices.css";
 
+import confirmDialog from "../../utils/confirmDialog";
 const STATUS_VARIANT = { due: "warning", partial: "info", paid: "success", void: "secondary" };
 
 const ViewCourseInvoice = () => {
@@ -78,7 +79,7 @@ const ViewCourseInvoice = () => {
   };
 
   const handleVoid = async () => {
-    if (!window.confirm("Void this invoice? This removes its contribution to revenue reports but keeps it in the database for audit history.")) return;
+    if (!await confirmDialog("Void this invoice? This removes its contribution to revenue reports but keeps it in the database for audit history.")) return;
     try {
       await axiosInstance.delete(`/course-invoices/${id}`);
       toast.success("Invoice voided");

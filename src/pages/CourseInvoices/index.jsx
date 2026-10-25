@@ -19,6 +19,7 @@ import usePageTitle from "../../hooks/usePageTitle";
 import CourseInvoiceDocument from "../../components/CourseInvoiceDocument";
 import "./CourseInvoices.css";
 
+import confirmDialog from "../../utils/confirmDialog";
 const STATUS_VARIANT = { due: "warning", partial: "info", paid: "success", void: "secondary" };
 
 const CourseInvoices = () => {
@@ -100,7 +101,7 @@ const CourseInvoices = () => {
 
   const handleVoid = async (id) => {
     if (
-      !window.confirm(
+      !await confirmDialog(
         "Void this invoice? This removes its contribution to revenue reports but keeps it in the database for audit history."
       )
     )

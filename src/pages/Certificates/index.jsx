@@ -12,6 +12,7 @@ import { PROGRAM_TYPES, certificateFilename, createCertificatePdf, createCombine
 import { downloadBlob, emailInvoicePdf } from "../../utils/invoicePdf";
 import "./Certificates.css";
 
+import confirmDialog from "../../utils/confirmDialog";
 const fmt = (d) => (d ? new Date(`${String(d).slice(0, 10)}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—");
 
 // Filters as API params; "issued" (one day) becomes a date range.
@@ -131,13 +132,17 @@ const Certificates = () => {
       if (!withEmail.length) return toast("None of these certificates has an email address.");
       let targets = notYet;
       if (notYet.length < withEmail.length) {
-        const again = window.confirm(
-          `${withEmail.length - notYet.length} of ${withEmail.length} were emailed before.\n\nOK = send to all ${withEmail.length}\nCancel = only the ${notYet.length} not sent yet`
-        );
+        const again = await confirmDialog({
+          title: `${withEmail.length - notYet.length} of ${withEmail.length} were emailed before`,
+          message: "Send to everyone again, or only to the people who haven't had it yet?",
+          confirmLabel: `All ${withEmail.length}`,
+          cancelLabel: `Only ${notYet.length} new`,
+          tone: "primary",
+        });
         targets = again ? withEmail : notYet;
       }
       if (!targets.length) return toast("Everyone here has already been emailed.");
-      if (!window.confirm(`Email ${targets.length} certificate${targets.length === 1 ? "" : "s"} (PDF attached) from info@zantechbd.com?`)) return;
+      if (!await confirmDialog(`Email ${targets.length} certificate${targets.length === 1 ? "" : "s"} (PDF attached) from info@zantechbd.com?`)) return;
 
       let sent = 0;
       const failed = [];

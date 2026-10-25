@@ -7,6 +7,7 @@ import Loading from "../../components/Loading";
 import CommonTable from "../../components/Common/CommonTable";
 import usePageTitle from "../../hooks/usePageTitle";
 
+import confirmDialog from "../../utils/confirmDialog";
 // bKash / Rocket / Nagad / bank details shown on the website's course registration page
 
 const TYPES = [
@@ -116,7 +117,7 @@ const PaymentMethods = () => {
   };
 
   const handleDelete = async (m) => {
-    if (!window.confirm(`Delete "${m.title}"? Past registrations keep the payment details they were made with.`)) return;
+    if (!await confirmDialog(`Delete "${m.title}"? Past registrations keep the payment details they were made with.`)) return;
     try {
       await axiosInstance.delete(`/payment-methods/${m.id}`);
       toast.success("Payment method deleted");

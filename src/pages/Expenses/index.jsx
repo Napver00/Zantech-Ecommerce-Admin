@@ -10,6 +10,7 @@ import Loading from "../../components/Loading";
 import usePageTitle from '../../hooks/usePageTitle';
 import CommonTable from "../../components/Common/CommonTable";
 
+import confirmDialog from "../../utils/confirmDialog";
 const Expenses = () => {
   usePageTitle('Manage Expenses');
   const [expenses, setExpenses] = useState([]);
@@ -126,7 +127,7 @@ const Expenses = () => {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this expense?")) {
+    if (await confirmDialog("Are you sure you want to delete this expense?")) {
       try {
         const response = await axiosInstance.delete(`/expenses/${id}`);
         if (response.data.success) {

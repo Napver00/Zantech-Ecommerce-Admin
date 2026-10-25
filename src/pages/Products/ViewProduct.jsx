@@ -18,6 +18,7 @@ import usePageTitle from "../../hooks/usePageTitle";
 import ProductBundle from "../../components/Products/ProductBundle";
 import "./Products.css";
 
+import confirmDialog from "../../utils/confirmDialog";
 const ViewProduct = () => {
   usePageTitle("Product Details");
   const { id } = useParams();
@@ -117,7 +118,7 @@ const ViewProduct = () => {
   }, [fetchProduct]);
 
   const handleDelete = useCallback(async () => {
-    if (window.confirm("Are you sure you want to delete this product?")) {
+    if (await confirmDialog("Are you sure you want to delete this product?")) {
       try {
         await axiosInstance.delete(`/products/delete/${id}`);
         toast.success("Product deleted successfully");
@@ -200,7 +201,7 @@ const ViewProduct = () => {
 
   const handleDeleteImage = useCallback(
     async (imageId) => {
-      if (!window.confirm("Are you sure you want to delete this image?"))
+      if (!await confirmDialog("Are you sure you want to delete this image?"))
         return;
       setDeleteImageLoading(imageId);
       try {
@@ -270,7 +271,7 @@ const ViewProduct = () => {
 
   const handleDeleteTag = useCallback(
     async (tagId) => {
-      if (!window.confirm("Are you sure you want to delete this tag?")) return;
+      if (!await confirmDialog("Are you sure you want to delete this tag?")) return;
       setDeleteTagLoading(tagId);
       try {
         await axiosInstance.delete(`/products/remove-tags/${id}`, {
@@ -326,7 +327,7 @@ const ViewProduct = () => {
 
   const handleDeleteCategory = useCallback(
     async (categoryId) => {
-      if (!window.confirm("Are you sure you want to remove this category?"))
+      if (!await confirmDialog("Are you sure you want to remove this category?"))
         return;
       setDeleteCategoryLoading(categoryId);
       try {
@@ -347,7 +348,7 @@ const ViewProduct = () => {
   const handleDeleteBundleItem = useCallback(
     async (bundleId) => {
       if (
-        !window.confirm(
+        !await confirmDialog(
           "Are you sure you want to remove this item from the bundle?"
         )
       )

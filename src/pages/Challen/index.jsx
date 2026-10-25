@@ -11,6 +11,7 @@ import CommonTable from '../../components/Common/CommonTable';
 import './Challan.css';
 import usePageTitle from '../../hooks/usePageTitle';
 
+import confirmDialog from "../../utils/confirmDialog";
 const Challan = () => {
   usePageTitle('Manage Challans');
   const [challans, setChallans] = useState([]);
@@ -109,7 +110,7 @@ const Challan = () => {
   };
 
   const handleDeleteChallan = async (id) => {
-    if (window.confirm('Are you sure you want to delete this challan?')) {
+    if (await confirmDialog('Are you sure you want to delete this challan?')) {
       try {
         setTableLoading(true);
         const response = await axiosInstance.delete(`/challans/${id}`);

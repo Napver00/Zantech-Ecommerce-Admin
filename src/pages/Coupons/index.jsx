@@ -28,6 +28,7 @@ import Loading from "@/components/Loading";
 import usePageTitle from '@/hooks/usePageTitle';
 import CommonTable from "@/components/Common/CommonTable";
 
+import confirmDialog from "../../utils/confirmDialog";
 const Coupons = () => {
   usePageTitle('Manage Coupons');
   const [coupons, setCoupons] = useState([]);
@@ -257,7 +258,7 @@ const Coupons = () => {
   };
 
   const handleDeleteCoupon = async (id) => {
-    if (window.confirm("Are you sure you want to delete this coupon?")) {
+    if (await confirmDialog("Are you sure you want to delete this coupon?")) {
       try {
         setTableLoading(true);
         const response = await axiosInstance.delete(`/coupons/${id}`);

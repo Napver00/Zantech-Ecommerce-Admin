@@ -166,28 +166,6 @@
   background-color: transparent;
 }
 
-/* Modal Styles */
-.modal-content {
-  border: none;
-  border-radius: 10px;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-}
-
-.modal-header {
-  border-bottom: 1px solid var(--zt-border);
-  padding: 1rem 1.5rem;
-}
-
-.modal-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--zt-ink);
-}
-
-.modal-body {
-  padding: 1.5rem;
-}
-
 .user-details h6 {
   font-size: 0.875rem;
   font-weight: 600;

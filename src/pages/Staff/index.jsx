@@ -7,6 +7,7 @@ import { Card, Form, InputGroup, Button, Pagination, Row, Col } from 'react-boot
 import Loading from '../../components/Loading';
 import usePageTitle from '../../hooks/usePageTitle';
 
+import confirmDialog from "../../utils/confirmDialog";
 const Staff = () => {
   usePageTitle('Manage Staff');
   const navigate = useNavigate();
@@ -172,7 +173,7 @@ const Staff = () => {
   };
 
   const handleDeleteStaff = async (id) => {
-    if (window.confirm("Are you sure you want to delete this staff member?")) {
+    if (await confirmDialog("Are you sure you want to delete this staff member?")) {
       try {
         await axiosInstance.delete(`/stuff/delete/${id}`);
         toast.success("Staff member deleted successfully");

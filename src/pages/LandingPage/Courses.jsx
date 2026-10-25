@@ -7,6 +7,7 @@ import { Card, Form, InputGroup, Button, Row, Col, Badge, Pagination } from "rea
 import CommonTable from "../../components/Common/CommonTable";
 import usePageTitle from "../../hooks/usePageTitle";
 
+import confirmDialog from "../../utils/confirmDialog";
 const STATUS_VARIANT = { published: "success", draft: "secondary" };
 
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "");
@@ -83,7 +84,7 @@ const Courses = ({ kind = "course" }) => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Delete this course? This will also remove all its curriculum, schedules, mentors and images.")) return;
+    if (!await confirmDialog("Delete this course? This will also remove all its curriculum, schedules, mentors and images.")) return;
     try {
       setTableLoading(true);
       await axiosInstance.delete(`/courses/${id}`);

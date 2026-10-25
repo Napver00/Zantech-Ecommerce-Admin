@@ -8,6 +8,7 @@ import "./FAQ.css";
 import usePageTitle from '@/hooks/usePageTitle';
 import CommonTable from "@/components/Common/CommonTable";
 
+import confirmDialog from "../../utils/confirmDialog";
 const FAQ = () => {
     usePageTitle('Manage FAQs');
     const [faqs, setFaqs] = useState([]);
@@ -126,7 +127,7 @@ const FAQ = () => {
     };
 
     const handleDeleteFaq = async (id) => {
-        if (window.confirm("Are you sure you want to delete this FAQ?")) {
+        if (await confirmDialog("Are you sure you want to delete this FAQ?")) {
             try {
                 setTableLoading(true);
                 await axiosInstance.delete(`/faqs/${id}`);

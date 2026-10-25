@@ -24,6 +24,7 @@ import "./Categories.css";
 import usePageTitle from '../../hooks/usePageTitle';
 import CommonTable from "../../components/Common/CommonTable";
 
+import confirmDialog from "../../utils/confirmDialog";
 const Categories = () => {
   usePageTitle('Manage Categories');
   const [categories, setCategories] = useState([]);
@@ -166,7 +167,7 @@ const Categories = () => {
   };
 
   const handleDeleteCategory = async (id) => {
-    if (window.confirm("Are you sure you want to delete this category?")) {
+    if (await confirmDialog("Are you sure you want to delete this category?")) {
       try {
         setTableLoading(true);
         await axiosInstance.delete(`/categories/${id}`);

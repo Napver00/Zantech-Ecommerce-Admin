@@ -9,6 +9,7 @@ import Loading from "../../components/Loading";
 import usePageTitle from "../../hooks/usePageTitle";
 import "../CourseInvoices/CourseInvoices.css";
 
+import confirmDialog from "../../utils/confirmDialog";
 const selectMenuProps = {
   menuPortalTarget: typeof document !== "undefined" ? document.body : null,
   menuPosition: "fixed",
@@ -130,7 +131,7 @@ const ViewStudent = () => {
   };
 
   const handleUnenroll = async (courseId) => {
-    if (!window.confirm("Unenroll this student from the course? Past invoices for that course are unaffected.")) return;
+    if (!await confirmDialog("Unenroll this student from the course? Past invoices for that course are unaffected.")) return;
     try {
       await axiosInstance.delete(`/students/${id}/courses/${courseId}`);
       toast.success("Unenrolled successfully");
@@ -141,7 +142,7 @@ const ViewStudent = () => {
   };
 
   const handleDelete = async () => {
-    if (!window.confirm("Delete this student? This removes all their course enrollments. Invoices already issued to them are kept for records, but will no longer link to a live student record.")) return;
+    if (!await confirmDialog("Delete this student? This removes all their course enrollments. Invoices already issued to them are kept for records, but will no longer link to a live student record.")) return;
     try {
       await axiosInstance.delete(`/students/${id}`);
       toast.success("Student deleted");

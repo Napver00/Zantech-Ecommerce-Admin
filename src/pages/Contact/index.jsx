@@ -8,6 +8,7 @@ import "./Contact.css";
 import usePageTitle from '../../hooks/usePageTitle';
 import CommonTable from "../../components/Common/CommonTable";
 
+import confirmDialog from "../../utils/confirmDialog";
 const Contact = () => {
   usePageTitle('Manage Contacts');
   const [contacts, setContacts] = useState([]);
@@ -77,7 +78,7 @@ const Contact = () => {
   };
 
   const handleDeleteContact = async (id) => {
-    if (window.confirm("Are you sure you want to delete this contact?")) {
+    if (await confirmDialog("Are you sure you want to delete this contact?")) {
       try {
         await axiosInstance.delete(`/contact/${id}`);
         const updatedContacts = contacts.filter((contact) => contact.id !== id);

@@ -19,6 +19,7 @@ import {
   appendDetails,
 } from "./courseDetailUtils";
 
+import confirmDialog from "../../utils/confirmDialog";
 const studentSelectMenuProps = {
   menuPortalTarget: typeof document !== "undefined" ? document.body : null,
   menuPosition: "fixed",
@@ -134,7 +135,7 @@ const ViewCourse = () => {
   };
 
   const handleUnenroll = async (studentId) => {
-    if (!window.confirm("Unenroll this student from the course? Any invoices already issued to them are kept for audit history.")) return;
+    if (!await confirmDialog("Unenroll this student from the course? Any invoices already issued to them are kept for audit history.")) return;
     try {
       await axiosInstance.delete(`/students/${studentId}/courses/${courseId}`);
       toast.success("Student unenrolled");

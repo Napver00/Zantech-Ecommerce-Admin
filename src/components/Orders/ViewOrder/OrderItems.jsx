@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast';
 import axiosInstance from '../../../config/axios';
 import Select from 'react-select/async';
 
+import confirmDialog from "../../../utils/confirmDialog";
 const OrderItems = ({ orderItems, orderId, refreshOrderData }) => {
   const [updatingQuantity, setUpdatingQuantity] = useState(false);
   const [removingItem, setRemovingItem] = useState(false);
@@ -17,7 +18,7 @@ const OrderItems = ({ orderItems, orderId, refreshOrderData }) => {
   const handleRemoveItem = async (productId) => {
     if (removingItem) return;
 
-    if (!window.confirm("Are you sure you want to remove this item from the order?")) {
+    if (!await confirmDialog("Are you sure you want to remove this item from the order?")) {
       return;
     }
 

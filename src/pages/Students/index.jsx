@@ -8,6 +8,7 @@ import Loading from "../../components/Loading";
 import CommonTable from "../../components/Common/CommonTable";
 import usePageTitle from "../../hooks/usePageTitle";
 
+import confirmDialog from "../../utils/confirmDialog";
 const emptyForm = { name: "", school_name: "", parent_phone: "", email: "" };
 
 const Students = () => {
@@ -132,7 +133,7 @@ const Students = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Delete this student? Their enrollments will be removed, but any invoices already issued to them are kept for audit history.")) return;
+    if (!await confirmDialog("Delete this student? Their enrollments will be removed, but any invoices already issued to them are kept for audit history.")) return;
     try {
       setTableLoading(true);
       await axiosInstance.delete(`/students/${id}`);

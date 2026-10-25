@@ -15,6 +15,7 @@ import {
 import { downloadBlob, emailInvoicePdf } from "../../utils/invoicePdf";
 import "./Certificates.css";
 
+import confirmDialog from "../../utils/confirmDialog";
 const today = () => new Date().toISOString().slice(0, 10);
 
 // "Name, email" per line → recipients.
@@ -248,7 +249,7 @@ const CertificateForm = () => {
   const emailAll = async () => {
     const targets = issued.filter((c) => c.recipient_email && !c.emailed_at);
     if (!targets.length) return toast("Nobody in this batch has an email address.");
-    if (!window.confirm(`Email certificates to ${targets.length} people from info@zantechbd.com?`)) return;
+    if (!await confirmDialog(`Email certificates to ${targets.length} people from info@zantechbd.com?`)) return;
     let sent = 0;
     const failed = [];
     for (const c of targets) {

@@ -8,6 +8,7 @@ import './HeroImages.css';
 import usePageTitle from '../../hooks/usePageTitle';
 import CommonTable from '../../components/Common/CommonTable';
 
+import confirmDialog from "../../utils/confirmDialog";
 const HeroImages = () => {
   usePageTitle('Manage Hero Images');
   const [heroImages, setHeroImages] = useState([]);
@@ -195,7 +196,7 @@ const HeroImages = () => {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this hero image?')) {
+    if (await confirmDialog('Are you sure you want to delete this hero image?')) {
       try {
         const response = await axiosInstance.delete(`/hero-images/${id}`);
         if (response.data.success) {

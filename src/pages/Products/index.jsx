@@ -20,6 +20,7 @@ import CommonTable from "../../components/Common/CommonTable"; // Import CommonT
 import "./Products.css";
 import usePageTitle from "../../hooks/usePageTitle";
 
+import confirmDialog from "../../utils/confirmDialog";
 const Products = () => {
   usePageTitle("Manage Products");
   const [urlParams, setUrlParams] = useSearchParams();
@@ -159,7 +160,7 @@ const Products = () => {
   };
 
   const handleDeleteProduct = async (id) => {
-    if (window.confirm("Are you sure you want to delete this product?")) {
+    if (await confirmDialog("Are you sure you want to delete this product?")) {
       try {
         setTableLoading(true);
         const token = localStorage.getItem("token");

@@ -8,6 +8,7 @@ import "./Suppliers.css";
 import usePageTitle from '../../hooks/usePageTitle';
 import CommonTable from "../../components/Common/CommonTable";
 
+import confirmDialog from "../../utils/confirmDialog";
 const Suppliers = () => {
     usePageTitle('Manage Suppliers');
     const [suppliers, setSuppliers] = useState([]);
@@ -109,7 +110,7 @@ const Suppliers = () => {
     };
 
     const handleDeleteSupplier = async (id) => {
-        if (window.confirm("Are you sure you want to delete this supplier?")) {
+        if (await confirmDialog("Are you sure you want to delete this supplier?")) {
             try {
                 await axiosInstance.delete(`/suppliers/${id}`);
                 setSuppliers(suppliers.filter((sup) => sup.id !== id));

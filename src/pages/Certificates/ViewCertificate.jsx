@@ -14,6 +14,7 @@ import { PROGRAM_TYPES, TEMPLATES, certificateFilename, createCertificatePdf, pr
 import { downloadBlob, shareInvoiceOnWhatsApp } from "../../utils/invoicePdf";
 import "./Certificates.css";
 
+import confirmDialog from "../../utils/confirmDialog";
 const fmt = (d, time = false) =>
   d ? new Date(time ? d : `${String(d).slice(0, 10)}T00:00:00`).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", ...(time ? { hour: "numeric", minute: "2-digit" } : {}) }) : "—";
 
@@ -75,8 +76,8 @@ const ViewCertificate = () => {
       await load();
     });
 
-  const remove = () => {
-    if (!window.confirm(`Delete certificate ${cert.code}? Its QR code will stop working. Revoking keeps a record instead.`)) return;
+  const remove = async () => {
+    if (!await confirmDialog(`Delete certificate ${cert.code}? Its QR code will stop working. Revoking keeps a record instead.`)) return;
     run("delete", async () => {
       await axiosInstance.delete(`/certificates/${id}`);
       toast.success("Certificate deleted");

@@ -8,6 +8,7 @@ import Loading from "../../components/Loading";
 import "./Expenses.css";
 import usePageTitle from '../../hooks/usePageTitle';
 
+import confirmDialog from "../../utils/confirmDialog";
 const ViewExpense = () => {
   usePageTitle('View Expense Details');
   const { id } = useParams();
@@ -82,7 +83,7 @@ const ViewExpense = () => {
   };
 
   const removeExistingProve = async (proveId) => {
-    if (window.confirm("Are you sure you want to remove this document?")) {
+    if (await confirmDialog("Are you sure you want to remove this document?")) {
       try {
         // Make API call to delete the prove
         const response = await axiosInstance.delete(`/expenses/prove/${proveId}`);

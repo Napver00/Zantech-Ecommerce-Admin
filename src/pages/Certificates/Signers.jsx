@@ -9,6 +9,7 @@ import usePageTitle from "../../hooks/usePageTitle";
 import { signatureFromFile } from "../../utils/certificate";
 import "./Certificates.css";
 
+import confirmDialog from "../../utils/confirmDialog";
 const EMPTY = { name: "", designation: "", signature: null, is_default: false };
 
 /** Organizers, instructors and others who sign certificates. */
@@ -71,7 +72,7 @@ const Signers = () => {
   };
 
   const remove = async (s) => {
-    if (!window.confirm(`Remove ${s.name}? Certificates already issued keep their signatures.`)) return;
+    if (!await confirmDialog(`Remove ${s.name}? Certificates already issued keep their signatures.`)) return;
     try {
       await axiosInstance.delete(`/certificate-signers/${s.id}`);
       toast.success("Signer removed");

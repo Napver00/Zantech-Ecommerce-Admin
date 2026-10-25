@@ -166,31 +166,6 @@
 }
 
 /* Modal Styles */
-.modern-modal .modal-content {
-  border: none;
-  border-radius: 12px;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-}
-
-.modern-modal .modal-header {
-  border-bottom: 1px solid var(--zt-border);
-  padding: 1.25rem;
-}
-
-.modern-modal .modal-title {
-  font-weight: 600;
-  color: var(--zt-ink);
-}
-
-.modern-modal .modal-body {
-  padding: 1.25rem;
-}
-
-.modern-modal .modal-footer {
-  border-top: 1px solid var(--zt-border);
-  padding: 1.25rem;
-}
-
 .modern-file-input {
   border: 1px solid var(--zt-border);
   border-radius: 8px;

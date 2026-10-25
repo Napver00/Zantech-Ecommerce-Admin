@@ -8,6 +8,7 @@ import axiosInstance from "../../config/axios";
 import CommonTable from "../../components/Common/CommonTable";
 import "./RegistrationsPanel.css";
 
+import confirmDialog from "../../utils/confirmDialog";
 // Registrations submitted from the website's course registration form.
 // Used on its own page (all courses) and inside a course's edit page (courseId set).
 
@@ -131,7 +132,7 @@ const RegistrationsPanel = ({ courseId = null, openId = null, onChanged }) => {
   };
 
   const reject = async () => {
-    if (!window.confirm("Reject this registration?")) return;
+    if (!await confirmDialog("Reject this registration?")) return;
     setActing(true);
     try {
       const res = await axiosInstance.post(`/course-registrations/${selected.id}/reject`, { admin_note: note || null });
@@ -144,7 +145,7 @@ const RegistrationsPanel = ({ courseId = null, openId = null, onChanged }) => {
   };
 
   const remove = async () => {
-    if (!window.confirm("Delete this registration permanently?")) return;
+    if (!await confirmDialog("Delete this registration permanently?")) return;
     setActing(true);
     try {
       await axiosInstance.delete(`/course-registrations/${selected.id}`);
