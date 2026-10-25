@@ -1,0 +1,108 @@
+.certificates-page .cert-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+.certificates-page .cert-step span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #282d78;
+  color: #fff;
+  font-size: 13px;
+}
+
+.cert-preview-sticky {
+  position: sticky;
+  top: 84px;
+}
+
+.cert-signer-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 10px;
+}
+
+.cert-sig-thumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 96px;
+  height: 52px;
+  flex-shrink: 0;
+  border: 1px dashed var(--bs-border-color);
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+}
+.cert-sig-thumb.lg {
+  width: 100%;
+  height: 80px;
+}
+.cert-sig-thumb img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+.cert-sig-thumb span {
+  font-size: 11px;
+  color: var(--bs-secondary-color);
+}
+
+.cert-people {
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 10px;
+}
+.cert-person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--bs-border-color);
+  cursor: pointer;
+  margin: 0;
+}
+.cert-person:hover {
+  background: var(--bs-tertiary-bg);
+}
+
+.cert-dl {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 8px 12px;
+  margin: 0;
+}
+.cert-dl dt {
+  font-weight: 500;
+  color: var(--bs-secondary-color);
+}
+.cert-dl dd {
+  margin: 0;
+  word-break: break-word;
+}
+
+.cert-link {
+  font-family: Consolas, monospace;
+  font-size: 13px;
+  padding: 8px 10px;
+  background: var(--bs-tertiary-bg);
+  border-radius: 8px;
+  word-break: break-all;
+}
+
+.cert-signer-card {
+  height: 100%;
+  padding: 16px;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 12px;
+}

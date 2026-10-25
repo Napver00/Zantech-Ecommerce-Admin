@@ -27,6 +27,7 @@ import {
   MdLocalShipping,
   MdInsertChart,
   MdFolderOpen,
+  MdWorkspacePremium,
 } from "react-icons/md";
 
 /**
@@ -112,6 +113,13 @@ export const NAV_SECTIONS = [
         label: "Course invoices",
         match: ["/course-invoices/"],
         keywords: "fees payment receipt monthly",
+      },
+      {
+        path: "/certificates",
+        icon: MdWorkspacePremium,
+        label: "Certificates",
+        match: ["/certificates/"],
+        keywords: "certificate award qr verify signers participation completion",
       },
       { path: "/payment-methods", icon: MdAccountBalanceWallet, label: "Payment methods", keywords: "bkash rocket bank" },
     ],

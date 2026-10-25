@@ -50,6 +50,10 @@ import CourseRegistrations from "./pages/CourseRegistrations";
 import PaymentMethods from "./pages/PaymentMethods";
 import AddCourseInvoice from "./pages/CourseInvoices/AddCourseInvoice";
 import ViewCourseInvoice from "./pages/CourseInvoices/ViewCourseInvoice";
+import Certificates from "./pages/Certificates";
+import CertificateForm from "./pages/Certificates/CertificateForm";
+import ViewCertificate from "./pages/Certificates/ViewCertificate";
+import CertificateSigners from "./pages/Certificates/Signers";
 import Students from "./pages/Students";
 import ViewStudent from "./pages/Students/ViewStudent";
 import CommandPalette from "./components/CommandPalette";
@@ -200,6 +204,11 @@ const App = () => {
                           path="/course-invoices/:id"
                           element={<ViewCourseInvoice />}
                         />
+                        <Route path="/certificates" element={<Certificates />} />
+                        <Route path="/certificates/new" element={<CertificateForm />} />
+                        <Route path="/certificates/signers" element={<CertificateSigners />} />
+                        <Route path="/certificates/:id" element={<ViewCertificate />} />
+                        <Route path="/certificates/:id/edit" element={<CertificateForm />} />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
                     </div>
