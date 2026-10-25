@@ -1,195 +1,194 @@
-import React, { useState, useEffect } from 'react';
-import { Row, Col, Card, Spinner } from 'react-bootstrap';
+import React, { useMemo, useState } from "react";
 import {
-  BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell,
-} from 'recharts';
-import { toast } from 'react-hot-toast';
-import axiosInstance from '../../config/axios';
-import Loading from '../../components/Loading';
-import usePageTitle from '../../hooks/usePageTitle';
+  Area, Bar, CartesianGrid, Cell, ComposedChart, Legend, Line, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, BarChart,
+} from "recharts";
+import { BookOpen, Package, PiggyBank, Receipt, ShoppingBag, TrendingUp, Wallet } from "lucide-react";
+import usePageTitle from "../../hooks/usePageTitle";
+import useCachedGet from "../../hooks/useCachedGet";
+import useReportRange from "../../components/Reports/useReportRange";
+import { EmptyState, KpiCard, Panel, RangeBar } from "../../components/Reports/ReportParts";
+import { COLORS, ORDER_STATUS, num, rangeQuery, shortTaka, taka } from "../../components/Reports/reportUtils";
 
-const COLORS = ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796'];
-
-const StatCard = ({ label, value, color }) => (
-  <Card className="modern-card border-0 h-100">
-    <Card.Body className="d-flex align-items-center gap-3">
-      <div
-        style={{
-          width: 52, height: 52, borderRadius: 12, flexShrink: 0,
-          backgroundColor: color, display: 'flex', alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <span style={{ color: '#fff', fontSize: 22, fontWeight: 700 }}>৳</span>
-      </div>
-      <div>
-        <p className="text-muted mb-1" style={{ fontSize: '0.8rem', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</p>
-        <h4 className="mb-0 fw-bold text-dark">{value}</h4>
-      </div>
-    </Card.Body>
-  </Card>
-);
+const tooltipStyle = { borderRadius: 10, border: "1px solid #e3e8ef", boxShadow: "0 8px 24px -8px rgb(15 23 42 / 0.2)", fontSize: 13 };
+const money = (v, name) => [taka(v), name];
 
 const Analytics = () => {
-  usePageTitle('Analytics');
+  usePageTitle("Analytics");
+  const [range, setRange] = useReportRange("30d");
+  const { data, error, loading, refreshing, refresh } = useCachedGet(rangeQuery(range));
+  const [trend, setTrend] = useState("money"); // money | orders
 
-  const [loading, setLoading] = useState(true);
-  const [dashboardData, setDashboardData] = useState(null);
-  const [monthlyData, setMonthlyData] = useState([]);
-  const [salesOverTime, setSalesOverTime] = useState([]);
-  const [topItems, setTopItems] = useState([]);
+  const k = data?.kpis;
+  const p = data?.previous;
+  const series = data?.series || [];
+  const hasMoney = series.some((r) => r.income || r.expenses);
+  const hasOrders = series.some((r) => r.orders);
 
-  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const incomeSplit = useMemo(
+    () => (k ? [
+      { name: "Store sales", value: k.store_received, color: COLORS.store },
+      { name: "Course fees", value: k.course_collected, color: COLORS.course },
+    ].filter((s) => s.value > 0) : []),
+    [k]
+  );
 
-  useEffect(() => {
-    const fetchAll = async () => {
-      try {
-        const [dashRes, expRes, salesRes, topRes, timeRes] = await Promise.all([
-          axiosInstance.get('/admin/dashboard'),
-          axiosInstance.get('/reports/expenses/monthly-total'),
-          axiosInstance.get('/reports/transitions/monthly-total'),
-          axiosInstance.get('/reports/top-selling-items'),
-          axiosInstance.get('/reports/sales-over-time?period=monthly'),
-        ]);
+  const statusData = useMemo(
+    () => Object.entries(data?.order_status || {}).map(([s, n]) => ({ name: ORDER_STATUS[s]?.label || `Status ${s}`, value: n, color: ORDER_STATUS[s]?.color || "#94a3b8" })),
+    [data]
+  );
 
-        if (dashRes.data.success) setDashboardData(dashRes.data.data);
-
-        const salesData = salesRes.data.data || [];
-        const expData = expRes.data.data || [];
-        const map = new Map();
-        salesData.forEach(item => {
-          const key = `${item.year}-${item.month}`;
-          if (!map.has(key)) map.set(key, { name: `${monthNames[item.month - 1]} ${item.year}`, sales: 0, expenses: 0 });
-          map.get(key).sales = Number(item.total_amount);
-        });
-        expData.forEach(item => {
-          const key = `${item.year}-${item.month}`;
-          if (!map.has(key)) map.set(key, { name: `${monthNames[item.month - 1]} ${item.year}`, sales: 0, expenses: 0 });
-          map.get(key).expenses = Number(item.total_amount);
-        });
-        setMonthlyData(Array.from(map.values()).reverse());
-
-        setTopItems((topRes.data.data || []).slice(0, 6));
-        setSalesOverTime(timeRes.data.data || []);
-      } catch {
-        toast.error('Failed to load analytics data.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchAll();
-  }, []);
-
-  if (loading) return <Loading />;
-
-  const totalSales = monthlyData.reduce((s, m) => s + m.sales, 0);
-  const totalExpenses = monthlyData.reduce((s, m) => s + m.expenses, 0);
-  const profit = totalSales - totalExpenses;
-
-  const pieData = topItems.map(item => ({ name: item.name, value: Number(item.total_sold) }));
+  const topItems = (data?.top_items || []).slice(0, 8).map((i) => ({ ...i, short: i.name.length > 28 ? `${i.name.slice(0, 26)}…` : i.name }));
 
   return (
-    <div className="dashboard-container">
-      <div className="landing-header mb-4">
-        <h2 className="mb-1 text-dark fw-bold">Analytics</h2>
-        <p className="text-muted lead fs-6 mb-0">Business performance insights at a glance.</p>
+    <div className="rp-page">
+      <div className="rp-head">
+        <div>
+          <p className="rp-eyebrow">&lt;Analytics /&gt;</p>
+          <h2>How the business is doing</h2>
+          <p>Store sales, course fees and spending for the period you choose.</p>
+        </div>
       </div>
 
-      <Row className="g-3 mb-4">
-        <Col md={4}>
-          <StatCard label="Total Revenue" value={`৳${totalSales.toLocaleString()}`} color="#0891b2" />
-        </Col>
-        <Col md={4}>
-          <StatCard label="Total Expenses" value={`৳${totalExpenses.toLocaleString()}`} color="#ed2626" />
-        </Col>
-        <Col md={4}>
-          <StatCard label="Net Profit" value={`৳${profit.toLocaleString()}`} color={profit >= 0 ? '#1cc88a' : '#e74a3b'} />
-        </Col>
-        {dashboardData && (
-          <>
-            <Col md={4}>
-              <StatCard label="Total Orders" value={dashboardData.total_order_count ?? 0} color="#0e7490" />
-            </Col>
-            <Col md={4}>
-              <StatCard label="Today's Orders" value={dashboardData.today_order_count ?? 0} color="#d97706" />
-            </Col>
-            <Col md={4}>
-              <StatCard label="Today's Sales" value={`৳${Number(dashboardData.today_revenue ?? 0).toLocaleString()}`} color="#64748b" />
-            </Col>
-          </>
-        )}
-      </Row>
+      <RangeBar value={range} onChange={setRange} range={data?.range} generatedAt={data?.generated_at} refreshing={refreshing} onRefresh={refresh} />
+      {error && <div className="rp-error">{error}</div>}
 
-      <Row className="g-4 mb-4">
-        <Col lg={8}>
-          <Card className="modern-card border-0 h-100">
-            <Card.Header className="bg-transparent border-bottom pt-4 px-4 pb-3">
-              <h5 className="mb-0 fw-bold text-dark">Monthly Sales vs Expenses</h5>
-            </Card.Header>
-            <Card.Body>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={monthlyData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis tickFormatter={v => `৳${(v / 1000).toFixed(0)}k`} />
-                  <Tooltip formatter={v => `৳${Number(v).toLocaleString()}`} />
-                  <Legend />
-                  <Bar dataKey="sales" name="Sales" fill="#0891b2" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="expenses" name="Expenses" fill="#ed2626" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </Card.Body>
-          </Card>
-        </Col>
+      <div className="rp-kpis">
+        <KpiCard loading={loading} label="Total income" value={taka(k?.income)} now={k?.income} before={p?.income} icon={Wallet} tone="cyan" />
+        <KpiCard loading={loading} label="Store sales" value={taka(k?.store_received)} now={k?.store_received} before={p?.store_received} icon={ShoppingBag} tone="cyan" />
+        <KpiCard loading={loading} label="Course fees" value={taka(k?.course_collected)} now={k?.course_collected} before={p?.course_collected} icon={BookOpen} tone="violet" />
+        <KpiCard loading={loading} label="Expenses" value={taka(k?.expenses)} now={k?.expenses} before={p?.expenses} icon={Receipt} tone="red" invert />
+        <KpiCard loading={loading} label="Profit" value={taka(k?.profit)} now={k?.profit} before={p?.profit} icon={PiggyBank} tone={k && k.profit < 0 ? "red" : "green"} />
+        <KpiCard loading={loading} label="Orders" value={num(k?.order_count)} now={k?.order_count} before={p?.order_count} icon={Package} tone="amber" />
+        <KpiCard loading={loading} label="Avg. order" value={taka(k?.avg_order_value)} now={k?.avg_order_value} before={p?.avg_order_value} icon={TrendingUp} tone="navy" />
+      </div>
 
-        <Col lg={4}>
-          <Card className="modern-card border-0 h-100">
-            <Card.Header className="bg-transparent border-bottom pt-4 px-4 pb-3">
-              <h5 className="mb-0 fw-bold text-dark">Top Products by Units Sold</h5>
-            </Card.Header>
-            <Card.Body className="d-flex flex-column align-items-center justify-content-center">
-              {pieData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={260}>
-                  <PieChart>
-                    <Pie data={pieData} cx="50%" cy="50%" outerRadius={90} dataKey="value" label={({ name, percent }) => `${name.split(' ')[0]} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
-                      {pieData.map((_, i) => (
-                        <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={v => [`${v} units`, 'Sold']} />
-                  </PieChart>
-                </ResponsiveContainer>
+      <div className="rp-grid">
+        <Panel
+          className="rp-span-8"
+          title={trend === "money" ? "Income vs expenses" : "Orders"}
+          subtitle={data ? `Per ${data.range.group}` : ""}
+          loading={loading}
+          height={320}
+          actions={
+            <div className="rp-seg" role="tablist">
+              <button type="button" className={trend === "money" ? "active" : ""} onClick={() => setTrend("money")}>Money</button>
+              <button type="button" className={trend === "orders" ? "active" : ""} onClick={() => setTrend("orders")}>Orders</button>
+            </div>
+          }
+        >
+          {(trend === "money" ? hasMoney : hasOrders) ? (
+            <ResponsiveContainer width="100%" height={320}>
+              {trend === "money" ? (
+                <ComposedChart data={series} margin={{ top: 10, right: 8, left: -8, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef1f5" />
+                  <XAxis dataKey="label" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} minTickGap={16} />
+                  <YAxis tickFormatter={shortTaka} tick={{ fontSize: 12 }} tickLine={false} axisLine={false} width={64} />
+                  <Tooltip formatter={money} contentStyle={tooltipStyle} />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: 13 }} />
+                  <Bar dataKey="store" name="Store sales" stackId="in" fill={COLORS.store} radius={[0, 0, 0, 0]} maxBarSize={36} />
+                  <Bar dataKey="course" name="Course fees" stackId="in" fill={COLORS.course} radius={[4, 4, 0, 0]} maxBarSize={36} />
+                  <Line type="monotone" dataKey="expenses" name="Expenses" stroke={COLORS.expenses} strokeWidth={2} dot={false} />
+                </ComposedChart>
               ) : (
-                <p className="text-muted">No data available</p>
+                <ComposedChart data={series} margin={{ top: 10, right: 8, left: -8, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef1f5" />
+                  <XAxis dataKey="label" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} minTickGap={16} />
+                  <YAxis yAxisId="n" allowDecimals={false} tick={{ fontSize: 12 }} tickLine={false} axisLine={false} width={40} />
+                  <YAxis yAxisId="v" orientation="right" tickFormatter={shortTaka} tick={{ fontSize: 12 }} tickLine={false} axisLine={false} width={64} />
+                  <Tooltip contentStyle={tooltipStyle} formatter={(v, n) => (n === "Orders" ? [v, n] : money(v, n))} />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: 13 }} />
+                  <Area yAxisId="v" type="monotone" dataKey="order_value" name="Order value" fill="rgb(217 119 6 / 0.12)" stroke={COLORS.orders} />
+                  <Bar yAxisId="n" dataKey="orders" name="Orders" fill="#1e293b" radius={[4, 4, 0, 0]} maxBarSize={28} />
+                </ComposedChart>
               )}
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
+            </ResponsiveContainer>
+          ) : (
+            <EmptyState />
+          )}
+        </Panel>
 
-      <Row className="g-4">
-        <Col lg={12}>
-          <Card className="modern-card border-0">
-            <Card.Header className="bg-transparent border-bottom pt-4 px-4 pb-3">
-              <h5 className="mb-0 fw-bold text-dark">Sales Trend (Monthly)</h5>
-            </Card.Header>
-            <Card.Body>
-              <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={salesOverTime} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis tickFormatter={v => `৳${(v / 1000).toFixed(0)}k`} />
-                  <Tooltip formatter={v => `৳${Number(v).toLocaleString()}`} />
-                  <Legend />
-                  <Line type="monotone" dataKey="total_sales" name="Sales" stroke="#10b981" strokeWidth={2} dot={false} />
-                  <Line type="monotone" dataKey="order_count" name="Orders" stroke="#f59e0b" strokeWidth={2} dot={false} />
-                </LineChart>
+        <Panel className="rp-span-4" title="Where income came from" loading={loading} height={320}>
+          {incomeSplit.length ? (
+            <>
+              <ResponsiveContainer width="100%" height={230}>
+                <PieChart>
+                  <Pie data={incomeSplit} dataKey="value" nameKey="name" innerRadius={62} outerRadius={95} paddingAngle={2} stroke="none">
+                    {incomeSplit.map((s) => <Cell key={s.name} fill={s.color} />)}
+                  </Pie>
+                  <Tooltip formatter={money} contentStyle={tooltipStyle} />
+                </PieChart>
               </ResponsiveContainer>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
+              <ul className="list-unstyled mb-0 small">
+                {incomeSplit.map((s) => (
+                  <li key={s.name} className="d-flex justify-content-between py-1">
+                    <span><span className="d-inline-block rounded-circle me-2" style={{ width: 10, height: 10, background: s.color }} />{s.name}</span>
+                    <strong>{taka(s.value)} · {Math.round((s.value / k.income) * 100)}%</strong>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <EmptyState>No income in this period.</EmptyState>
+          )}
+        </Panel>
+
+        <Panel className="rp-span-7" title="Best-selling products" subtitle="By units sold, cancelled orders left out" loading={loading} height={300}>
+          {topItems.length ? (
+            <ResponsiveContainer width="100%" height={Math.max(220, topItems.length * 38)}>
+              <BarChart data={topItems} layout="vertical" margin={{ top: 0, right: 16, left: 8, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#eef1f5" />
+                <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                <YAxis type="category" dataKey="short" width={170} tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                <Tooltip contentStyle={tooltipStyle} formatter={(v, n, item) => (n === "Units" ? [`${v} units · ${taka(item.payload.revenue)}`, item.payload.name] : [v, n])} />
+                <Bar dataKey="total_sold" name="Units" fill={COLORS.store} radius={[0, 6, 6, 0]} maxBarSize={22} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <EmptyState>No products sold in this period.</EmptyState>
+          )}
+        </Panel>
+
+        <Panel className="rp-span-5" title="Order status" subtitle="Orders placed in this period" loading={loading} height={300}>
+          {statusData.length ? (
+            <div className="d-flex flex-column flex-sm-row align-items-center gap-3">
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie data={statusData} dataKey="value" nameKey="name" innerRadius={55} outerRadius={88} paddingAngle={2} stroke="none">
+                    {statusData.map((s) => <Cell key={s.name} fill={s.color} />)}
+                  </Pie>
+                  <Tooltip contentStyle={tooltipStyle} />
+                </PieChart>
+              </ResponsiveContainer>
+              <ul className="list-unstyled mb-0 small w-100">
+                {statusData.map((s) => (
+                  <li key={s.name} className="d-flex justify-content-between py-1">
+                    <span><span className="d-inline-block rounded-circle me-2" style={{ width: 10, height: 10, background: s.color }} />{s.name}</span>
+                    <strong>{s.value}</strong>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <EmptyState>No orders in this period.</EmptyState>
+          )}
+        </Panel>
+
+        {(data?.courses || []).length > 0 && (
+          <Panel className="rp-span-12" title="Course fees by course" subtitle="Collected and still due on invoices issued in this period">
+            <ResponsiveContainer width="100%" height={Math.max(200, data.courses.length * 44)}>
+              <BarChart data={data.courses} layout="vertical" margin={{ top: 0, right: 16, left: 8, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#eef1f5" />
+                <XAxis type="number" tickFormatter={shortTaka} tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                <YAxis type="category" dataKey="course_title" width={200} tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                <Tooltip formatter={money} contentStyle={tooltipStyle} />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: 13 }} />
+                <Bar dataKey="collected" name="Collected" stackId="c" fill={COLORS.course} maxBarSize={22} />
+                <Bar dataKey="due" name="Due" stackId="c" fill="#c4b5fd" radius={[0, 6, 6, 0]} maxBarSize={22} />
+              </BarChart>
+            </ResponsiveContainer>
+          </Panel>
+        )}
+      </div>
     </div>
   );
 };

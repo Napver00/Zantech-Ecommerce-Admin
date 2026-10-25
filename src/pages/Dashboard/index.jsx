@@ -1,16 +1,15 @@
-import React, { useState, useEffect } from "react";
-import { Row, Col } from "react-bootstrap";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, PackagePlus, GraduationCap, ReceiptText } from "lucide-react";
-import axiosInstance from "../../config/axios";
-import { toast } from "react-hot-toast";
+import { Plus, PackagePlus, GraduationCap, ReceiptText, RefreshCw } from "lucide-react";
+import { Button, Spinner } from "react-bootstrap";
 import "./Dashboard.css";
-import Loading from "../../components/Loading";
 import DashboardStats from "../../components/Dashboard/DashboardStats";
 import DueOrdersTable from "../../components/Dashboard/DueOrdersTable";
 import MonthlyComparisonChart from "../../components/Dashboard/MonthlyComparisonChart";
 import SalesOverTimeChart from "../../components/Dashboard/SalesOverTimeChart";
 import usePageTitle from "../../hooks/usePageTitle";
+import useCachedGet from "../../hooks/useCachedGet";
+import { rangeQuery, taka } from "../../components/Reports/reportUtils";
 
 const QUICK_ACTIONS = [
   { to: "/orders/create", label: "New order", icon: Plus, primary: true },
@@ -19,156 +18,25 @@ const QUICK_ACTIONS = [
   { to: "/course-invoices/add", label: "Course invoice", icon: ReceiptText },
 ];
 
+// Chart period → report range. Monthly is the same request as the 12-month
+// comparison below, so it's already in the cache.
+const PERIOD_RANGE = { daily: { preset: "30d" }, weekly: { preset: "90d", group: "week" }, monthly: { preset: "12m" } };
+
 const Dashboard = () => {
   usePageTitle("Dashboard Overview");
-  const [dashboardData, setDashboardData] = useState({
-    total_order_count: 0,
-    new_order_count: 0,
-    total_revenue: 0,
-    today_order_count: 0,
-    today_revenue: 0,
-  });
-  const [dueOrders, setDueOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [monthlyComparison, setMonthlyComparison] = useState([]);
-  const [salesOverTime, setSalesOverTime] = useState([]);
   const [salesPeriod, setSalesPeriod] = useState("daily");
-  const [salesLoading, setSalesLoading] = useState(false);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        await Promise.all([
-          fetchDashboardData(),
-          fetchDueOrders(),
-          fetchMonthlyComparisonData(),
-          fetchSalesOverTime("daily"),
-        ]);
-      } catch (error) {
-        // Errors are handled in the individual functions
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
+  const summary = useCachedGet("/admin/dashboard", { staleMs: 20000 });
+  const sales = useCachedGet(rangeQuery(PERIOD_RANGE[salesPeriod]));
+  const yearly = useCachedGet(rangeQuery(PERIOD_RANGE.monthly), { staleMs: 120000 });
 
-  const fetchDashboardData = async () => {
-    try {
-      const response = await axiosInstance.get("/admin/dashboard");
-      if (response.data.success) {
-        setDashboardData(response.data.data);
-      } else {
-        throw new Error(
-          response.data.message || "Failed to fetch dashboard data"
-        );
-      }
-    } catch (error) {
-      toast.error(
-        error.response?.data?.message || "Failed to fetch dashboard data"
-      );
-    }
+  const d = summary.data;
+  const refreshing = summary.refreshing || sales.refreshing || yearly.refreshing;
+  const refreshAll = () => {
+    summary.refresh();
+    sales.refresh();
+    yearly.refresh();
   };
-
-  const fetchDueOrders = async () => {
-    try {
-      const response = await axiosInstance.get("/orders/summary/due-amount");
-      if (response.data.success) {
-        setDueOrders(
-          Array.isArray(response.data.data) ? response.data.data : []
-        );
-      } else {
-        toast.error("Failed to fetch due orders");
-      }
-    } catch (error) {
-      toast.error(
-        error.response?.data?.message || "Failed to fetch due orders"
-      );
-    }
-  };
-
-  const fetchMonthlyComparisonData = async () => {
-    try {
-      const [expensesRes, salesRes] = await Promise.all([
-        axiosInstance.get("/reports/expenses/monthly-total"),
-        axiosInstance.get("/reports/transitions/monthly-total"),
-      ]);
-
-      const salesData = salesRes.data.data;
-      const expensesData = expensesRes.data.data;
-      const mergedData = mergeMonthlyData(salesData, expensesData);
-      setMonthlyComparison(mergedData);
-    } catch (error) {
-      toast.error("Failed to load monthly comparison data.");
-    }
-  };
-
-  const fetchSalesOverTime = async (period) => {
-    setSalesLoading(true);
-    try {
-      const response = await axiosInstance.get(
-        `/reports/sales-over-time?period=${period}`
-      );
-      setSalesOverTime(response.data.data);
-    } catch (error) {
-      toast.error(`Failed to fetch ${period} sales data.`);
-    } finally {
-      setSalesLoading(false);
-    }
-  };
-
-  const handleSalesPeriodChange = (period) => {
-    setSalesPeriod(period);
-    fetchSalesOverTime(period);
-  };
-
-  const mergeMonthlyData = (sales, expenses) => {
-    const dataMap = new Map();
-    const monthNames = [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
-    ];
-
-    sales.forEach((item) => {
-      const key = `${item.year}-${item.month}`;
-      if (!dataMap.has(key)) {
-        dataMap.set(key, {
-          name: `${monthNames[item.month - 1]} ${item.year}`,
-          sales: 0,
-          expenses: 0,
-        });
-      }
-      dataMap.get(key).sales = item.total_amount;
-    });
-
-    expenses.forEach((item) => {
-      const key = `${item.year}-${item.month}`;
-      if (!dataMap.has(key)) {
-        dataMap.set(key, {
-          name: `${monthNames[item.month - 1]} ${item.year}`,
-          sales: 0,
-          expenses: 0,
-        });
-      }
-      dataMap.get(key).expenses = item.total_amount;
-    });
-
-    return Array.from(dataMap.values()).reverse();
-  };
-
-  if (loading) {
-    return <Loading />;
-  }
 
   return (
     <div className="dashboard-container">
@@ -177,8 +45,14 @@ const Dashboard = () => {
           <p className="dash-eyebrow">&lt;Overview /&gt;</p>
           <h2>Dashboard</h2>
           <p className="dash-hero-sub">
-            Today: <strong>{dashboardData.today_order_count ?? 0}</strong> orders ·{" "}
-            <strong>৳{(dashboardData.today_revenue ?? 0).toLocaleString()}</strong> in sales
+            {d ? (
+              <>
+                Today: <strong>{d.today_order_count}</strong> orders · <strong>{taka(d.today_revenue)}</strong> received
+                {d.new_order_count > 0 && <> · <Link to="/orders" className="dash-pending">{d.new_order_count} waiting to process</Link></>}
+              </>
+            ) : (
+              <span className="rp-skel" style={{ display: "inline-block", width: 260, height: 16 }} />
+            )}
           </p>
         </div>
         <div className="dash-actions">
@@ -187,30 +61,27 @@ const Dashboard = () => {
               <Icon size={16} /> {label}
             </Link>
           ))}
+          <Button variant="light" className="dash-action" onClick={refreshAll} disabled={refreshing} title="Refresh numbers">
+            {refreshing ? <Spinner size="sm" animation="border" /> : <RefreshCw size={16} />}
+          </Button>
         </div>
       </section>
 
-      <DashboardStats data={dashboardData} />
+      {summary.error && <div className="rp-error mb-3">{summary.error}</div>}
 
-      <Row className="g-4 mt-2">
-        <Col lg={7}>
-          <SalesOverTimeChart
-            data={salesOverTime}
-            period={salesPeriod}
-            onPeriodChange={handleSalesPeriodChange}
-            loading={salesLoading}
-          />
-        </Col>
-        <Col lg={5}>
-          <DueOrdersTable orders={dueOrders} />
-        </Col>
-      </Row>
+      <DashboardStats data={d} loading={summary.loading} />
 
-      <Row className="g-4 mt-2">
-        <Col lg={7}>
-          <MonthlyComparisonChart data={monthlyComparison} />
-        </Col>
-      </Row>
+      <div className="rp-grid mt-3">
+        <div className="rp-span-7">
+          <SalesOverTimeChart data={sales.data?.series || []} period={salesPeriod} onPeriodChange={setSalesPeriod} loading={sales.loading} />
+        </div>
+        <div className="rp-span-5">
+          <DueOrdersTable orders={d?.due_orders || []} count={d?.due_order_count} total={d?.due_total} loading={summary.loading} />
+        </div>
+        <div className="rp-span-12">
+          <MonthlyComparisonChart data={yearly.data?.series || []} loading={yearly.loading} />
+        </div>
+      </div>
     </div>
   );
 };

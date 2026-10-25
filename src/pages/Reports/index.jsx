@@ -1,270 +1,216 @@
-import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, ButtonGroup, Button, Spinner } from 'react-bootstrap';
-import { toast } from 'react-hot-toast';
-import axiosInstance from '../../config/axios';
-import Loading from '../../components/Loading';
-import './Reports.css';
-import usePageTitle from '../../hooks/usePageTitle';
-import CommonTable from '../../components/Common/CommonTable';
+import React, { useMemo } from "react";
+import { Button } from "react-bootstrap";
+import { BookOpen, Download, Package, PiggyBank, Printer, Receipt, ShoppingBag, Wallet } from "lucide-react";
+import usePageTitle from "../../hooks/usePageTitle";
+import useCachedGet from "../../hooks/useCachedGet";
+import useReportRange from "../../components/Reports/useReportRange";
+import { EmptyState, KpiCard, Panel, RangeBar } from "../../components/Reports/ReportParts";
+import { downloadCsv, num, rangeLabel, rangeQuery, taka } from "../../components/Reports/reportUtils";
+
+const PERIOD_NAME = { day: "Day", week: "Week of", month: "Month" };
+
+const CsvButton = ({ onClick }) => (
+  <Button size="sm" variant="light" className="border d-inline-flex align-items-center gap-1" onClick={onClick}>
+    <Download size={14} /> CSV
+  </Button>
+);
 
 const Reports = () => {
-  usePageTitle('Reports Overview');
-  const [loading, setLoading] = useState(true);
-  const [monthlyComparison, setMonthlyComparison] = useState([]);
-  const [topSellingItems, setTopSellingItems] = useState([]);
-  const [salesOverTime, setSalesOverTime] = useState([]);
-  const [salesPeriod, setSalesPeriod] = useState('daily');
-  const [salesLoading, setSalesLoading] = useState(false);
-  const [courseSummary, setCourseSummary] = useState(null);
-  const [courseMonthly, setCourseMonthly] = useState([]);
+  usePageTitle("Reports");
+  const [range, setRange] = useReportRange("this_month");
+  const { data, error, loading, refreshing, refresh } = useCachedGet(rangeQuery(range));
 
-  useEffect(() => {
-    const fetchAllReports = async () => {
-      try {
-        setLoading(true);
-        const [expensesRes, salesRes, topItemsRes] = await Promise.all([
-          axiosInstance.get('/reports/expenses/monthly-total'),
-          axiosInstance.get('/reports/transitions/monthly-total'),
-          axiosInstance.get('/reports/top-selling-items'),
-        ]);
+  const k = data?.kpis;
+  const p = data?.previous;
+  const group = data?.range.group || "day";
+  const label = data ? rangeLabel(data.range).replace(/\s/g, "_") : "report";
 
-        const salesData = salesRes.data.data;
-        const expensesData = expensesRes.data.data;
-        const mergedData = mergeMonthlyData(salesData, expensesData);
-        setMonthlyComparison(mergedData);
+  // Newest first in the table; only periods with any activity.
+  const rows = useMemo(
+    () => (data?.series || []).filter((r) => r.income || r.expenses || r.orders).slice().reverse(),
+    [data]
+  );
+  const totals = useMemo(
+    () => rows.reduce((t, r) => ({
+      store: t.store + r.store, course: t.course + r.course, income: t.income + r.income,
+      expenses: t.expenses + r.expenses, orders: t.orders + r.orders,
+    }), { store: 0, course: 0, income: 0, expenses: 0, orders: 0 }),
+    [rows]
+  );
+  const maxSold = Math.max(1, ...(data?.top_items || []).map((i) => i.total_sold));
 
-        setTopSellingItems(topItemsRes.data.data);
-      } catch (error) {
-        toast.error("Failed to load initial reports data.");
-      } finally {
-        setLoading(false);
-      }
+  const periodCols = [
+    { key: "label", label: PERIOD_NAME[group] || "Period", csv: (r) => r.date },
+    { key: "orders", label: "Orders" },
+    { key: "store", label: "Store sales" },
+    { key: "course", label: "Course fees" },
+    { key: "income", label: "Income" },
+    { key: "expenses", label: "Expenses" },
+    { key: "profit", label: "Profit", csv: (r) => (r.income - r.expenses).toFixed(2) },
+  ];
 
-      // Course revenue reports are fetched independently so a missing/failing
-      // endpoint doesn't block the rest of the reports page from loading.
-      try {
-        const [courseSummaryRes, courseMonthlyRes] = await Promise.all([
-          axiosInstance.get('/reports/course-invoices/summary'),
-          axiosInstance.get('/reports/course-invoices/monthly-total'),
-        ]);
-        setCourseSummary(courseSummaryRes.data.data);
-        setCourseMonthly(courseMonthlyRes.data.data || []);
-      } catch {
-        // Silently skip the Course Revenue section if unavailable.
-      }
-    };
-
-    fetchAllReports();
-    fetchSalesOverTime('daily');
-  }, []);
-
-  const fetchSalesOverTime = async (period) => {
-    setSalesLoading(true);
-    try {
-      const response = await axiosInstance.get(`/reports/sales-over-time?period=${period}`);
-      setSalesOverTime(response.data.data);
-    } catch (error) {
-      toast.error(`Failed to fetch ${period} sales data.`);
-    } finally {
-      setSalesLoading(false);
-    }
-  };
-
-  const handleSalesPeriodChange = (period) => {
-    setSalesPeriod(period);
-    fetchSalesOverTime(period);
-  };
-
-  const mergeMonthlyData = (sales, expenses) => {
-    const dataMap = new Map();
-    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-    sales.forEach(item => {
-      const key = `${item.year}-${item.month}`;
-      if (!dataMap.has(key)) {
-        dataMap.set(key, { name: `${monthNames[item.month - 1]} ${item.year}`, sales: 0, expenses: 0 });
-      }
-      dataMap.get(key).sales = item.total_amount;
-    });
-
-    expenses.forEach(item => {
-        const key = `${item.year}-${item.month}`;
-        if (!dataMap.has(key)) {
-          dataMap.set(key, { name: `${monthNames[item.month - 1]} ${item.year}`, sales: 0, expenses: 0 });
-        }
-        dataMap.get(key).expenses = item.total_amount;
-      });
-  
-      return Array.from(dataMap.values()).reverse();
-    };
-
-    const monthlyComparisonHeaders = [
-        { key: 'name', label: 'Month' },
-        { key: 'sales', label: 'Total Sales', render: (row) => <span className="text-end text-success">৳{row.sales.toLocaleString()}</span> },
-        { key: 'expenses', label: 'Total Expenses', render: (row) => <span className="text-end text-danger">৳{row.expenses.toLocaleString()}</span> },
-    ];
-
-    const topSellingItemsHeaders = [
-        { key: 'item_id', label: '#', render: (row, index) => index + 1 },
-        { key: 'name', label: 'Product Name' },
-        { key: 'price', label: 'Price', render: (row) => <span className="text-end">৳{parseFloat(row.price).toLocaleString()}</span> },
-        { key: 'total_sold', label: 'Total Sold', render: (row) => <span className="text-end fw-bold">{row.total_sold}</span> },
-    ];
-
-    const salesOverTimeHeaders = [
-        { key: 'date', label: 'Date' },
-        { key: 'total_sales', label: 'Total Sales', render: (row) => <span className="text-end text-success">৳{parseFloat(row.total_sales).toLocaleString()}</span> },
-        { key: 'order_count', label: 'Order Count', render: (row) => <span className="text-end">{row.order_count}</span> },
-    ];
-
-    const courseByCourseHeaders = [
-        { key: 'course_title', label: 'Course' },
-        { key: 'total_invoiced', label: 'Invoiced', render: (row) => <span className="text-end">৳{parseFloat(row.total_invoiced).toLocaleString()}</span> },
-        { key: 'total_collected', label: 'Collected', render: (row) => <span className="text-end text-success">৳{parseFloat(row.total_collected).toLocaleString()}</span> },
-        { key: 'total_due', label: 'Due', render: (row) => <span className="text-end text-danger">৳{parseFloat(row.total_due).toLocaleString()}</span> },
-        { key: 'invoice_count', label: 'Invoices', render: (row) => <span className="text-end">{row.invoice_count}</span> },
-    ];
-
-    const courseMonthlyHeaders = [
-        { key: 'month', label: 'Month', render: (row) => `${row.year}-${String(row.month).padStart(2, '0')}` },
-        { key: 'total_paid', label: 'Collected', render: (row) => <span className="text-end text-success">৳{parseFloat(row.total_paid).toLocaleString()}</span> },
-        { key: 'total_due', label: 'Due', render: (row) => <span className="text-end text-danger">৳{parseFloat(row.total_due).toLocaleString()}</span> },
-        { key: 'invoice_count', label: 'Invoices', render: (row) => <span className="text-end">{row.invoice_count}</span> },
-    ];
-
-    if (loading) {
-      return <Loading />;
-    }
-  
-    return (
-      <div className="reports-container">
-        <div className="d-flex justify-content-between align-items-center mb-4">
-          <div>
-            <h2 className="page-title mb-1">Reports</h2>
-            <p className="text-muted mb-0">Analytics and insights on your business performance</p>
-          </div>
+  return (
+    <div className="rp-page">
+      <div className="rp-head">
+        <div>
+          <p className="rp-eyebrow">&lt;Reports /&gt;</p>
+          <h2>Reports</h2>
+          <p>Totals you can check, download to Excel, or print.</p>
         </div>
-  
-        <Row>
-          <Col lg={6} className="mb-4">
-            <Card className="modern-card h-100">
-              <Card.Header>
-                <h5 className="mb-0">Monthly Sales vs. Expenses</h5>
-              </Card.Header>
-              <Card.Body>
-                <CommonTable
-                    headers={monthlyComparisonHeaders}
-                    data={monthlyComparison}
-                    tableLoading={loading}
-                    loading={loading}
-                />
-              </Card.Body>
-            </Card>
-          </Col>
-  
-          <Col lg={6} className="mb-4">
-            <Card className="modern-card h-100">
-              <Card.Header>
-                <h5 className="mb-0">Top Selling Items</h5>
-              </Card.Header>
-              <Card.Body>
-                <CommonTable
-                    headers={topSellingItemsHeaders}
-                    data={topSellingItems}
-                    tableLoading={loading}
-                    loading={loading}
-                />
-              </Card.Body>
-            </Card>
-          </Col>
-
-          {courseSummary && (
-            <Col lg={12} className="mb-4">
-              <Card className="modern-card">
-                <Card.Header>
-                  <h5 className="mb-0">Course Revenue</h5>
-                </Card.Header>
-                <Card.Body>
-                  <Row className="mb-4 text-center g-3">
-                    <Col md={3}>
-                      <div className="p-3 rounded" style={{ background: '#f8f9fa' }}>
-                        <div className="small text-muted mb-1">Total Invoiced</div>
-                        <div className="fs-5 fw-bold">৳{parseFloat(courseSummary.total_invoiced).toLocaleString()}</div>
-                      </div>
-                    </Col>
-                    <Col md={3}>
-                      <div className="p-3 rounded" style={{ background: '#f8f9fa' }}>
-                        <div className="small text-muted mb-1">Total Collected</div>
-                        <div className="fs-5 fw-bold text-success">৳{parseFloat(courseSummary.total_collected).toLocaleString()}</div>
-                      </div>
-                    </Col>
-                    <Col md={3}>
-                      <div className="p-3 rounded" style={{ background: '#f8f9fa' }}>
-                        <div className="small text-muted mb-1">Total Due</div>
-                        <div className="fs-5 fw-bold text-danger">৳{parseFloat(courseSummary.total_due).toLocaleString()}</div>
-                      </div>
-                    </Col>
-                    <Col md={3}>
-                      <div className="p-3 rounded" style={{ background: '#f8f9fa' }}>
-                        <div className="small text-muted mb-1">Invoices</div>
-                        <div className="fs-5 fw-bold">{courseSummary.invoice_count}</div>
-                      </div>
-                    </Col>
-                  </Row>
-                  <Row>
-                    <Col lg={6} className="mb-3">
-                      <h6 className="mb-3">By Course</h6>
-                      <CommonTable
-                        headers={courseByCourseHeaders}
-                        data={courseSummary.by_course || []}
-                        tableLoading={loading}
-                        loading={loading}
-                      />
-                    </Col>
-                    <Col lg={6} className="mb-3">
-                      <h6 className="mb-3">Monthly Trend</h6>
-                      <CommonTable
-                        headers={courseMonthlyHeaders}
-                        data={courseMonthly}
-                        tableLoading={loading}
-                        loading={loading}
-                      />
-                    </Col>
-                  </Row>
-                </Card.Body>
-              </Card>
-            </Col>
-          )}
-
-          <Col lg={12}>
-            <Card className="modern-card">
-              <Card.Header className="d-flex justify-content-between align-items-center">
-                <h5 className="mb-0">Sales Over Time</h5>
-                <ButtonGroup size="sm">
-                  <Button variant={salesPeriod === 'daily' ? 'primary' : 'outline-primary'} onClick={() => handleSalesPeriodChange('daily')}>Daily</Button>
-                  <Button variant={salesPeriod === 'weekly' ? 'primary' : 'outline-primary'} onClick={() => handleSalesPeriodChange('weekly')}>Weekly</Button>
-                  <Button variant={salesPeriod === 'monthly' ? 'primary' : 'outline-primary'} onClick={() => handleSalesPeriodChange('monthly')}>Monthly</Button>
-                </ButtonGroup>
-              </Card.Header>
-              <Card.Body>
-              {salesLoading ? (
-                <div className="d-flex justify-content-center align-items-center" style={{ height: '300px' }}>
-                  <Spinner animation="border" variant="primary" />
-                </div>
-                 ) : (
-                    <CommonTable
-                        headers={salesOverTimeHeaders}
-                        data={salesOverTime}
-                        tableLoading={salesLoading}
-                        loading={salesLoading}
-                    />
-                 )}
-              </Card.Body>
-            </Card>
-          </Col>
-        </Row>
+        <Button variant="light" className="border d-inline-flex align-items-center gap-2" onClick={() => window.print()}>
+          <Printer size={16} /> Print
+        </Button>
       </div>
-    );
-  };
-  
-  export default Reports;
+
+      <RangeBar value={range} onChange={setRange} range={data?.range} generatedAt={data?.generated_at} refreshing={refreshing} onRefresh={refresh} />
+      {error && <div className="rp-error">{error}</div>}
+
+      <div className="rp-kpis">
+        <KpiCard loading={loading} label="Income" value={taka(k?.income)} now={k?.income} before={p?.income} icon={Wallet} tone="cyan" />
+        <KpiCard loading={loading} label="Store sales" value={taka(k?.store_received)} now={k?.store_received} before={p?.store_received} icon={ShoppingBag} tone="cyan" />
+        <KpiCard loading={loading} label="Course fees" value={taka(k?.course_collected)} hint={k ? `${taka(k.course_due)} still due` : ""} icon={BookOpen} tone="violet" />
+        <KpiCard loading={loading} label="Expenses" value={taka(k?.expenses)} now={k?.expenses} before={p?.expenses} icon={Receipt} tone="red" invert />
+        <KpiCard loading={loading} label="Profit" value={taka(k?.profit)} now={k?.profit} before={p?.profit} icon={PiggyBank} tone={k && k.profit < 0 ? "red" : "green"} />
+        <KpiCard loading={loading} label="Orders" value={num(k?.order_count)} hint={k ? `${taka(k.order_value)} order value` : ""} icon={Package} tone="amber" />
+      </div>
+
+      <div className="rp-grid">
+        <Panel
+          className="rp-span-12"
+          title={`Income and expenses by ${group}`}
+          subtitle="Store sales are payments received; course fees are amounts collected on course invoices."
+          loading={loading}
+          height={260}
+          actions={rows.length > 0 && <CsvButton onClick={() => downloadCsv(`ZAN-Tech-income-${label}.csv`, periodCols, rows)} />}
+        >
+          {rows.length ? (
+            <div className="rp-scroll">
+              <table className="rp-table">
+                <thead>
+                  <tr>
+                    <th>{PERIOD_NAME[group] || "Period"}</th>
+                    <th className="num">Orders</th>
+                    <th className="num">Store sales</th>
+                    <th className="num">Course fees</th>
+                    <th className="num">Income</th>
+                    <th className="num">Expenses</th>
+                    <th className="num">Profit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r) => {
+                    const profit = r.income - r.expenses;
+                    return (
+                      <tr key={r.date}>
+                        <td className="fw-semibold">{group === "day" ? new Date(`${r.date}T00:00:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }) : r.label}</td>
+                        <td className="num">{r.orders || "—"}</td>
+                        <td className="num">{r.store ? taka(r.store) : "—"}</td>
+                        <td className="num">{r.course ? taka(r.course) : "—"}</td>
+                        <td className="num fw-semibold">{taka(r.income)}</td>
+                        <td className="num text-danger">{r.expenses ? taka(r.expenses) : "—"}</td>
+                        <td className={`num fw-semibold ${profit < 0 ? "text-danger" : "text-success"}`}>{taka(profit)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td>Total</td>
+                    <td className="num">{num(totals.orders)}</td>
+                    <td className="num">{taka(totals.store)}</td>
+                    <td className="num">{taka(totals.course)}</td>
+                    <td className="num">{taka(totals.income)}</td>
+                    <td className="num">{taka(totals.expenses)}</td>
+                    <td className={`num ${totals.income - totals.expenses < 0 ? "text-danger" : "text-success"}`}>{taka(totals.income - totals.expenses)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          ) : (
+            <EmptyState>No sales, course fees or expenses in this period.</EmptyState>
+          )}
+        </Panel>
+
+        <Panel
+          className="rp-span-7"
+          title="Top products"
+          subtitle="Units sold and their sale value"
+          loading={loading}
+          height={260}
+          actions={(data?.top_items || []).length > 0 && (
+            <CsvButton onClick={() => downloadCsv(`ZAN-Tech-top-products-${label}.csv`, [
+              { key: "name", label: "Product" }, { key: "total_sold", label: "Units" }, { key: "revenue", label: "Sales value" }, { key: "price", label: "Current price" },
+            ], data.top_items)} />
+          )}
+        >
+          {(data?.top_items || []).length ? (
+            <table className="rp-table">
+              <thead>
+                <tr><th style={{ width: 36 }}>#</th><th>Product</th><th className="num">Units</th><th className="num">Sales value</th></tr>
+              </thead>
+              <tbody>
+                {data.top_items.map((i, idx) => (
+                  <tr key={i.item_id}>
+                    <td className="text-muted">{idx + 1}</td>
+                    <td>
+                      <div className="fw-semibold">{i.name}</div>
+                      <div className="rp-bar"><span style={{ width: `${(i.total_sold / maxSold) * 100}%` }} /></div>
+                    </td>
+                    <td className="num fw-semibold">{num(i.total_sold)}</td>
+                    <td className="num">{taka(i.revenue)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <EmptyState>No products sold in this period.</EmptyState>
+          )}
+        </Panel>
+
+        <Panel
+          className="rp-span-5"
+          title="Course fees"
+          subtitle="Invoices issued in this period"
+          loading={loading}
+          height={260}
+          actions={(data?.courses || []).length > 0 && (
+            <CsvButton onClick={() => downloadCsv(`ZAN-Tech-course-fees-${label}.csv`, [
+              { key: "course_title", label: "Course" }, { key: "invoices", label: "Invoices" }, { key: "invoiced", label: "Invoiced" }, { key: "collected", label: "Collected" }, { key: "due", label: "Due" },
+            ], data.courses)} />
+          )}
+        >
+          {(data?.courses || []).length ? (
+            <table className="rp-table">
+              <thead>
+                <tr><th>Course</th><th className="num">Collected</th><th className="num">Due</th></tr>
+              </thead>
+              <tbody>
+                {data.courses.map((c) => (
+                  <tr key={c.course_id}>
+                    <td>
+                      <div className="fw-semibold">{c.course_title}</div>
+                      <div className="small text-muted">{c.invoices} invoice{c.invoices === 1 ? "" : "s"} · {taka(c.invoiced)} billed</div>
+                    </td>
+                    <td className="num text-success fw-semibold">{taka(c.collected)}</td>
+                    <td className="num text-danger">{c.due ? taka(c.due) : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td>Total</td>
+                  <td className="num">{taka(k?.course_collected)}</td>
+                  <td className="num">{taka(k?.course_due)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          ) : (
+            <EmptyState>No course invoices in this period.</EmptyState>
+          )}
+        </Panel>
+      </div>
+    </div>
+  );
+};
+
+export default Reports;
