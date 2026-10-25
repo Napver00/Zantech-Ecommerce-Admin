@@ -190,7 +190,7 @@ const ViewCourseInvoice = () => {
                 buildHtml={() => CourseInvoiceDocument({ invoice })}
                 invoiceNo={invoice.invoice_no || `INV-${invoice.id}`}
                 emailEndpoint={`/course-invoices/${invoice.id}/email`}
-                defaultEmail={invoice.student_email || ""}
+                defaultEmail={invoice.student_email || invoice.student?.email || ""}
                 phone={invoice.student_phone || invoice.student?.parent_phone || ""}
                 customerName={invoice.student_name || invoice.student?.name || ""}
                 whatsappText={whatsappText()}

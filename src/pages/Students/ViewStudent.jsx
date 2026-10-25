@@ -27,7 +27,7 @@ const ViewStudent = () => {
   const [ledgers, setLedgers] = useState({}); // course_id -> ledger data
 
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editForm, setEditForm] = useState({ name: "", school_name: "", parent_phone: "" });
+  const [editForm, setEditForm] = useState({ name: "", school_name: "", parent_phone: "", email: "" });
   const [saving, setSaving] = useState(false);
 
   const [enrollCourseOpt, setEnrollCourseOpt] = useState(null);
@@ -39,7 +39,7 @@ const ViewStudent = () => {
       const res = await axiosInstance.get(`/students/${id}`);
       const d = res.data.data;
       setStudent(d);
-      setEditForm({ name: d.name || "", school_name: d.school_name || "", parent_phone: d.parent_phone || "" });
+      setEditForm({ name: d.name || "", school_name: d.school_name || "", parent_phone: d.parent_phone || "", email: d.email || "" });
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to load student");
       navigate("/students");
@@ -177,19 +177,25 @@ const ViewStudent = () => {
           </div>
 
           <Row className="mb-4">
-            <Col md={4}>
+            <Col sm={6} md={3}>
               <div className="mb-3">
                 <label className="detail-label">Parent's Phone</label>
                 <div className="detail-value">{student.parent_phone}</div>
               </div>
             </Col>
-            <Col md={4}>
+            <Col sm={6} md={3}>
+              <div className="mb-3">
+                <label className="detail-label">Email</label>
+                <div className="detail-value text-break">{student.email || "—"}</div>
+              </div>
+            </Col>
+            <Col sm={6} md={3}>
               <div className="mb-3">
                 <label className="detail-label">School</label>
                 <div className="detail-value">{student.school_name || "—"}</div>
               </div>
             </Col>
-            <Col md={4}>
+            <Col sm={6} md={3}>
               <div className="mb-3">
                 <label className="detail-label">Enrolled Courses</label>
                 <div className="detail-value">{student.courses?.length || 0}</div>
@@ -304,6 +310,10 @@ const ViewStudent = () => {
             <Form.Group className="mb-3">
               <Form.Label>Parent's Phone <span className="text-danger">*</span></Form.Label>
               <Form.Control value={editForm.parent_phone} onChange={(e) => setEditForm((p) => ({ ...p, parent_phone: e.target.value }))} required />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Email</Form.Label>
+              <Form.Control type="email" value={editForm.email} onChange={(e) => setEditForm((p) => ({ ...p, email: e.target.value }))} placeholder="student or parent email (for invoices)" />
             </Form.Group>
           </Modal.Body>
           <Modal.Footer>

@@ -47,7 +47,7 @@ const AddCourseInvoice = () => {
   const [studentPhone, setStudentPhone] = useState("");
   const [studentEmail, setStudentEmail] = useState("");
   const [showNewStudentForm, setShowNewStudentForm] = useState(false);
-  const [newStudent, setNewStudent] = useState({ name: "", school_name: "", parent_phone: "" });
+  const [newStudent, setNewStudent] = useState({ name: "", school_name: "", parent_phone: "", email: "" });
   const [creatingStudent, setCreatingStudent] = useState(false);
 
   const [amount, setAmount] = useState("");
@@ -166,6 +166,7 @@ const AddCourseInvoice = () => {
     setStudentId(s?.id ?? null);
     setStudentName(s?.name || "");
     setStudentPhone(s?.parent_phone || "");
+    setStudentEmail(s?.email || "");
   };
 
   // Deep-link support: pre-select student from ?student_id= once the enrolled list is loaded
@@ -185,13 +186,14 @@ const AddCourseInvoice = () => {
       const res = await axiosInstance.post("/students", { ...newStudent, course_id: selectedCourse.id });
       toast.success("Student created and enrolled");
       const created = res.data.data;
-      setNewStudent({ name: "", school_name: "", parent_phone: "" });
+      setNewStudent({ name: "", school_name: "", parent_phone: "", email: "" });
       setShowNewStudentForm(false);
       await fetchEnrolledStudents();
       if (created?.id) {
         setStudentId(created.id);
         setStudentName(created.name || "");
         setStudentPhone(created.parent_phone || "");
+        setStudentEmail(created.email || "");
       }
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to create student");
@@ -485,6 +487,17 @@ const AddCourseInvoice = () => {
                             value={newStudent.parent_phone}
                             onChange={(e) => setNewStudent((p) => ({ ...p, parent_phone: e.target.value }))}
                             placeholder="01xxxxxxxxx"
+                          />
+                        </Form.Group>
+                      </Col>
+                      <Col md={12}>
+                        <Form.Group className="mb-2">
+                          <Form.Label>Email</Form.Label>
+                          <Form.Control
+                            type="email"
+                            value={newStudent.email}
+                            onChange={(e) => setNewStudent((p) => ({ ...p, email: e.target.value }))}
+                            placeholder="student or parent email (for invoices)"
                           />
                         </Form.Group>
                       </Col>

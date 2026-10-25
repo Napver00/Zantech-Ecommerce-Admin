@@ -8,7 +8,7 @@ import Loading from "../../components/Loading";
 import CommonTable from "../../components/Common/CommonTable";
 import usePageTitle from "../../hooks/usePageTitle";
 
-const emptyForm = { name: "", school_name: "", parent_phone: "" };
+const emptyForm = { name: "", school_name: "", parent_phone: "", email: "" };
 
 const Students = () => {
   usePageTitle("Students");
@@ -98,6 +98,7 @@ const Students = () => {
       name: student.name || "",
       school_name: student.school_name || "",
       parent_phone: student.parent_phone || "",
+      email: student.email || "",
     });
     setShowModal(true);
   };
@@ -157,6 +158,7 @@ const Students = () => {
     },
     { key: "school_name", label: "School", render: (row) => row.school_name || "—" },
     { key: "parent_phone", label: "Parent's Phone" },
+    { key: "email", label: "Email", render: (row) => row.email || "—" },
     {
       key: "courses",
       label: "Enrolled Courses",
@@ -293,6 +295,15 @@ const Students = () => {
                     onChange={(e) => setFormData((p) => ({ ...p, parent_phone: e.target.value }))}
                     placeholder="01xxxxxxxxx"
                     required
+                  />
+                </Form.Group>
+                <Form.Group className="mb-3">
+                  <Form.Label>Email</Form.Label>
+                  <Form.Control
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))}
+                    placeholder="student or parent email (for invoices)"
                   />
                 </Form.Group>
               </Modal.Body>
