@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import { Row, Col, Card, Form, Button, Badge, Alert } from "react-bootstrap";
+import { Row, Col, Form, Button, Badge, Alert } from "react-bootstrap";
 import { FaPlus, FaTrash, FaFileImport, FaGoogleDrive } from "react-icons/fa";
 import { emptyLesson, emptyCurriculum, parseCurriculumText, emptySlot } from "./courseDetailUtils";
+import { EditorSection } from "../../components/Editor/Editor";
 
 // Shared by AddCourse and ViewCourse: curriculum (modules → lessons) and the
 // course-details-page sections (highlights, includes, skills, projects, FAQs).
@@ -91,13 +92,12 @@ export const CurriculumEditor = ({ curriculums, setCurriculums, curriculumLink, 
   const lessonTotal = curriculums.reduce((n, c) => n + c.lessons.length, 0);
 
   return (
-    <Card className="border mb-4">
-      <Card.Header className="bg-light d-flex align-items-center gap-2">
-        <h5 className="mb-0">{title}</h5>
-        <Badge bg="secondary" pill>{curriculums.length} modules</Badge>
-        <Badge bg="secondary" pill>{lessonTotal} lessons</Badge>
-      </Card.Header>
-      <Card.Body>
+    <EditorSection
+      id="curriculum"
+      title={title}
+      count={`${curriculums.length} module${curriculums.length === 1 ? "" : "s"} · ${lessonTotal} lesson${lessonTotal === 1 ? "" : "s"}`}
+      help="Modules and the lessons inside them, shown on the course page in this order."
+    >
         <Form.Group className="mb-3">
           <Form.Label><FaGoogleDrive className="me-1 text-success" /> Curriculum PDF link (Google Drive)</Form.Label>
           <Form.Control
@@ -114,11 +114,11 @@ export const CurriculumEditor = ({ curriculums, setCurriculums, curriculumLink, 
         <CurriculumImport onImport={handleImport} hasExisting={hasExisting} />
 
         {curriculums.map((c, i) => (
-          <div key={i} className="border rounded p-3 mb-3">
-            <div className="d-flex justify-content-between align-items-center mb-2">
-              <strong className="text-muted" style={{ fontSize: "0.85rem" }}>Module {i + 1}</strong>
+          <div key={i} className="ed-item">
+            <div className="ed-item-head">
+              <span>Module {i + 1}</span>
               {curriculums.length > 1 && (
-                <Button variant="outline-danger" size="sm" onClick={() => removeModule(i)}>
+                <Button variant="outline-danger" size="sm" onClick={() => removeModule(i)} aria-label={`Remove module ${i + 1}`}>
                   <FaTrash />
                 </Button>
               )}
@@ -179,24 +179,28 @@ export const CurriculumEditor = ({ curriculums, setCurriculums, curriculumLink, 
           </div>
         ))}
         <Button variant="outline-primary" size="sm" onClick={() => setCurriculums((p) => [...p, emptyCurriculum()])}>
-          <FaPlus className="me-1" /> Add Module
+          <FaPlus className="me-1" /> Add module
         </Button>
-      </Card.Body>
-    </Card>
+    </EditorSection>
   );
 };
 
 // ─── Bootcamp details (dates, venue, seats) ───────────────────────────────────
 
-export const BootcampFields = ({ form, onChange }) => (
-  <Card className="border mb-4">
-    <Card.Header className="bg-light"><h5 className="mb-0">Bootcamp Details</h5></Card.Header>
-    <Card.Body>
+export const BootcampFields = ({ form, onChange, errors }) => (
+  <EditorSection
+    id="bootcamp"
+    title="Dates & venue"
+    help="When and where the bootcamp happens. Registration stops on the closing date or when seats run out."
+  >
       <Row>
         <Col md={4}>
           <Form.Group className="mb-3">
             <Form.Label>Start date <span className="text-danger">*</span></Form.Label>
-            <Form.Control type="date" name="start_date" value={form.start_date} onChange={onChange} />
+            <div data-field="start_date" className={errors?.start_date ? "ed-field has-error mb-0" : ""}>
+              <Form.Control type="date" name="start_date" value={form.start_date} onChange={onChange} />
+              {errors?.start_date && <p className="ed-error">{errors.start_date}</p>}
+            </div>
           </Form.Group>
         </Col>
         <Col md={4}>
@@ -236,11 +240,7 @@ export const BootcampFields = ({ form, onChange }) => (
           Post the bootcamp photos/activities in Workshops, then paste that post's link here. Completed bootcamps show a "See Bootcamp Highlights" button.
         </Form.Text>
       </Form.Group>
-      <Form.Text className="text-muted">
-        Use the class slots below for batches/timings, the agenda for the day-by-day plan, and the price fields for the bootcamp fee.
-      </Form.Text>
-    </Card.Body>
-  </Card>
+  </EditorSection>
 );
 
 // ─── Course page details ──────────────────────────────────────────────────────
@@ -363,9 +363,12 @@ export const CourseDetailFields = ({ details, setDetails }) => {
   return (
     <>
       {/* ── Course Highlights ── */}
-      <Card className="border mb-4">
-        <Card.Header className="bg-light"><h5 className="mb-0">Course Page Highlights</h5></Card.Header>
-        <Card.Body>
+      <EditorSection
+        id="highlights"
+        title="At a glance"
+        optional
+        help="The short facts parents see near the top of the course page. Module and lesson counts come from the curriculum."
+      >
           <Row>
             <Col md={4}>
               <Form.Group className="mb-3">
@@ -400,9 +403,6 @@ export const CourseDetailFields = ({ details, setDetails }) => {
               </Form.Group>
             </Col>
           </Row>
-          <Form.Text className="d-block text-muted mb-3">
-            Module and lesson counts are calculated from the curriculum automatically.
-          </Form.Text>
           <Form.Group>
             <Form.Label>Certificate Description</Form.Label>
             <Form.Control
@@ -413,21 +413,17 @@ export const CourseDetailFields = ({ details, setDetails }) => {
               placeholder="What certificate students earn and when. Leave empty to hide this section."
             />
           </Form.Group>
-        </Card.Body>
-      </Card>
+      </EditorSection>
 
       {/* ── Registration form ── */}
-      <Card className="border mb-4">
-        <Card.Header className="bg-light"><h5 className="mb-0">Registration Form — Class Slots</h5></Card.Header>
-        <Card.Body>
+      <EditorSection id="slots" title="Class slots" optional
+        help="The batch or time choices parents pick from on the registration form.">
           <ClassSlotEditor slots={details.class_slots} onChange={(v) => set("class_slots", v)} />
-        </Card.Body>
-      </Card>
+      </EditorSection>
 
       {/* ── Includes + Skills ── */}
-      <Card className="border mb-4">
-        <Card.Header className="bg-light"><h5 className="mb-0">Includes & Skills</h5></Card.Header>
-        <Card.Body>
+      <EditorSection id="includes" title="What's included & skills" optional
+        help="Two short bullet lists on the course page.">
           <Row>
             <Col md={6}>
               <StringListEditor
@@ -448,16 +444,12 @@ export const CourseDetailFields = ({ details, setDetails }) => {
               />
             </Col>
           </Row>
-        </Card.Body>
-      </Card>
+      </EditorSection>
 
       {/* ── Projects ── */}
-      <Card className="border mb-4">
-        <Card.Header className="bg-light d-flex align-items-center gap-2">
-          <h5 className="mb-0">Projects Students Build</h5>
-          <Badge bg="secondary" pill>{details.projects.length}</Badge>
-        </Card.Header>
-        <Card.Body>
+      <EditorSection id="projects" title="Projects students build" optional
+        count={details.projects.filter((x) => x.title.trim()).length}
+        help="A title and one line about each project.">
           {details.projects.map((p, i) => (
             <Row key={i} className="g-2 mb-2 align-items-start">
               <Col md={4}>
@@ -474,18 +466,14 @@ export const CourseDetailFields = ({ details, setDetails }) => {
             </Row>
           ))}
           <Button variant="outline-primary" size="sm" onClick={() => set("projects", [...details.projects, { title: "", description: "" }])}>
-            <FaPlus className="me-1" /> Add Project
+            <FaPlus className="me-1" /> Add project
           </Button>
-        </Card.Body>
-      </Card>
+      </EditorSection>
 
       {/* ── FAQs ── */}
-      <Card className="border mb-4">
-        <Card.Header className="bg-light d-flex align-items-center gap-2">
-          <h5 className="mb-0">FAQs</h5>
-          <Badge bg="secondary" pill>{details.faqs.length}</Badge>
-        </Card.Header>
-        <Card.Body>
+      <EditorSection id="faqs" title="Questions parents ask" optional
+        count={details.faqs.filter((x) => x.question.trim()).length}
+        help="Shown as an FAQ list at the bottom of the course page.">
           {details.faqs.map((f, i) => (
             <div key={i} className="border rounded p-2 mb-2">
               <div className="d-flex gap-2 mb-2">
@@ -498,10 +486,9 @@ export const CourseDetailFields = ({ details, setDetails }) => {
             </div>
           ))}
           <Button variant="outline-primary" size="sm" onClick={() => set("faqs", [...details.faqs, { question: "", answer: "" }])}>
-            <FaPlus className="me-1" /> Add FAQ
+            <FaPlus className="me-1" /> Add question
           </Button>
-        </Card.Body>
-      </Card>
+      </EditorSection>
     </>
   );
 };

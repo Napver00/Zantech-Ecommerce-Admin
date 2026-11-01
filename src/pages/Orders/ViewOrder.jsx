@@ -2,17 +2,16 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   FaArrowLeft,
-  FaSpinner,
   FaEnvelope,
   FaFileInvoice,
+  FaPhoneAlt,
+  FaSyncAlt,
 } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 import axiosInstance from "../../config/axios";
-import { Card, Button, Form, Row, Col, Badge } from "react-bootstrap";
+import { Card, Button } from "react-bootstrap";
 import Loading from "../../components/Loading";
 import "../Categories/Categories.css";
-import OrderInformation from "../../components/Orders/ViewOrder/OrderInformation";
-import CustomerInformation from "../../components/Orders/ViewOrder/CustomerInformation";
 import PaymentInformation from "../../components/Orders/ViewOrder/PaymentInformation";
 import OrderItems from "../../components/Orders/ViewOrder/OrderItems";
 import StatusUpdateModal from "../../components/Orders/ViewOrder/StatusUpdateModal";
@@ -21,6 +20,15 @@ import InvoiceDocument from "../../components/InvoiceDocument";
 import InvoiceShareActions from "../../components/InvoiceShareActions";
 import EditShippingAddressModal from "../../components/Orders/EditShippingAddressModal";
 import usePageTitle from "../../hooks/usePageTitle";
+import { EditorPage, EditorSection } from "../../components/Editor/Editor";
+
+const ORDER_STATUSES = [
+  { value: "0", label: "Processing", tone: "work" },
+  { value: "2", label: "On hold", tone: "work" },
+  { value: "1", label: "Completed", tone: "good" },
+  { value: "3", label: "Cancelled", tone: "bad" },
+  { value: "4", label: "Refunded", tone: "bad" },
+];
 
 const tk = (n) => `৳${Number(n || 0).toLocaleString()}`;
 
@@ -47,8 +55,8 @@ const orderWhatsAppText = (orderData) => {
 };
 
 const ViewOrder = () => {
-  usePageTitle("View Order Details");
   const { id } = useParams();
+  usePageTitle(`Order #${id}`);
   const navigate = useNavigate();
   const [orderData, setOrderData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -169,7 +177,7 @@ const ViewOrder = () => {
     }
   };
 
-  const handleAddressUpdated = (updatedData) => {
+  const handleAddressUpdated = () => {
     refreshOrderData();
   };
 
@@ -197,161 +205,146 @@ const ViewOrder = () => {
   const { order, user, shipping_address, coupon, order_items, payments } =
     orderData;
 
-  return (
-    <div className="orders-container">
-      <EditShippingAddressModal
-        show={showEditAddressModal}
-        onHide={() => setShowEditAddressModal(false)}
-        orderData={orderData}
-        onUpdate={handleAddressUpdated}
-      />
+  const status = ORDER_STATUSES.find((s) => s.value === String(order.status)) || ORDER_STATUSES[0];
+  const payment = payments?.[0];
+  const due = payment ? Number(payment.due_amount) || 0 : 0;
+  const itemCount = (order_items || []).reduce((n, i) => n + (Number(i.quantity) || 0), 0);
+  const customerName = user?.name || order.user_name || "Customer";
+  const customerPhone = user?.phone || order.user_phone || shipping_address?.phone || "";
+  const placedAt = new Date(order.created_at).toLocaleString("en-GB", {
+    day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit",
+  });
 
-      <div className="landing-header mb-4 d-flex flex-wrap gap-3 justify-content-between align-items-center">
-        <div>
-          <Button
-            variant="link"
-            className="p-0 mb-2 text-decoration-none text-muted small"
-            onClick={() => navigate(-1)}
-          >
-            <FaArrowLeft className="me-2" /> Back to Orders
-          </Button>
-          <h2 className="mb-1 text-dark fw-bold">Order Details #{order.id}</h2>
-          <p className="text-muted lead fs-6 mb-0">
-            View and manage order information
-          </p>
+  const sidebar = (
+    <div className="ed-nav-wrap">
+      <div className="ed-rail-card">
+        <h3>Order status</h3>
+        <div className="od-status-list" role="radiogroup" aria-label="Order status">
+          {ORDER_STATUSES.map((s) => (
+            <button
+              key={s.value}
+              type="button"
+              role="radio"
+              aria-checked={s.value === status.value}
+              className={`od-status-btn is-${s.tone} ${s.value === status.value ? "is-current" : ""}`}
+              disabled={updatingStatus}
+              onClick={() => handleStatusChange(s.value)}
+            >
+              <span className="od-status-dot" aria-hidden="true" />
+              {s.label}
+            </button>
+          ))}
         </div>
-        <div className="d-flex flex-wrap gap-2">
-          <Button
-            variant="white"
-            onClick={refreshOrderData}
-            disabled={isRefreshing}
-            className="d-flex align-items-center gap-2 shadow-sm border"
-          >
-            {isRefreshing ? (
-              <FaSpinner className="spinner-border spinner-border-sm" />
-            ) : (
-              <FaSpinner />
-            )}
-            <span className="d-none d-md-inline">Refresh</span>
-          </Button>
-          <Button
-            variant="white"
-            onClick={handleGenerateInvoice}
-            disabled={generatingInvoice}
-            className="d-flex align-items-center gap-2 shadow-sm border"
-          >
-            {generatingInvoice ? (
-              <FaSpinner className="spinner-border spinner-border-sm" />
-            ) : (
-              <FaFileInvoice />
-            )}
-            <span className="d-none d-md-inline">Print</span>
+        {typeof order.status_change_desc === "string" && order.status_change_desc.trim() && order.status_change_desc !== "0" && (
+          <p className="ed-hint mb-0 mt-2">{order.status_change_desc}</p>
+        )}
+      </div>
+
+      <div className="ed-rail-card">
+        <h3>Customer</h3>
+        <p className="od-name">{customerName}</p>
+        {customerPhone && <a className="od-line" href={`tel:${customerPhone}`}><FaPhoneAlt aria-hidden="true" />{customerPhone}</a>}
+        {user?.email && <a className="od-line" href={`mailto:${user.email}`}><FaEnvelope aria-hidden="true" />{user.email}</a>}
+      </div>
+
+      <div className="ed-rail-card">
+        <div className="od-card-head">
+          <h3>Deliver to</h3>
+          <Button variant="link" size="sm" className="p-0" onClick={() => setShowEditAddressModal(true)}>Edit</Button>
+        </div>
+        {shipping_address ? (
+          <address className="od-address">
+            <strong>{shipping_address.f_name} {shipping_address.l_name}</strong><br />
+            {shipping_address.address}<br />
+            {[shipping_address.city, shipping_address.zip].filter(Boolean).join(" ")}<br />
+            {shipping_address.phone && <a href={`tel:${shipping_address.phone}`}>{shipping_address.phone}</a>}
+          </address>
+        ) : (
+          <address className="od-address">{user?.address || order.address || "No address given"}</address>
+        )}
+      </div>
+
+      <div className="ed-rail-card">
+        <h3>Summary</h3>
+        <dl>
+          <dt>Items ({itemCount})</dt><dd>{tk(order.item_subtotal)}</dd>
+          <dt>Delivery</dt><dd>{tk(order.shipping_charge)}</dd>
+          {Number(order.discount) > 0 && (<><dt>Discount{coupon ? ` (${coupon.code})` : ""}</dt><dd className="text-danger">−{tk(order.discount)}</dd></>)}
+          <dt className="od-total">Total</dt><dd className="od-total">{tk(order.total_amount)}</dd>
+          {payment && (<><dt>Paid</dt><dd>{tk(payment.paid_amount)}</dd></>)}
+          {payment && (<><dt>Due</dt><dd className={due > 0 ? "text-danger" : "text-success"}>{due > 0 ? tk(due) : "Nothing due"}</dd></>)}
+        </dl>
+      </div>
+    </div>
+  );
+
+  return (
+    <EditorPage
+      wide
+      railFirst
+      title={`Order ${order.invoice_code || `#${order.id}`}`}
+      meta={
+        <>
+          <span className={`ed-status ${status.tone === "good" ? "is-live" : status.tone === "bad" ? "is-off" : "is-warn"}`}>{status.label}</span>
+          <span>{placedAt}</span>
+          <span>{itemCount} {itemCount === 1 ? "item" : "items"} · {tk(order.total_amount)}</span>
+          {payment && (due > 0
+            ? <span className="text-danger fw-semibold">{tk(due)} due</span>
+            : <span className="text-success fw-semibold">Paid in full</span>)}
+        </>
+      }
+      actions={
+        <>
+          <Button variant="outline-secondary" onClick={handleGenerateInvoice} disabled={generatingInvoice}>
+            <FaFileInvoice className="me-2" aria-hidden="true" />Print invoice
           </Button>
           <InvoiceShareActions
             buildHtml={() => InvoiceDocument({ orderData })}
             invoiceNo={order.invoice_code}
             emailEndpoint={`/orders/${order.id}/email-invoice`}
             defaultEmail={user?.email || ""}
-            phone={user?.phone || shipping_address?.phone || order.user_phone || order.phone || ""}
+            phone={customerPhone}
             customerName={user?.name || order.user_name || ""}
             whatsappText={orderWhatsAppText(orderData)}
           />
-          <Button
-            variant="white"
-            onClick={() => setShowEmailModal(true)}
-            className="d-flex align-items-center gap-2 shadow-sm border"
-            title="Send the order details email"
-          >
-            <FaEnvelope />
-            <span className="d-none d-md-inline">Order email</span>
+          <Button variant="outline-secondary" onClick={() => setShowEmailModal(true)} title="Send the order details email">
+            <FaEnvelope className="me-2" aria-hidden="true" />Order email
           </Button>
-          <Form.Select
-            value={orderData?.order?.status?.toString() || "0"}
-            onChange={(e) => handleStatusChange(e.target.value)}
-            disabled={updatingStatus}
-            style={{ width: "auto", minWidth: "140px" }}
-            className="shadow-sm border-0 bg-white"
-          >
-            <option value="0">Processing</option>
-            <option value="1">Completed</option>
-            <option value="2">On Hold</option>
-            <option value="3">Cancelled</option>
-            <option value="4">Refunded</option>
-          </Form.Select>
+          <Button variant="link" className="text-muted" onClick={refreshOrderData} disabled={isRefreshing} aria-label="Reload order">
+            <FaSyncAlt className={isRefreshing ? "fa-spin" : ""} aria-hidden="true" />
+          </Button>
+        </>
+      }
+      nav={sidebar}
+    >
+      <EditShippingAddressModal
+        show={showEditAddressModal}
+        onHide={() => setShowEditAddressModal(false)}
+        orderData={orderData}
+        onUpdate={handleAddressUpdated}
+      />
+      <EmailModal show={showEmailModal} handleClose={() => setShowEmailModal(false)} orderId={id} />
+      <StatusUpdateModal
+        show={showStatusModal}
+        handleClose={() => setShowStatusModal(false)}
+        selectedStatus={selectedStatus}
+        orderStatus={orderData?.order?.status}
+        updatingStatus={updatingStatus}
+        confirmStatusChange={confirmStatusChange}
+      />
+
+      <EditorSection id="items" title="Items" count={itemCount} help="What the customer ordered. Changing items updates the total.">
+        <div className="ed-embed">
+          <OrderItems orderItems={order_items} orderId={id} refreshOrderData={refreshOrderData} />
         </div>
-      </div>
+      </EditorSection>
 
-      <div className="row g-4">
-        <div className="col-12">
-          <Card className="modern-card border-0">
-            <Card.Body className="p-4">
-              <EmailModal
-                show={showEmailModal}
-                handleClose={() => setShowEmailModal(false)}
-                orderId={id}
-              />
-
-              <StatusUpdateModal
-                show={showStatusModal}
-                handleClose={() => setShowStatusModal(false)}
-                selectedStatus={selectedStatus}
-                orderStatus={orderData?.order?.status}
-                updatingStatus={updatingStatus}
-                confirmStatusChange={confirmStatusChange}
-              />
-
-              <Row className="g-4 mb-4">
-                <Col md={6}>
-                  <div className="h-100 p-3 bg-light rounded-3 border">
-                    <OrderInformation order={order} coupon={coupon} />
-                  </div>
-                </Col>
-                <Col md={6}>
-                  <div className="h-100 p-3 bg-light rounded-3 border">
-                    <CustomerInformation
-                      user={user}
-                      shipping_address={shipping_address}
-                      order={order}
-                      setShowEditAddressModal={setShowEditAddressModal}
-                    />
-                  </div>
-                </Col>
-              </Row>
-
-              <div className="mb-4">
-                <PaymentInformation
-                  payments={payments}
-                  refreshOrderData={refreshOrderData}
-                />
-              </div>
-
-              <OrderItems
-                orderItems={order_items}
-                orderId={id}
-                refreshOrderData={refreshOrderData}
-              />
-
-              {coupon && (
-                <div className="mt-4 p-3 bg-success bg-opacity-10 border border-success rounded-3 d-flex align-items-center">
-                  <Badge bg="success" className="me-3 px-3 py-2 rounded-pill">
-                    {coupon.code}
-                  </Badge>
-                  <div>
-                    <span className="fw-bold text-success d-block">
-                      Coupon Applied
-                    </span>
-                    <span className="small text-muted">
-                      Discount Amount: ৳
-                      {parseFloat(coupon.amount).toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-              )}
-            </Card.Body>
-          </Card>
+      <EditorSection id="payment" title="Payment" help="Mark the payment when the money arrives, and record part payments.">
+        <div className="ed-embed">
+          <PaymentInformation payments={payments} refreshOrderData={refreshOrderData} />
         </div>
-      </div>
-    </div>
+      </EditorSection>
+    </EditorPage>
   );
 };
 

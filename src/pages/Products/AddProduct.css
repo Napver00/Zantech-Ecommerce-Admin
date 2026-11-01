@@ -127,7 +127,6 @@
   transition: var(--transition);
   color: var(--text-primary);
   background-color: white;
-  height: 40%;
 }
 
 .form-control:hover {
@@ -953,3 +952,5 @@ input:checked + .toggle-slider:before {
 .fa-spin {
   animation: spin 1s linear infinite;
 }
+/* Bundle rows: the product search fills its column */
+.bundle-table .product-col > div { flex: 1 1 auto; min-width: 0; }

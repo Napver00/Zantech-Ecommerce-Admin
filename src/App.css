@@ -184,7 +184,9 @@ a:hover {
   margin-left: var(--zt-sidebar-w);
   margin-top: var(--zt-header-h);
   padding: 1.75rem;
-  overflow-x: hidden;
+  /* clip, not hidden: hidden turns this into a scroll box and breaks
+     position: sticky (form save bars, side lists) inside pages */
+  overflow-x: clip;
 }
 
 /* Page roots (.orders-container, .products-container…) used to add their own
