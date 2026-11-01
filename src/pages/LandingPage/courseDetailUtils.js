@@ -106,8 +106,28 @@ export const emptyDetails = () => ({
   skills: [""],
   projects: [{ title: "", description: "" }],
   faqs: [{ question: "", answer: "" }],
-  class_slots: [""],
+  class_slots: [emptySlot()],
 });
+
+// "Preferred Class Slot": a name, an optional seat limit and an on/off switch.
+// taken / status come from the server and are only shown, never sent back.
+export const emptySlot = () => ({ label: "", capacity: "", closed: false, taken: 0, status: "open" });
+
+// class_slot_options has every slot with its bookings; class_slots (older
+// API) is just the names that are still open.
+const slotsFromCourse = (d) => {
+  if (Array.isArray(d.class_slot_options) && d.class_slot_options.length) {
+    return d.class_slot_options.map((s) => ({
+      label: s.label || "",
+      capacity: s.capacity ?? "",
+      closed: !!s.closed,
+      taken: s.taken ?? 0,
+      status: s.status || "open",
+    }));
+  }
+  const names = (d.class_slots || []).map((s) => (typeof s === "string" ? s : s?.label)).filter(Boolean);
+  return names.length ? names.map((label) => ({ ...emptySlot(), label })) : [emptySlot()];
+};
 
 export const detailsFromCourse = (d) => ({
   age_group: d.age_group || "",
@@ -125,7 +145,7 @@ export const detailsFromCourse = (d) => ({
   faqs: d.faqs?.length
     ? d.faqs.map((f) => ({ question: f.question || "", answer: f.answer || "" }))
     : [{ question: "", answer: "" }],
-  class_slots: d.class_slots?.length ? d.class_slots : [""],
+  class_slots: slotsFromCourse(d),
 });
 
 // Empty values are sent as "" so clearing a field on edit saves it as empty
@@ -150,6 +170,9 @@ export const appendDetails = (fd, details) => {
     fd.append(`faqs[${i}][question]`, f.question);
     if (f.answer) fd.append(`faqs[${i}][answer]`, f.answer);
   });
-  appendList("class_slots", details.class_slots.map((s) => s.trim()).filter(Boolean),
-    (s) => fd.append("class_slots[]", s));
+  appendList("class_slots", details.class_slots.filter((s) => s.label.trim()), (s, i) => {
+    fd.append(`class_slots[${i}][label]`, s.label.trim());
+    fd.append(`class_slots[${i}][capacity]`, s.capacity === "" || s.capacity == null ? "" : String(s.capacity));
+    fd.append(`class_slots[${i}][closed]`, s.closed ? "1" : "0");
+  });
 };

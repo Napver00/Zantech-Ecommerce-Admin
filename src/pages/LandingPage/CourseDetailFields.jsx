@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Row, Col, Card, Form, Button, Badge, Alert } from "react-bootstrap";
 import { FaPlus, FaTrash, FaFileImport, FaGoogleDrive } from "react-icons/fa";
-import { emptyLesson, emptyCurriculum, parseCurriculumText } from "./courseDetailUtils";
+import { emptyLesson, emptyCurriculum, parseCurriculumText, emptySlot } from "./courseDetailUtils";
 
 // Shared by AddCourse and ViewCourse: curriculum (modules → lessons) and the
 // course-details-page sections (highlights, includes, skills, projects, FAQs).
@@ -268,6 +268,78 @@ const StringListEditor = ({ label, help, items, onChange, placeholder }) => (
   </Form.Group>
 );
 
+// "Preferred Class Slot" options: name, optional seat limit, and an on/off
+// switch. Full or switched-off slots show greyed out on the website and
+// can't be picked. Bookings count every registration that isn't rejected.
+const SlotStatus = ({ slot }) => {
+  const limit = Number(slot.capacity) || null;
+  const booked = `${slot.taken}${limit ? ` / ${limit}` : ""} booked`;
+  if (slot.closed) return <Badge bg="secondary">Closed · {booked}</Badge>;
+  if (limit && slot.taken >= limit) return <Badge bg="danger">Full · {booked}</Badge>;
+  return <Badge bg={slot.taken ? "success" : "light"} text={slot.taken ? undefined : "dark"}>Open · {booked}</Badge>;
+};
+
+const ClassSlotEditor = ({ slots, onChange }) => {
+  const update = (i, field, value) => onChange(slots.map((s, k) => (k === i ? { ...s, [field]: value } : s)));
+
+  return (
+    <Form.Group className="mb-1">
+      <Form.Label>&quot;Preferred Class Slot&quot; options</Form.Label>
+      <Form.Text className="d-block text-muted mb-3">
+        Parents pick one of these on the website registration form. Set a seat limit and the slot closes by itself
+        when it fills up, or switch it off any time. Leave empty if there is no slot choice.
+      </Form.Text>
+      {slots.map((slot, i) => (
+        <div key={i} className={`border rounded p-2 mb-2 ${slot.closed ? "bg-light" : ""}`}>
+          <div className="d-flex gap-2 align-items-center">
+            <Form.Control
+              size="sm"
+              value={slot.label}
+              onChange={(e) => update(i, "label", e.target.value)}
+              placeholder="e.g. Slot A — Friday 4:00–5:30 PM & Saturday 4:00–5:30 PM"
+              aria-label={`Slot ${i + 1} name`}
+            />
+            <Button variant="outline-danger" size="sm" onClick={() => onChange(slots.filter((_, k) => k !== i))}
+              aria-label={`Remove slot ${i + 1}`} title="Remove slot">
+              <FaTrash />
+            </Button>
+          </div>
+          <div className="d-flex flex-wrap gap-3 align-items-center mt-2">
+            <Form.Group className="d-flex align-items-center gap-2 mb-0">
+              <Form.Label className="mb-0 small text-muted text-nowrap" htmlFor={`slot-cap-${i}`}>Seat limit</Form.Label>
+              <Form.Control
+                id={`slot-cap-${i}`}
+                size="sm"
+                type="number"
+                min="1"
+                style={{ width: 96 }}
+                value={slot.capacity}
+                onChange={(e) => update(i, "capacity", e.target.value)}
+                placeholder="No limit"
+              />
+            </Form.Group>
+            <Form.Check
+              type="switch"
+              id={`slot-open-${i}`}
+              className="mb-0"
+              label={slot.closed ? "Closed — hidden from picking" : "Open for registration"}
+              checked={!slot.closed}
+              onChange={(e) => update(i, "closed", !e.target.checked)}
+            />
+            {slot.label.trim() && <SlotStatus slot={slot} />}
+          </div>
+        </div>
+      ))}
+      <Button variant="outline-secondary" size="sm" onClick={() => onChange([...slots, emptySlot()])}>
+        <FaPlus className="me-1" /> Add slot
+      </Button>
+      <Form.Text className="d-block text-muted mt-2">
+        Renaming a slot doesn&apos;t move students who already registered for its old name.
+      </Form.Text>
+    </Form.Group>
+  );
+};
+
 export const CourseDetailFields = ({ details, setDetails }) => {
   const set = (key, value) => setDetails((p) => ({ ...p, [key]: value }));
   const setItem = (key, i, field, value) =>
@@ -333,13 +405,7 @@ export const CourseDetailFields = ({ details, setDetails }) => {
       <Card className="border mb-4">
         <Card.Header className="bg-light"><h5 className="mb-0">Registration Form — Class Slots</h5></Card.Header>
         <Card.Body>
-          <StringListEditor
-            label='"Preferred Class Slot" options'
-            help="Parents pick one of these on the website registration form. Leave empty if this course has no slot choice."
-            items={details.class_slots}
-            onChange={(v) => set("class_slots", v)}
-            placeholder="e.g. Slot A — Friday 4:00–5:30 PM & Saturday 4:00–5:30 PM"
-          />
+          <ClassSlotEditor slots={details.class_slots} onChange={(v) => set("class_slots", v)} />
         </Card.Body>
       </Card>
 
