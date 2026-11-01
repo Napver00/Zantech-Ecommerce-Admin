@@ -473,10 +473,28 @@ label {
   -webkit-overflow-scrolling: touch;
 }
 
-/* Action buttons inside table rows */
+/* Action buttons inside table rows. Fitts's law: each one at least 32px
+   square, with a clear gap so Delete isn't hit when aiming for Edit. */
 .table .action-buttons { white-space: nowrap; }
-.table .action-buttons .btn { margin: 0.1rem; }
+.table .action-buttons .btn { margin: 0.15rem; min-width: 32px; min-height: 32px; }
+.table .action-buttons .btn + .btn { margin-left: 0.35rem; }
 .table .btn-sm { --bs-btn-padding-x: 0.55rem; --bs-btn-padding-y: 0.3rem; }
+
+/* Touch screens (phones and tablets, any width): 44px targets */
+@media (pointer: coarse) {
+  .btn { min-height: 44px; }
+  .btn-sm { min-height: 40px; }
+  .table .action-buttons .btn,
+  .table-mobile-stack td.action-buttons .btn { min-width: 44px; min-height: 44px; }
+  .pagination .page-link { min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center; }
+  .modal-header .btn-close { width: 44px; height: 44px; }
+  .form-check:not(.form-switch) .form-check-input { width: 1.35em; height: 1.35em; margin-top: 0.1em; }
+  .form-switch .form-check-input { height: 1.4em; width: 2.6em; }
+  .form-check { min-height: 32px; }
+  .dropdown-item { padding-top: 0.6rem; padding-bottom: 0.6rem; }
+  .nav-tabs .nav-link,
+  .modern-tabs .nav-link { min-height: 44px; display: flex; align-items: center; }
+}
 
 /* Friendly empty state for lists */
 .empty-state {
@@ -959,7 +977,9 @@ label {
   .form-actions { flex-direction: column; align-items: stretch; gap: 0.75rem; }
   .form-actions .btn { width: 100%; }
 
-  .pagination .page-link { padding: 0.35rem 0.65rem; }
+  /* Page numbers stay finger-sized; the row scrolls sideways if it must */
+  .pagination { flex-wrap: wrap; row-gap: 0.35rem; }
+  .pagination .page-link { min-width: 40px; min-height: 40px; display: flex; align-items: center; justify-content: center; }
 
   /* Stop iOS Safari zooming into inputs */
   .form-control,
