@@ -270,13 +270,27 @@ const StringListEditor = ({ label, help, items, onChange, placeholder }) => (
 
 // "Preferred Class Slot" options: name, optional seat limit, and an on/off
 // switch. Full or switched-off slots show greyed out on the website and
-// can't be picked. Bookings count every registration that isn't rejected.
+// can't be picked. A seat is taken once a registration is approved (paid);
+// registrations still waiting for the payment check are shown beside it.
 const SlotStatus = ({ slot }) => {
   const limit = Number(slot.capacity) || null;
-  const booked = `${slot.taken}${limit ? ` / ${limit}` : ""} booked`;
-  if (slot.closed) return <Badge bg="secondary">Closed · {booked}</Badge>;
-  if (limit && slot.taken >= limit) return <Badge bg="danger">Full · {booked}</Badge>;
-  return <Badge bg={slot.taken ? "success" : "light"} text={slot.taken ? undefined : "dark"}>Open · {booked}</Badge>;
+  const paid = `${slot.taken}${limit ? ` / ${limit}` : ""} paid`;
+  const badge = slot.closed
+    ? <Badge bg="secondary">Closed · {paid}</Badge>
+    : limit && slot.taken >= limit
+      ? <Badge bg="danger">Full · {paid}</Badge>
+      : <Badge bg={slot.taken ? "success" : "light"} text={slot.taken ? undefined : "dark"}>Open · {paid}</Badge>;
+
+  return (
+    <span className="d-inline-flex gap-1 align-items-center">
+      {badge}
+      {slot.pending > 0 && (
+        <Badge bg="warning" text="dark" title="Registrations waiting for the payment check. They take a seat once approved.">
+          +{slot.pending} waiting
+        </Badge>
+      )}
+    </span>
+  );
 };
 
 const ClassSlotEditor = ({ slots, onChange }) => {
@@ -286,8 +300,9 @@ const ClassSlotEditor = ({ slots, onChange }) => {
     <Form.Group className="mb-1">
       <Form.Label>&quot;Preferred Class Slot&quot; options</Form.Label>
       <Form.Text className="d-block text-muted mb-3">
-        Parents pick one of these on the website registration form. Set a seat limit and the slot closes by itself
-        when it fills up, or switch it off any time. Leave empty if there is no slot choice.
+        Parents pick one of these on the website registration form. A seat counts once you approve the registration
+        (payment checked). Set a seat limit and the slot closes by itself when it&apos;s full, or switch it off any time.
+        Leave empty if there is no slot choice.
       </Form.Text>
       {slots.map((slot, i) => (
         <div key={i} className={`border rounded p-2 mb-2 ${slot.closed ? "bg-light" : ""}`}>

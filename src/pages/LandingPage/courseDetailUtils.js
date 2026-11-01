@@ -111,7 +111,7 @@ export const emptyDetails = () => ({
 
 // "Preferred Class Slot": a name, an optional seat limit and an on/off switch.
 // taken / status come from the server and are only shown, never sent back.
-export const emptySlot = () => ({ label: "", capacity: "", closed: false, taken: 0, status: "open" });
+export const emptySlot = () => ({ label: "", capacity: "", closed: false, taken: 0, pending: 0, status: "open" });
 
 // class_slot_options has every slot with its bookings; class_slots (older
 // API) is just the names that are still open.
@@ -122,6 +122,7 @@ const slotsFromCourse = (d) => {
       capacity: s.capacity ?? "",
       closed: !!s.closed,
       taken: s.taken ?? 0,
+      pending: s.pending ?? 0,
       status: s.status || "open",
     }));
   }
