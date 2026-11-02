@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from "react";
-import { FaPlus, FaEdit, FaTrash, FaTimes } from "react-icons/fa";
+import { FaPlus } from "react-icons/fa";
 import { toast } from "react-hot-toast";
-import axiosInstance, { IMAGE_BASE_URL } from "../../config/axios"; // Import IMAGE_BASE_URL
-import { Card, Form, Button, Modal, Pagination, Table, Row, Col } from "react-bootstrap";
+import axiosInstance from "../../config/axios";
+import { Form, Button, Modal } from "react-bootstrap";
 import Select from "react-select/async";
 import Loading from "../../components/Loading";
 import "./Ratings.css";
 import usePageTitle from '../../hooks/usePageTitle';
 import CommonTable from "../../components/Common/CommonTable";
+import { ListHeader, ListCard, ListToolbar, FilterTabs, ResultCount, Pager } from "../../components/List/List";
+import { timeAgo } from "../../components/List/format";
 
 const Ratings = () => {
-  usePageTitle('Manage Ratings');
+  usePageTitle('Reviews');
   const [ratings, setRatings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -137,65 +139,6 @@ const Ratings = () => {
     }));
   };
 
-  const renderPagination = () => {
-    const items = [];
-    const maxPages = 5;
-    let startPage = Math.max(1, pagination.current_page - Math.floor(maxPages / 2));
-    let endPage = Math.min(pagination.total_pages, startPage + maxPages - 1);
-
-    if (endPage - startPage + 1 < maxPages) {
-      startPage = Math.max(1, endPage - maxPages + 1);
-    }
-
-    if (startPage > 1) {
-      items.push(
-        <Pagination.First
-          key="first"
-          onClick={() => handlePageChange(1)}
-          disabled={pagination.current_page === 1}
-        />
-      );
-      items.push(
-        <Pagination.Prev
-          key="prev"
-          onClick={() => handlePageChange(pagination.current_page - 1)}
-          disabled={pagination.current_page === 1}
-        />
-      );
-    }
-
-    for (let number = startPage; number <= endPage; number++) {
-      items.push(
-        <Pagination.Item
-          key={number}
-          active={number === pagination.current_page}
-          onClick={() => handlePageChange(number)}
-        >
-          {number}
-        </Pagination.Item>
-      );
-    }
-
-    if (endPage < pagination.total_pages) {
-      items.push(
-        <Pagination.Next
-          key="next"
-          onClick={() => handlePageChange(pagination.current_page + 1)}
-          disabled={pagination.current_page === pagination.total_pages}
-        />
-      );
-      items.push(
-        <Pagination.Last
-          key="last"
-          onClick={() => handlePageChange(pagination.total_pages)}
-          disabled={pagination.current_page === pagination.total_pages}
-        />
-      );
-    }
-
-    return items;
-  };
-
   const handlePageChange = (page) => {
     setSearchParams((prev) => ({
       ...prev,
@@ -203,252 +146,178 @@ const Ratings = () => {
     }));
   };
 
+  const Stars = ({ n }) => (
+    <span className="rating-stars" aria-label={`${n} out of 5 stars`}>
+      {[1, 2, 3, 4, 5].map((i) => (
+        <span key={i} aria-hidden="true" className={i <= n ? 'is-on' : ''}>★</span>
+      ))}
+    </span>
+  );
+
   const headers = [
-    { key: 'id', label: 'ID' },
     {
-      key: 'star',
-      label: 'Star Rating',
+      key: 'reating',
+      label: 'Review',
       render: (row) => (
-        <div className="d-flex align-items-center gap-1">
-          {[...Array(5)].map((_, index) => (
-            <span
-              key={index}
-              style={{
-                color: index < row.star ? "#ffc107" : "#e4e5e9",
-              }}
-            >
-              ★
-            </span>
-          ))}
-        </div>
+        <>
+          <Stars n={Number(row.star)} />
+          <span className="rating-text" title={row.reating || ''}>
+            {row.reating || <span className="text-muted fst-italic">No written review</span>}
+          </span>
+        </>
       ),
     },
-    { key: 'reating', label: 'Review Text', render: (row) => row.reating || "No review" },
     {
       key: 'product',
       label: 'Product',
-      render: (row) => (
+      render: (row) =>
         row.product ? (
-          <div className="d-flex align-items-center">
-            {row.product.image ? (
-              <img
-                src={row.product.image}
-                alt={row.product.name}
-                className="product-image"
-              />
-            ) : (
-              <div className="no-image-placeholder">
-                <span>No image</span>
-              </div>
-            )}
-            <div>{row.product.name}</div>
+          <div className="ls-with-thumb">
+            {row.product.image
+              ? <img src={row.product.image} alt="" className="ls-thumb" loading="lazy" />
+              : <span className="ls-thumb is-empty">No photo</span>}
+            <span className="ls-cell-main text-truncate d-block" style={{ maxWidth: 220 }} title={row.product.name}>{row.product.name}</span>
           </div>
-        ) : (
-          "N/A"
-        )
-      ),
+        ) : <span className="text-muted">Deleted product</span>,
     },
     {
       key: 'user',
-      label: 'User',
+      label: 'By',
       render: (row) => (
-        row.user ? (
-          <div>{row.user.name}</div>
-        ) : (
-          "N/A"
-        )
-      )
+        <>
+          <span className="d-block">{row.user?.name || 'Admin'}</span>
+          {row.created_at && <span className="ls-cell-sub">{timeAgo(row.created_at)}</span>}
+        </>
+      ),
     },
     {
       key: 'status',
-      label: 'Status',
+      label: 'Shown',
       render: (row) => (
-        <span className={row.status === "1" ? "text-success" : "text-danger"}>
-          {row.status === "1" ? "Active" : "Inactive"}
-        </span>
+        <Form.Check
+          type="switch"
+          id={`rating-shown-${row.id}`}
+          checked={row.status === "1"}
+          disabled={!!statusToggleLoading[row.id]}
+          onChange={() => handleToggleStatus(row.id)}
+          aria-label="Show this review on the product page"
+        />
       ),
     },
   ];
 
-  const renderActions = (rating) => (
-    <Button
-      variant={rating.status === "1" ? "outline-danger" : "outline-success"}
-      size="sm"
-      onClick={() => handleToggleStatus(rating.id)}
-      disabled={statusToggleLoading[rating.id]}
-      className="view-btn"
-    >
-      {statusToggleLoading[rating.id]
-        ? rating.status === "1"
-          ? "Deactivating..."
-          : "Activating..."
-        : rating.status === "1"
-        ? "Deactivate"
-        : "Activate"}
-    </Button>
-  );
+  const openAdd = () => {
+    setFormData({ star: "", reating: "", product_id: "" });
+    setShowModal(true);
+  };
 
-  if (loading && ratings.length === 0) {
+  if (loading && ratings.length === 0 && !searchParams.status && !searchParams.star) {
     return <Loading />;
   }
 
   return (
-    <div className="orders-container">
-      <Card className="modern-card">
-        <Card.Body className="p-4">
-          <div className="d-flex justify-content-between align-items-center mb-4">
-            <div>
-              <h2 className="page-title mb-1">Ratings</h2>
-              <p className="text-muted mb-0">Manage and track all your product ratings</p>
-            </div>
-            <Button
-              variant="primary"
-              className="create-order-btn"
-              onClick={() => {
-                setFormData({ star: "", reating: "", product_id: "" });
-                setShowModal(true);
-              }}
-            >
-              <FaPlus className="me-2" /> Add Rating
-            </Button>
-          </div>
+    <div className="ratings-page">
+      <ListHeader
+        title="Reviews"
+        subtitle="Star ratings customers leave on products. Switch one off to hide it from the store."
+        actions={<Button onClick={openAdd}><FaPlus className="me-2" aria-hidden="true" />Add review</Button>}
+      />
 
-          <div className="filters-section mb-4">
-            <Row className="g-3 align-items-center">
-              <Col md={2}>
-                <Form.Select
-                  className="status-filter"
-                  name="star"
-                  value={searchParams.star}
-                  onChange={handleFilterChange}
-                >
-                  <option value="">All Stars</option>
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <option key={star} value={star}>
-                      {star} Star{star > 1 ? "s" : ""}
-                    </option>
-                  ))}
-                </Form.Select>
-              </Col>
-              <Col md={2}>
-                <Form.Select
-                  className="status-filter"
-                  name="status"
-                  value={searchParams.status}
-                  onChange={handleFilterChange}
-                >
-                  <option value="">All Status</option>
-                  <option value="1">Active</option>
-                  <option value="0">Inactive</option>
-                </Form.Select>
-              </Col>
-              <Col md={2}>
-                <Form.Select
-                  value={searchParams.limit}
-                  onChange={(e) => {
-                    setSearchParams(prev => ({
-                      ...prev,
-                      limit: parseInt(e.target.value),
-                      page: 1
-                    }));
-                  }}
-                  className="limit-select"
-                >
-                  <option value="5">5 per page</option>
-                  <option value="10">10 per page</option>
-                  <option value="20">20 per page</option>
-                  <option value="50">50 per page</option>
-                </Form.Select>
-              </Col>
-            </Row>
-          </div>
+      <ListCard>
+        <FilterTabs
+          label="Filter reviews by visibility"
+          value={searchParams.status}
+          onChange={(v) => handleFilterChange({ target: { name: 'status', value: v } })}
+          tabs={[
+            { value: '', label: 'All' },
+            { value: '1', label: 'Shown' },
+            { value: '0', label: 'Hidden' },
+          ]}
+        />
+        <ListToolbar end={<ResultCount page={pagination.current_page} perPage={searchParams.limit} total={pagination.total_rows} noun="reviews" />}>
+          <Form.Select
+            name="star"
+            value={searchParams.star}
+            onChange={handleFilterChange}
+            aria-label="Filter by stars"
+            style={{ maxWidth: 180 }}
+          >
+            <option value="">Any rating</option>
+            {[5, 4, 3, 2, 1].map((s) => (
+              <option key={s} value={s}>{'★'.repeat(s)} {s} star{s > 1 ? 's' : ''}</option>
+            ))}
+          </Form.Select>
+        </ListToolbar>
 
-          <CommonTable
-            headers={headers}
-            data={ratings}
-            tableLoading={loading}
-            loading={loading}
-            renderActions={renderActions}
-          />
+        <CommonTable
+          headers={headers}
+          data={ratings}
+          tableLoading={loading}
+          loading={loading}
+          emptyTitle={searchParams.status || searchParams.star ? 'No reviews match' : 'No reviews yet'}
+          emptyText={searchParams.status || searchParams.star ? 'Try a different filter.' : 'Reviews show up here once customers rate a product.'}
+        />
 
-          {pagination.total_pages > 1 && (
-            <div className="pagination-container mt-4">
-              <Pagination className="modern-pagination">
-                {renderPagination()}
-              </Pagination>
-            </div>
-          )}
-        </Card.Body>
-      </Card>
+        <Pager
+          page={pagination.current_page}
+          lastPage={pagination.total_pages}
+          onPage={handlePageChange}
+          perPage={searchParams.limit}
+          onPerPage={(n) => setSearchParams((prev) => ({ ...prev, limit: n, page: 1 }))}
+        />
+      </ListCard>
 
-      <Modal show={showModal} onHide={() => setShowModal(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>Add New Rating</Modal.Title>
-        </Modal.Header>
+      <Modal show={showModal} onHide={() => !isSubmitting && setShowModal(false)} centered>
         <Form onSubmit={handleAddRating}>
+          <Modal.Header closeButton>
+            <Modal.Title as="h2" className="h5 mb-0">Add review</Modal.Title>
+          </Modal.Header>
           <Modal.Body>
-            <Row className="g-3">
-              <Col md={12}>
-                <Form.Group>
-                  <Form.Label>Product</Form.Label>
-                  <Select
-                    cacheOptions
-                    defaultOptions
-                    loadOptions={loadProducts}
-                    onChange={(selectedOption) =>
-                      setFormData({
-                        ...formData,
-                        product_id: selectedOption ? selectedOption.value : "",
-                      })
-                    }
-                    placeholder="Select a product"
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={12}>
-                <Form.Group>
-                  <Form.Label>Star Rating</Form.Label>
-                  <Form.Control
-                    as="select"
-                    name="star"
-                    value={formData.star}
-                    onChange={(e) =>
-                      setFormData({ ...formData, star: e.target.value })
-                    }
-                    required
+            <Form.Group className="mb-3">
+              <Form.Label htmlFor="rating-product">Product</Form.Label>
+              <Select
+                inputId="rating-product"
+                cacheOptions
+                defaultOptions
+                loadOptions={loadProducts}
+                onChange={(o) => setFormData({ ...formData, product_id: o ? o.value : "" })}
+                placeholder="Type to find a product"
+              />
+            </Form.Group>
+            <fieldset className="mb-3">
+              <legend className="form-label fs-6">Rating</legend>
+              <div className="star-picker" role="radiogroup" aria-label="Rating">
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    role="radio"
+                    aria-checked={Number(formData.star) === s}
+                    aria-label={`${s} star${s > 1 ? 's' : ''}`}
+                    className={s <= Number(formData.star) ? 'is-on' : ''}
+                    onClick={() => setFormData({ ...formData, star: String(s) })}
                   >
-                    <option value="">Select star rating</option>
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <option key={star} value={star}>
-                        {star} Star{star > 1 ? "s" : ""}
-                      </option>
-                    ))}
-                  </Form.Control>
-                </Form.Group>
-              </Col>
-              <Col md={12}>
-                <Form.Group>
-                  <Form.Label>Review Text (Optional)</Form.Label>
-                  <Form.Control
-                    as="textarea"
-                    rows={3}
-                    name="reating"
-                    value={formData.reating}
-                    onChange={(e) =>
-                      setFormData({ ...formData, reating: e.target.value })
-                    }
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
+                    ★
+                  </button>
+                ))}
+                <span className="ms-2 text-muted small">
+                  {formData.star ? `${formData.star} of 5` : 'Pick a rating'}
+                </span>
+              </div>
+            </fieldset>
+            <Form.Group controlId="rating-text">
+              <Form.Label>Review <span className="text-muted fw-normal">(optional)</span></Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                value={formData.reating}
+                onChange={(e) => setFormData({ ...formData, reating: e.target.value })}
+              />
+            </Form.Group>
           </Modal.Body>
           <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowModal(false)}>
-              Close
-            </Button>
-            <Button variant="primary" type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Adding..." : "Add Rating"}
-            </Button>
+            <Button variant="outline-secondary" onClick={() => setShowModal(false)} disabled={isSubmitting}>Cancel</Button>
+            <Button type="submit" disabled={isSubmitting}>{isSubmitting ? "Adding…" : "Add review"}</Button>
           </Modal.Footer>
         </Form>
       </Modal>

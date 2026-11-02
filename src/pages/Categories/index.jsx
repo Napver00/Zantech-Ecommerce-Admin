@@ -1,32 +1,17 @@
 import React, { useState, useEffect } from "react";
-import {
-  FaPlus,
-  FaEdit,
-  FaTrash,
-  FaSearch,
-  FaSpinner,
-  FaTimes,
-} from "react-icons/fa";
+import { FaPlus, FaEdit, FaTrash } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 import axiosInstance from "../../config/axios";
-import {
-  Card,
-  Form,
-  InputGroup,
-  Button,
-  Row,
-  Col,
-  Modal,
-  Pagination,
-} from "react-bootstrap";
+import { Form, Button, Modal } from "react-bootstrap";
 import Loading from "../../components/Loading";
 import "./Categories.css";
 import usePageTitle from '../../hooks/usePageTitle';
 import CommonTable from "../../components/Common/CommonTable";
+import { ListHeader, ListCard, ListToolbar, SearchBox, ResultCount, Pager, Pill } from "../../components/List/List";
 
 import confirmDialog from "../../utils/confirmDialog";
 const Categories = () => {
-  usePageTitle('Manage Categories');
+  usePageTitle('Categories');
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pageLoading, setPageLoading] = useState(true);
@@ -183,14 +168,6 @@ const Categories = () => {
     }
   };
 
-  const handleSearch = (e) => {
-    const { value } = e.target;
-    setSearchParams((prev) => ({
-      ...prev,
-      search: value,
-    }));
-  };
-
   const openEditModal = (category) => {
     setModalMode("edit");
     setSelectedCategory(category);
@@ -215,156 +192,88 @@ const Categories = () => {
   };
 
   const headers = [
-    { key: 'id', label: 'ID' },
-    { key: 'name', label: 'Name' },
-    { key: 'description', label: 'Description' },
+    {
+      key: 'name',
+      label: 'Category',
+      render: (row) => (
+        <>
+          <span className="ls-cell-main">{row.name}</span>
+          <span className="ls-cell-sub">#{row.id}</span>
+        </>
+      ),
+    },
+    {
+      key: 'description',
+      label: 'Description',
+      render: (row) => (
+        <span className="text-muted d-inline-block text-truncate" style={{ maxWidth: 420 }} title={row.description || ''}>
+          {row.description || '—'}
+        </span>
+      ),
+    },
     {
       key: 'status',
       label: 'Status',
-      render: (row) => (
-        <span className={`px-2 py-1 ${row.status === 0 ? "text-success" : "text-secondary"}`}>
-          {row.status === 0 ? "Active" : "Inactive"}
-        </span>
-      ),
+      render: (row) => (row.status === 0 ? <Pill tone="good">Active</Pill> : <Pill>Inactive</Pill>),
     },
   ];
 
   const renderActions = (category) => (
-    <div className="d-flex gap-2">
-      <Button
-        variant="outline-primary"
-        size="sm"
-        onClick={() => openEditModal(category)}
-        disabled={tableLoading}
-        title="Edit"
-        className="view-btn"
-      >
+    <div className="d-inline-flex gap-1">
+      <Button variant="outline-secondary" size="sm" onClick={() => openEditModal(category)}
+        disabled={tableLoading} title="Edit" aria-label={`Edit ${category.name}`}>
         <FaEdit />
       </Button>
-      <Button
-        variant="outline-danger"
-        size="sm"
-        onClick={() => handleDeleteCategory(category.id)}
-        disabled={tableLoading}
-        title="Delete"
-        className="delete-btn"
-      >
+      <Button variant="outline-danger" size="sm" onClick={() => handleDeleteCategory(category.id)}
+        disabled={tableLoading} title="Delete" aria-label={`Delete ${category.name}`}>
         <FaTrash />
       </Button>
     </div>
   );
 
-  if (pageLoading) {
+  if (pageLoading && !categories.length) {
     return <Loading />;
   }
 
   return (
-    <div className="categories-container">
-      <Card className="modern-card">
-        <Card.Body className="p-4">
-          <div className="d-flex justify-content-between align-items-center mb-4">
-            <div>
-              <h2 className="page-title mb-1">Categories</h2>
-              {loading && tableLoading ? (
-                <div className="d-flex align-items-center">
-                  <FaSpinner className="spinner-border spinner-border-sm me-2" />
-                  <p className="page-subtitle mb-0">Loading categories...</p>
-                </div>
-              ) : (
-                <p className="page-subtitle mb-0">
-                  Showing {pagination.total_rows} categories
-                </p>
-              )}
-            </div>
-            <Button
-              variant="primary"
-              onClick={openAddModal}
-              className="create-category-btn"
-            >
-              <FaPlus className="me-2" /> Add Category
-            </Button>
-          </div>
+    <div className="categories-page">
+      <ListHeader
+        title="Categories"
+        subtitle="How products are grouped in the store menu and filters."
+        actions={<Button onClick={openAddModal}><FaPlus className="me-2" aria-hidden="true" />New category</Button>}
+      />
 
-          <div className="filters-section mb-4">
-            <Row className="g-3 align-items-center">
-              <Col md={4}>
-                <Form onSubmit={(e) => e.preventDefault()}>
-                  <InputGroup className="search-box">
-                    <InputGroup.Text className="search-icon">
-                      {isSearching ? (
-                        <FaSpinner className="spinner-border spinner-border-sm" />
-                      ) : (
-                        <FaSearch />
-                      )}
-                    </InputGroup.Text>
-                    <Form.Control
-                      type="text"
-                      placeholder="Search categories..."
-                      name="search"
-                      value={searchParams.search}
-                      onChange={handleSearch}
-                      disabled={loading}
-                      className={`search-input ${
-                        isSearching ? "searching" : ""
-                      }`}
-                    />
-                    {searchParams.search && !isSearching && (
-                      <Button
-                        variant="link"
-                        className="clear-search"
-                        onClick={() => {
-                          setSearchParams((prev) => ({ ...prev, search: "" }));
-                        }}
-                        disabled={loading}
-                      >
-                        <FaTimes />
-                      </Button>
-                    )}
-                  </InputGroup>
-                </Form>
-              </Col>
-              <Col md={2}>
-                <Form.Select value={limit} onChange={handleLimitChange} className="limit-select">
-                  <option value="5">5 per page</option>
-                  <option value="10">10 per page</option>
-                  <option value="20">20 per page</option>
-                  <option value="50">50 per page</option>
-                </Form.Select>
-              </Col>
-            </Row>
-          </div>
-
-          <CommonTable
-            headers={headers}
-            data={categories}
-            tableLoading={tableLoading}
-            loading={loading}
-            renderActions={renderActions}
+      <ListCard>
+        <ListToolbar end={<ResultCount page={pagination.current_page} perPage={limit} total={pagination.total_rows} noun="categories" />}>
+          <SearchBox
+            value={searchParams.search}
+            onChange={(v) => setSearchParams((prev) => ({ ...prev, search: v }))}
+            placeholder="Search categories"
+            busy={isSearching}
           />
+        </ListToolbar>
 
-          {pagination.total_pages > 1 && (
-            <div className="pagination-container mt-4">
-              <Pagination className="modern-pagination">
-                <Pagination.Prev
-                  onClick={() => handlePageChange(pagination.current_page - 1)}
-                  disabled={pagination.current_page === 1}
-                />
-                {[...Array(pagination.total_pages)].map((_, index) => (
-                  <Pagination.Item
-                    key={index + 1}
-                    active={index + 1 === pagination.current_page}
-                    onClick={() => handlePageChange(index + 1)}
-                  >
-                    {index + 1}
-                  </Pagination.Item>
-                ))}
-                <Pagination.Next
-                  onClick={() => handlePageChange(pagination.current_page + 1)}
-                  disabled={!pagination.has_more_pages}
-                />
-              </Pagination>
-            </div>
-          )}
+        <CommonTable
+          headers={headers}
+          data={categories}
+          tableLoading={tableLoading}
+          loading={loading}
+          renderActions={renderActions}
+          onRowClick={(row) => openEditModal(row)}
+          rowLabel={(row) => `Edit ${row.name}`}
+          emptyTitle={searchParams.search ? 'No categories match' : 'No categories yet'}
+          emptyText={searchParams.search ? `Nothing matches “${searchParams.search}”.` : 'Create a category, then pick it when adding products.'}
+          emptyAction={!searchParams.search && <Button size="sm" onClick={openAddModal}><FaPlus className="me-1" /> New category</Button>}
+        />
+
+        <Pager
+          page={pagination.current_page}
+          lastPage={pagination.total_pages}
+          onPage={handlePageChange}
+          perPage={limit}
+          onPerPage={(n) => handleLimitChange({ target: { value: n } })}
+        />
+      </ListCard>
 
           <Modal show={showModal} onHide={closeModal} centered>
             <Modal.Header closeButton>
@@ -411,8 +320,6 @@ const Categories = () => {
               </Modal.Footer>
             </Form>
           </Modal>
-        </Card.Body>
-      </Card>
     </div>
   );
 };

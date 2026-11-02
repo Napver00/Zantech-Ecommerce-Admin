@@ -1,28 +1,20 @@
 import React, { useState, useEffect } from "react";
-import {
-  FaPlus,
-  FaSpinner,
-  FaEye,
-  FaEdit,
-  FaTrash,
-  FaPencilAlt,
-  FaChevronDown,
-} from "react-icons/fa";
+import { FaPlus, FaTrash, FaPencilAlt } from "react-icons/fa";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "react-hot-toast";
-import { Card, Button, Dropdown } from "react-bootstrap";
+import { Button, Form } from "react-bootstrap";
 import axiosInstance from "../../config/axios";
 import Loading from "../../components/Loading";
-import ProductFilters from "../../components/Products/ProductsList/ProductFilters";
-import ProductPagination from "../../components/Products/ProductsList/ProductPagination";
 import QuickEditModal from "../../components/Products/ProductsList/QuickEditModal";
-import CommonTable from "../../components/Common/CommonTable"; // Import CommonTable
+import CommonTable from "../../components/Common/CommonTable";
+import { ListHeader, ListCard, ListToolbar, SearchBox, ResultCount, Pager, Pill } from "../../components/List/List";
+import { taka } from "../../components/List/format";
 import "./Products.css";
 import usePageTitle from "../../hooks/usePageTitle";
 
 import confirmDialog from "../../utils/confirmDialog";
 const Products = () => {
-  usePageTitle("Manage Products");
+  usePageTitle("Products");
   const [urlParams, setUrlParams] = useSearchParams();
   const initialPage = parseInt(urlParams.get("page") || "1", 10);
 
@@ -92,13 +84,13 @@ const Products = () => {
     };
   }, [searchParams.search]);
 
-  const fetchProducts = async (page = pagination.currentPage) => {
+  const fetchProducts = async (page = pagination.currentPage, limit = searchParams.limit) => {
     setLoading(true);
     setTableLoading(true);
     try {
       const params = {
         page,
-        limit: searchParams.limit,
+        limit,
         ...(searchParams.search && { search: searchParams.search }),
       };
 
@@ -108,8 +100,6 @@ const Products = () => {
       if (!result.success) {
         throw new Error(result.message || "Failed to fetch products");
       }
-
-      await new Promise((resolve) => setTimeout(resolve, 300));
 
       setProducts(result.data);
       setPagination({
@@ -139,7 +129,7 @@ const Products = () => {
       setProducts([]);
       setPagination({
         currentPage: page,
-        perPage: searchParams.limit,
+        perPage: limit,
         totalPages: 1,
         totalRows: 0,
         hasMorePages: false,
@@ -149,14 +139,6 @@ const Products = () => {
       setTableLoading(false);
       setIsSearching(false);
     }
-  };
-
-  const handleFilterChange = (e) => {
-    const { name, value } = e.target;
-    setSearchParams((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
   };
 
   const handleDeleteProduct = async (id) => {
@@ -182,8 +164,6 @@ const Products = () => {
         if (!result.success) {
           throw new Error(result.message || "Failed to delete product");
         }
-
-        await new Promise((resolve) => setTimeout(resolve, 300));
 
         setProducts(products.filter((prod) => prod.id !== id));
         toast.success("Product deleted successfully");
@@ -356,206 +336,148 @@ const Products = () => {
     }
   };
 
-  const headers = [
-    { key: "id", label: "ID" },
-    {
-      key: "image_paths",
-      label: "Image",
-      render: (row) =>
-        row.image_paths && row.image_paths.length > 0 ? (
-          <img
-            src={row.image_paths[0]}
-            alt={row.name}
-            className="product-image"
-          />
-        ) : (
-          <div className="no-image-placeholder">
-            <span>No image</span>
-          </div>
-        ),
-    },
-    { key: "name", label: "Name", render: (row) => <h6>{row.name}</h6> },
-    {
-      key: "price",
-      label: "Price",
-      render: (row) => (
-        <div>
-          <span className="fw-semibold">
-            ৳{parseFloat(row.price).toLocaleString()}
-          </span>
+  const stockPill = (qty) => {
+    const n = Number(qty) || 0;
+    if (n <= 0) return <Pill tone="bad">Out of stock</Pill>;
+    if (n <= 5) return <Pill tone="warn">{n} left</Pill>;
+    return <Pill tone="good">{n} in stock</Pill>;
+  };
 
-          {row.discountPercentage > 0 && (
-            <>
-              <span className="ms-2 text-danger">
-                -{parseFloat(row.discountPercentage).toFixed(0)}%
-              </span>
-              <span className="ms-2 text-success fw-semibold">
-                ৳{parseFloat(row.discountedPrice).toLocaleString()}
-              </span>
-            </>
+  const headers = [
+    {
+      key: "name",
+      label: "Product",
+      render: (row) => (
+        <div className="ls-with-thumb">
+          {row.image_paths?.length ? (
+            <img src={row.image_paths[0]} alt="" className="ls-thumb" loading="lazy" />
+          ) : (
+            <span className="ls-thumb is-empty">No photo</span>
           )}
+          <span className="min-w-0">
+            <span className="ls-cell-main text-truncate d-block" style={{ maxWidth: 340 }} title={row.name}>{row.name}</span>
+            <span className="ls-cell-sub">#{row.id}{Number(row.is_bundle) === 1 ? " · Bundle" : ""}</span>
+          </span>
         </div>
       ),
     },
     {
-      key: "quantity",
-      label: "Stock",
-      render: (row) => (
-        <span
-          className={`px-2 py-1 ${
-            row.quantity > 0 ? "text-success" : "text-danger"
-          }`}
-        >
-          {row.quantity > 0 ? `${row.quantity} In Stock` : "Out of Stock"}
-        </span>
-      ),
+      key: "price",
+      label: "Price",
+      align: "end",
+      nowrap: true,
+      render: (row) => {
+        const hasDiscount = Number(row.discountPercentage) > 0;
+        return (
+          <>
+            <span className="ls-money d-block">{taka(hasDiscount ? row.discountedPrice : row.price)}</span>
+            {hasDiscount && (
+              <span className="ls-cell-sub">
+                <s>{taka(row.price)}</s> −{Math.round(row.discountPercentage)}%
+              </span>
+            )}
+          </>
+        );
+      },
     },
+    { key: "quantity", label: "Stock", render: (row) => stockPill(row.quantity) },
     {
       key: "status",
-      label: "Status",
+      label: "In store",
       render: (row) => (
-        <span
-          className={`px-2 py-1 status-badge ${
-            row.status === "1" ? "text-success" : "text-secondary"
-          }`}
-          role="button"
-          onClick={() => handleStatusToggle(row.id)}
-          title="Click to toggle status"
-        >
-          {statusToggleLoading[row.id] ? (
-            <FaSpinner className="spinner-border spinner-border-sm" />
-          ) : row.status === "1" ? (
-            "Active"
-          ) : (
-            "Inactive"
-          )}
-        </span>
+        <Form.Check
+          type="switch"
+          id={`product-shown-${row.id}`}
+          checked={row.status === "1"}
+          disabled={!!statusToggleLoading[row.id]}
+          onChange={() => handleStatusToggle(row.id)}
+          label={<span className="small text-muted">{row.status === "1" ? "Shown" : "Hidden"}</span>}
+          aria-label={`Show ${row.name} in the store`}
+        />
       ),
     },
   ];
 
   const renderActions = (product) => (
-    <div className="d-flex gap-2">
-      <Button
-        variant="outline-primary"
-        size="sm"
-        onClick={() => navigate(`/products/${product.id}`)}
-        title="View"
-        disabled={loading}
-        className="view-btn"
-      >
-        <FaEye />
+    <div className="d-inline-flex gap-1">
+      <Button variant="outline-secondary" size="sm" onClick={() => handleQuickEdit(product)}
+        title="Quick edit price and stock" aria-label={`Quick edit ${product.name}`}>
+        <FaPencilAlt />
       </Button>
-      <Dropdown>
-        <Dropdown.Toggle
-          variant="outline-primary"
-          size="sm"
-          disabled={loading}
-          className="action-dropdown-toggle"
-        >
-          <FaEdit /> Edit <FaChevronDown size={10} />
-        </Dropdown.Toggle>
-        <Dropdown.Menu className="action-dropdown-menu">
-          <Dropdown.Item
-            onClick={() => handleQuickEdit(product)}
-            className="action-dropdown-item"
-          >
-            <FaPencilAlt className="me-2" /> Quick Edit
-          </Dropdown.Item>
-          <Dropdown.Item
-            onClick={() => navigate(`/products/${product.id}`)}
-            className="action-dropdown-item"
-          >
-            <FaEdit className="me-2" /> Full Edit
-          </Dropdown.Item>
-        </Dropdown.Menu>
-      </Dropdown>
-      <Button
-        variant="outline-danger"
-        size="sm"
-        onClick={() => handleDeleteProduct(product.id)}
-        title="Delete"
-        disabled={loading}
-        className="delete-btn"
-      >
-        {loading ? (
-          <FaSpinner className="spinner-border spinner-border-sm" />
-        ) : (
-          <FaTrash />
-        )}
+      <Button variant="outline-danger" size="sm" onClick={() => handleDeleteProduct(product.id)}
+        title="Delete" aria-label={`Delete ${product.name}`}>
+        <FaTrash />
       </Button>
     </div>
   );
 
-  if (pageLoading) {
+  if (pageLoading && !products.length) {
     return <Loading />;
   }
 
   return (
-    <div className="products-container">
-      <Card className="modern-card">
-        <Card.Body className="p-4">
-          <div className="d-flex justify-content-between align-items-center mb-4">
-            <div>
-              <h4 className="page-title mb-1">Products</h4>
-              {loading && tableLoading ? (
-                <div className="d-flex align-items-center">
-                  <FaSpinner className="spinner-border spinner-border-sm me-2" />
-                  <p className="page-subtitle mb-0">Loading products...</p>
-                </div>
-              ) : (
-                <p className="page-subtitle mb-0">
-                  Showing {products.length} of {pagination.totalRows} products
-                </p>
-              )}
-            </div>
-            <Button
-              variant="primary"
-              onClick={() => navigate("/products/add")}
-              disabled={loading}
-              className="add-product-btn"
-            >
-              {loading ? (
-                <FaSpinner className="spinner-border spinner-border-sm me-2" />
-              ) : (
-                <FaPlus className="me-2" />
-              )}{" "}
-              Add Product
-            </Button>
-          </div>
+    <div className="products-page">
+      <ListHeader
+        title="Products"
+        subtitle="Everything in the store. Open a product to edit its photos, categories and description."
+        actions={
+          <Button onClick={() => navigate("/products/add")}>
+            <FaPlus className="me-2" aria-hidden="true" />New product
+          </Button>
+        }
+      />
 
-          <ProductFilters
-            searchParams={searchParams}
-            handleFilterChange={handleFilterChange}
-            loading={loading}
-            isSearching={isSearching}
-            setSearchParams={setSearchParams}
-          />
+      <QuickEditModal
+        show={showQuickEdit}
+        handleClose={() => !editLoading && setShowQuickEdit(false)}
+        editForm={editForm}
+        handleEditFormChange={handleEditFormChange}
+        handleSubmit={handleQuickEditSubmit}
+        editLoading={editLoading}
+      />
 
-          <QuickEditModal
-            show={showQuickEdit}
-            handleClose={() => !editLoading && setShowQuickEdit(false)}
-            editForm={editForm}
-            handleEditFormChange={handleEditFormChange}
-            handleSubmit={handleQuickEditSubmit}
-            editLoading={editLoading}
+      <ListCard>
+        <ListToolbar
+          end={<ResultCount page={pagination.currentPage} perPage={pagination.perPage || searchParams.limit} total={pagination.totalRows} noun="products" />}
+        >
+          <SearchBox
+            value={searchParams.search}
+            onChange={(v) => setSearchParams((prev) => ({ ...prev, search: v }))}
+            placeholder="Search products by name"
+            busy={isSearching}
           />
+        </ListToolbar>
 
-          <CommonTable
-            headers={headers}
-            data={products}
-            tableLoading={tableLoading}
-            loading={loading}
-            renderActions={renderActions}
-          />
+        <CommonTable
+          headers={headers}
+          data={products}
+          tableLoading={tableLoading}
+          loading={loading}
+          renderActions={renderActions}
+          onRowClick={(row) => navigate(`/products/${row.id}`)}
+          rowLabel={(row) => `Open ${row.name}`}
+          emptyTitle={searchParams.search ? "No products match" : "No products yet"}
+          emptyText={searchParams.search ? `Nothing matches “${searchParams.search}”.` : "Add your first product to start selling."}
+          emptyAction={
+            searchParams.search ? (
+              <Button variant="outline-secondary" size="sm" onClick={() => setSearchParams((prev) => ({ ...prev, search: "" }))}>Clear search</Button>
+            ) : (
+              <Button size="sm" onClick={() => navigate("/products/add")}><FaPlus className="me-1" /> New product</Button>
+            )
+          }
+        />
 
-          <ProductPagination
-            pagination={pagination}
-            tableLoading={tableLoading}
-            handlePageChange={handlePageChange}
-          />
-        </Card.Body>
-      </Card>
+        <Pager
+          page={pagination.currentPage}
+          lastPage={pagination.totalPages}
+          onPage={handlePageChange}
+          perPage={searchParams.limit}
+          onPerPage={(limit) => {
+            setSearchParams((prev) => ({ ...prev, limit }));
+            fetchProducts(1, limit);
+          }}
+        />
+      </ListCard>
     </div>
   );
 };

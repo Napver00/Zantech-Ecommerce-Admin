@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaPlus, FaSearch, FaSpinner, FaTimes, FaEye } from 'react-icons/fa';
+import { FaPlus, FaChevronRight } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
 import axiosInstance from '../../config/axios';
-import { Card, Form, InputGroup, Button, Pagination, Row, Col } from 'react-bootstrap';
+import { Form, Button, Modal, Row, Col } from 'react-bootstrap';
 import Loading from '../../components/Loading';
 import './Customers.css';
 import usePageTitle from '../../hooks/usePageTitle';
 import CommonTable from '../../components/Common/CommonTable';
+import { ListHeader, ListCard, ListToolbar, SearchBox, ResultCount, Pager, Pill } from '../../components/List/List';
+import { taka } from '../../components/List/format';
 
 const Customers = () => {
-  usePageTitle('Manage Customers');
+  usePageTitle('Customers');
   const navigate = useNavigate();
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -96,15 +98,6 @@ const Customers = () => {
     }
   };
 
-  const handleSearch = (e) => {
-    const { value } = e.target;
-    setSearchParams((prev) => ({
-      ...prev,
-      search: value,
-      page: 1,
-    }));
-  };
-
   const handlePageChange = (page) => {
     setSearchParams((prev) => ({
       ...prev,
@@ -160,227 +153,161 @@ const Customers = () => {
   };
 
   const headers = [
-    { key: 'id', label: 'ID', render: (row) => `#${row.id}` },
-    { key: 'name', label: 'Name' },
-    { key: 'email', label: 'Email' },
-    { key: 'phone', label: 'Phone' },
-    { key: 'order_summary.total_spend', label: 'Total Spend', render: (row) => `৳${row.order_summary.total_spend.toLocaleString()}` },
+    {
+      key: 'name',
+      label: 'Customer',
+      render: (row) => (
+        <>
+          <span className="ls-cell-main">{row.name}</span>
+          <span className="ls-cell-sub">#{row.id}</span>
+        </>
+      ),
+    },
+    {
+      key: 'phone',
+      label: 'Contact',
+      render: (row) => (
+        <>
+          <span className="d-block">{row.phone || '—'}</span>
+          <span className="ls-cell-sub text-truncate d-block" style={{ maxWidth: 260 }} title={row.email}>{row.email}</span>
+        </>
+      ),
+    },
+    {
+      key: 'order_summary.total_spend',
+      label: 'Spent',
+      align: 'end',
+      nowrap: true,
+      render: (row) => <span className="ls-money">{taka(row.order_summary?.total_spend)}</span>,
+    },
     {
       key: 'payment_summary.due_amount',
-      label: 'Due Amount',
-      render: (row) => (
-        <span className={row.payment_summary.due_amount > 0 ? "text-danger" : "text-success"}>
-          ৳{row.payment_summary.due_amount.toLocaleString()}
-        </span>
-      ),
+      label: 'Owes',
+      align: 'end',
+      nowrap: true,
+      render: (row) =>
+        Number(row.payment_summary?.due_amount) > 0
+          ? <Pill tone="bad">{taka(row.payment_summary.due_amount)} due</Pill>
+          : <span className="ls-cell-sub">Nothing due</span>,
     },
   ];
 
-  const renderActions = (customer) => (
-    <Button
-      variant="outline-primary"
-      size="sm"
-      className="view-btn"
-      onClick={() => navigate(`/customers/${customer.id}`)}
-    >
-      <FaEye className="me-1" /> View
-    </Button>
-  );
+  const renderActions = () => <FaChevronRight className="text-muted" aria-hidden="true" />;
 
-  if (loading && !customers.length) {
+  if (loading && !customers.length && !searchParams.search) {
     return <Loading />;
   }
 
   return (
     <div className="customers-container">
-      <Card className="modern-card">
-        <Card.Body className="p-4">
-          <div className="d-flex justify-content-between align-items-center mb-4">
-            <div>
-              <h2 className="page-title mb-1">Customers</h2>
-              <p className="text-muted mb-0">Manage and track all your customers</p>
-            </div>
-            <Button
-              variant="primary"
-              onClick={openAddModal}
-              className="create-customer-btn"
-            >
-              <FaPlus className="me-2" /> Add Customer
-            </Button>
-          </div>
+      <ListHeader
+        title="Customers"
+        subtitle="People with a store account. Open one to see their orders and payments."
+        actions={<Button onClick={openAddModal}><FaPlus className="me-2" aria-hidden="true" />New customer</Button>}
+      />
 
-          <div className="filters-section mb-4">
-            <Row className="g-3">
-              <Col md={6}>
-                <div className="search-box">
-                  <InputGroup>
-                    <InputGroup.Text className="search-icon">
-                      {isSearching ? <FaSpinner className="spinner" /> : <FaSearch />}
-                    </InputGroup.Text>
-                    <Form.Control
-                      type="text"
-                      placeholder="Search customers..."
-                      value={searchParams.search}
-                      onChange={handleSearch}
-                      className="search-input"
-                      disabled={loading}
-                    />
-                    {searchParams.search && !isSearching && (
-                      <Button
-                        variant="link"
-                        className="clear-search"
-                        onClick={() => {
-                          setSearchParams((prev) => ({ ...prev, search: "" }));
-                          fetchCustomers(1);
-                        }}
-                        disabled={loading}
-                      >
-                        <FaTimes />
-                      </Button>
-                    )}
-                  </InputGroup>
-                </div>
-              </Col>
-              <Col md={2}>
-                <Form.Select
-                  value={searchParams.limit}
-                  onChange={handleLimitChange}
-                  className="limit-select"
-                  disabled={loading}
-                >
-                  <option value="5">5 per page</option>
-                  <option value="10">10 per page</option>
-                  <option value="20">20 per page</option>
-                  <option value="50">50 per page</option>
-                </Form.Select>
-              </Col>
-            </Row>
-          </div>
-
-          <CommonTable
-            headers={headers}
-            data={customers}
-            tableLoading={loading}
-            loading={loading}
-            renderActions={renderActions}
+      <ListCard>
+        <ListToolbar end={<ResultCount page={pagination.current_page} perPage={searchParams.limit} total={pagination.total_rows} noun="customers" />}>
+          <SearchBox
+            value={searchParams.search}
+            onChange={(v) => setSearchParams((prev) => ({ ...prev, search: v, page: 1 }))}
+            placeholder="Search by name, email or phone"
+            busy={isSearching}
           />
+        </ListToolbar>
 
-          {pagination.total_pages > 1 && (
-            <div className="pagination-container mt-4">
-              <Pagination className="modern-pagination">
-                <Pagination.Prev
-                  onClick={() => handlePageChange(pagination.current_page - 1)}
-                  disabled={pagination.current_page === 1}
-                />
-                {[...Array(pagination.total_pages)].map((_, index) => (
-                  <Pagination.Item
-                    key={index + 1}
-                    active={index + 1 === pagination.current_page}
-                    onClick={() => handlePageChange(index + 1)}
-                  >
-                    {index + 1}
-                  </Pagination.Item>
-                ))}
-                <Pagination.Next
-                  onClick={() => handlePageChange(pagination.current_page + 1)}
-                  disabled={!pagination.has_more_pages}
-                />
-              </Pagination>
-            </div>
-          )}
-        </Card.Body>
-      </Card>
+        <CommonTable
+          headers={headers}
+          data={customers}
+          tableLoading={loading}
+          loading={loading}
+          renderActions={renderActions}
+          onRowClick={(row) => navigate(`/customers/${row.id}`)}
+          rowLabel={(row) => `Open ${row.name}`}
+          emptyTitle={searchParams.search ? 'No customers match' : 'No customers yet'}
+          emptyText={searchParams.search ? `Nothing matches “${searchParams.search}”.` : 'Customers appear here when they sign up or you add one.'}
+        />
 
-      {showModal && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3>Add New Customer</h3>
-              <button className="btn-close" onClick={closeModal} />
-            </div>
-            <form onSubmit={handleSubmit}>
-              <div className="modal-body">
-                <div className="mb-3">
-                  <label className="form-label">Name</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Email</label>
-                  <input
-                    type="email"
-                    className="form-control"
-                    value={formData.email}
-                    onChange={(e) =>
-                      setFormData({ ...formData, email: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Phone</label>
-                  <input
-                    type="text"
-                    className="form-control"
+        <Pager
+          page={pagination.current_page}
+          lastPage={pagination.total_pages}
+          onPage={handlePageChange}
+          perPage={searchParams.limit}
+          onPerPage={(n) => handleLimitChange({ target: { value: n } })}
+        />
+      </ListCard>
+
+      <Modal show={showModal} onHide={closeModal} centered>
+        <Form onSubmit={handleSubmit}>
+          <Modal.Header closeButton>
+            <Modal.Title as="h2" className="h5 mb-0">New customer</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <Form.Group className="mb-3" controlId="cust-name">
+              <Form.Label>Full name</Form.Label>
+              <Form.Control
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                required
+                autoFocus
+              />
+            </Form.Group>
+            <Row className="g-3 mb-3">
+              <Col sm={6}>
+                <Form.Group controlId="cust-phone">
+                  <Form.Label>Phone</Form.Label>
+                  <Form.Control
+                    type="tel"
+                    inputMode="numeric"
+                    placeholder="01XXXXXXXXX"
                     value={formData.phone}
-                    onChange={(e) =>
-                      setFormData({ ...formData, phone: e.target.value })
-                    }
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '').slice(0, 11) })}
                     required
                     pattern="[0-9]{11}"
-                    title="Phone number must be exactly 11 digits"
+                    title="11 digits, for example 01712345678"
                   />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Password</label>
-                  <input
-                    type="password"
-                    className="form-control"
-                    value={formData.password}
-                    onChange={(e) =>
-                      setFormData({ ...formData, password: e.target.value })
-                    }
+                </Form.Group>
+              </Col>
+              <Col sm={6}>
+                <Form.Group controlId="cust-email">
+                  <Form.Label>Email</Form.Label>
+                  <Form.Control
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     required
-                    minLength="8"
                   />
-                  <small className="text-muted">
-                    Password must be at least 8 characters long
-                  </small>
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Address</label>
-                  <textarea
-                    className="form-control"
-                    value={formData.address}
-                    onChange={(e) =>
-                      setFormData({ ...formData, address: e.target.value })
-                    }
-                    rows="3"
-                  />
-                </div>
-              </div>
-              <div className="modal-footer">
-                <Button
-                  variant="secondary"
-                  onClick={closeModal}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" variant="primary">
-                  Add Customer
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+                </Form.Group>
+              </Col>
+            </Row>
+            <Form.Group className="mb-3" controlId="cust-password">
+              <Form.Label>Password</Form.Label>
+              <Form.Control
+                type="password"
+                autoComplete="new-password"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                required
+                minLength={8}
+              />
+              <Form.Text>At least 8 characters. Share it with the customer so they can sign in.</Form.Text>
+            </Form.Group>
+            <Form.Group controlId="cust-address">
+              <Form.Label>Address <span className="text-muted fw-normal">(optional)</span></Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={2}
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              />
+            </Form.Group>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="outline-secondary" onClick={closeModal}>Cancel</Button>
+            <Button type="submit">Add customer</Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
     </div>
   );
 };

@@ -1,36 +1,19 @@
 import React, { useState, useEffect } from "react";
-import {
-  FaPlus,
-  FaEdit,
-  FaTrash,
-  FaSearch,
-  FaSpinner,
-  FaTimes,
-  FaEye,
-} from "react-icons/fa";
+import { FaPlus, FaEdit, FaTrash } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 import axiosInstance from "@/config/axios";
-import {
-  Card,
-  Form,
-  InputGroup,
-  Button,
-  Modal,
-  Pagination,
-  Row,
-  Col,
-  ListGroup,
-  Badge,
-} from "react-bootstrap";
+import { Form, Button, Modal, Row, Col, ListGroup, Badge } from "react-bootstrap";
 import AsyncSelect from "react-select/async";
 import "./Coupons.css";
 import Loading from "@/components/Loading";
 import usePageTitle from '@/hooks/usePageTitle';
 import CommonTable from "@/components/Common/CommonTable";
+import { ListHeader, ListCard, ListToolbar, SearchBox, ResultCount, Pager, Pill } from "@/components/List/List";
+import { shortDate } from "@/components/List/format";
 
 import confirmDialog from "../../utils/confirmDialog";
 const Coupons = () => {
-  usePageTitle('Manage Coupons');
+  usePageTitle('Coupons');
   const [coupons, setCoupons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pageLoading, setPageLoading] = useState(true);
@@ -124,10 +107,10 @@ const Coupons = () => {
         setCoupons(result.data);
         if (result.pagination) {
           setPagination({
-            total: result.pagination.total,
+            total: result.pagination.total ?? result.pagination.total_rows,
             current_page: result.pagination.current_page,
             per_page: result.pagination.per_page,
-            last_page: result.pagination.last_page,
+            last_page: result.pagination.last_page ?? result.pagination.total_pages,
             from: result.pagination.from || 0,
             to: result.pagination.to || 0,
           });
@@ -173,7 +156,7 @@ const Coupons = () => {
         value: product.id,
         label: `${product.name} (৳${product.price})`,
       }));
-    } catch (error) {
+    } catch {
       toast.error("Failed to fetch products");
       return [];
     }
@@ -290,14 +273,6 @@ const Coupons = () => {
     }
   };
 
-  const handleSearch = (e) => {
-    const { value } = e.target;
-    setSearchParams((prev) => ({
-      ...prev,
-      search: value,
-    }));
-  };
-
   const handlePageChange = (page) => {
     setSearchParams((prev) => ({
       ...prev,
@@ -364,257 +339,131 @@ const Coupons = () => {
     setSelectedCoupon(null);
   }
 
-  const renderPagination = () => {
-    const items = [];
-    const maxPages = 5;
-    let startPage = Math.max(
-      1,
-      pagination.current_page - Math.floor(maxPages / 2)
-    );
-    let endPage = Math.min(pagination.last_page, startPage + maxPages - 1);
-
-    if (endPage - startPage + 1 < maxPages) {
-      startPage = Math.max(1, endPage - maxPages + 1);
-    }
-
-    items.push(
-      <Pagination.Prev
-        key="prev"
-        onClick={() => handlePageChange(pagination.current_page - 1)}
-        disabled={pagination.current_page === 1}
-      />
-    );
-
-    if (startPage > 1) {
-      items.push(
-        <Pagination.Item key={1} onClick={() => handlePageChange(1)}>
-          1
-        </Pagination.Item>
-      );
-      if (startPage > 2) {
-        items.push(<Pagination.Ellipsis key="ellipsis1" disabled />);
-      }
-    }
-
-    for (let number = startPage; number <= endPage; number++) {
-      items.push(
-        <Pagination.Item
-          key={number}
-          active={number === pagination.current_page}
-          onClick={() => handlePageChange(number)}
-        >
-          {number}
-        </Pagination.Item>
-      );
-    }
-
-    if (endPage < pagination.last_page) {
-      if (endPage < pagination.last_page - 1) {
-        items.push(<Pagination.Ellipsis key="ellipsis2" disabled />);
-      }
-      items.push(
-        <Pagination.Item
-          key={pagination.last_page}
-          onClick={() => handlePageChange(pagination.last_page)}
-        >
-          {pagination.last_page}
-        </Pagination.Item>
-      );
-    }
-
-    items.push(
-      <Pagination.Next
-        key="next"
-        onClick={() => handlePageChange(pagination.current_page + 1)}
-        disabled={pagination.current_page === pagination.last_page}
-      />
-    );
-
-    return items;
-  };
-
   // Helper function to format currency
   const formatCurrency = (value) => {
     if (value === null || value === undefined) return 'N/A';
     return `৳${parseFloat(value).toLocaleString()}`;
   };
 
+  // Where a coupon stands today: scheduled, running, ended or switched off.
+  const couponState = (c) => {
+    if (!c.status) return { tone: "muted", label: "Off" };
+    const today = new Date().toISOString().slice(0, 10);
+    if (c.start_date && c.start_date > today) return { tone: "info", label: "Scheduled" };
+    if (c.end_date && c.end_date < today) return { tone: "bad", label: "Expired" };
+    return { tone: "good", label: "Running" };
+  };
+
+  const discountText = (c) =>
+    c.type === "percent" ? `${parseFloat(c.amount)}% off` : `${formatCurrency(c.amount)} off`;
+
   const headers = [
-    { key: 'id', label: 'ID' },
-    { key: 'code', label: 'Code' },
-    { key: 'amount', label: 'Amount', render: (row) => formatCurrency(row.amount) },
-    { key: 'type', label: 'Type' },
-    { key: 'min_pur', label: 'Min Purchase', render: (row) => formatCurrency(row.min_pur) },
-    { key: 'total_orders', label: 'Orders', render: (row) => row.total_orders || 0 },
-    { key: 'total_sales', label: 'Total Sales', render: (row) => formatCurrency(row.total_sales) },
-    { key: 'start_date', label: 'Start Date' },
-    { key: 'end_date', label: 'End Date' },
+    {
+      key: 'code',
+      label: 'Coupon',
+      render: (row) => (
+        <>
+          <span className="ls-cell-main coupon-code">{row.code}</span>
+          <span className="ls-cell-sub">{discountText(row)}{Number(row.min_pur) > 0 ? ` · on orders over ${formatCurrency(row.min_pur)}` : ''}</span>
+        </>
+      ),
+    },
+    {
+      key: 'dates',
+      label: 'Valid',
+      render: (row) => {
+        const s = couponState(row);
+        return (
+          <>
+            <Pill tone={s.tone}>{s.label}</Pill>
+            <span className="ls-cell-sub mt-1">{shortDate(row.start_date)} – {shortDate(row.end_date)}</span>
+          </>
+        );
+      },
+    },
+    {
+      key: 'total_orders',
+      label: 'Used',
+      align: 'end',
+      nowrap: true,
+      render: (row) => (
+        <>
+          <span className="ls-money d-block">{Number(row.total_orders || 0).toLocaleString()} {Number(row.total_orders) === 1 ? 'order' : 'orders'}</span>
+          <span className="ls-cell-sub">{formatCurrency(row.total_sales || 0)} sales</span>
+        </>
+      ),
+    },
     {
       key: 'status',
-      label: 'Status',
+      label: 'On',
       render: (row) => (
-        <Badge
-          bg={row.status ? "success" : "danger"}
-          onClick={() => handleToggleStatus(row.id)}
-          style={{ cursor: "pointer" }}
-        >
-          {row.status ? "Active" : "Inactive"}
-        </Badge>
+        <Form.Check
+          type="switch"
+          id={`coupon-on-${row.id}`}
+          checked={!!row.status}
+          onChange={() => handleToggleStatus(row.id)}
+          aria-label={`Coupon ${row.code} on or off`}
+        />
       ),
     },
   ];
 
   const renderActions = (coupon) => (
-    <div className="d-flex gap-2">
-      <Button
-        variant="outline-info"
-        size="sm"
-        onClick={() => openViewModal(coupon)}
-        title="View"
-        className="view-btn"
-      >
-        <FaEye />
-      </Button>
-      <Button
-        variant="outline-primary"
-        size="sm"
-        onClick={() => openEditModal(coupon)}
-        disabled={tableLoading}
-        title="Edit"
-        className="view-btn"
-      >
+    <div className="d-inline-flex gap-1">
+      <Button variant="outline-secondary" size="sm" onClick={() => openEditModal(coupon)}
+        disabled={tableLoading} title="Edit" aria-label={`Edit ${coupon.code}`}>
         <FaEdit />
       </Button>
-      <Button
-        variant="outline-danger"
-        size="sm"
-        onClick={() => handleDeleteCoupon(coupon.id)}
-        disabled={tableLoading}
-        title="Delete"
-        className="delete-btn"
-      >
+      <Button variant="outline-danger" size="sm" onClick={() => handleDeleteCoupon(coupon.id)}
+        disabled={tableLoading} title="Delete" aria-label={`Delete ${coupon.code}`}>
         <FaTrash />
       </Button>
     </div>
   );
 
-  if (pageLoading) {
+  if (pageLoading && !coupons.length) {
     return <Loading />;
   }
 
   return (
-    <div className="coupons-container">
-      <Card className="modern-card">
-        <Card.Body className="p-4">
-          <div className="d-flex justify-content-between align-items-center mb-4">
-            <div>
-              <h2 className="page-title mb-1">Coupons</h2>
-              {loading && tableLoading ? (
-                <div className="d-flex align-items-center">
-                  <FaSpinner className="spinner-border spinner-border-sm me-2" />
-                  <p className="page-subtitle mb-0">Loading coupons...</p>
-                </div>
-              ) : (
-                <p className="page-subtitle mb-0">
-                  Showing {coupons.length} of {pagination.total} coupons
-                </p>
-              )}
-            </div>
-            <Button
-              variant="primary"
-              onClick={openAddModal}
-              className="create-coupon-btn"
-            >
-              <FaPlus className="me-2" /> Add Coupon
-            </Button>
-          </div>
+    <div className="coupons-page">
+      <ListHeader
+        title="Coupons"
+        subtitle="Discount codes customers type at checkout."
+        actions={<Button onClick={openAddModal}><FaPlus className="me-2" aria-hidden="true" />New coupon</Button>}
+      />
 
-          <div className="filters-section mb-4">
-            <Row className="g-3 align-items-center">
-              <Col md={4}>
-                <Form onSubmit={(e) => e.preventDefault()}>
-                  <InputGroup className="search-box">
-                    <InputGroup.Text className="search-icon">
-                      {isSearching ? (
-                        <FaSpinner className="spinner-border spinner-border-sm" />
-                      ) : (
-                        <FaSearch />
-                      )}
-                    </InputGroup.Text>
-                    <Form.Control
-                      type="text"
-                      placeholder="Search coupons..."
-                      name="search"
-                      value={searchParams.search}
-                      onChange={handleSearch}
-                      disabled={loading}
-                      className={`search-input ${isSearching ? 'searching' : ''}`}
-                    />
-                    {searchParams.search && !isSearching && (
-                      <Button
-                        variant="link"
-                        className="clear-search"
-                        onClick={() => {
-                          setSearchParams(prev => ({ ...prev, search: "" }));
-                        }}
-                        disabled={loading}
-                      >
-                        <FaTimes />
-                      </Button>
-                    )}
-                  </InputGroup>
-                </Form>
-              </Col>
-              <Col md={8} className="d-flex justify-content-end gap-2">
-                <Form.Select
-                  name="limit"
-                  value={searchParams.limit}
-                  onChange={handleLimitChange}
-                  disabled={loading}
-                  style={{ width: "auto" }}
-                  className="limit-select"
-                >
-                  <option value="5">5 per page</option>
-                  <option value="10">10 per page</option>
-                  <option value="20">20 per page</option>
-                  <option value="50">50 per page</option>
-                </Form.Select>
-              </Col>
-            </Row>
-          </div>
-
-          <CommonTable
-            headers={headers}
-            data={coupons}
-            tableLoading={tableLoading}
-            loading={loading}
-            renderActions={renderActions}
+      <ListCard>
+        <ListToolbar end={<ResultCount page={pagination.current_page} perPage={searchParams.limit} total={pagination.total} noun="coupons" />}>
+          <SearchBox
+            value={searchParams.search}
+            onChange={(v) => setSearchParams((prev) => ({ ...prev, search: v }))}
+            placeholder="Search by code"
+            busy={isSearching}
           />
+        </ListToolbar>
 
-          {pagination.last_page > 1 && (
-            <div className="pagination-container mt-4 position-relative">
-              {tableLoading && (
-                <div
-                  className="position-absolute w-100 h-100 d-flex justify-content-center align-items-center"
-                  style={{
-                    top: 0,
-                    left: 0,
-                    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                    zIndex: 1000,
-                    backdropFilter: 'blur(2px)'
-                  }}
-                >
-                  <div className="text-center">
-                    <Loading />
-                    <p className="text-muted mt-2 mb-0">Changing page...</p>
-                  </div>
-                </div>
-              )}
-              <Pagination className="mb-0 modern-pagination">
-                {renderPagination()}
-              </Pagination>
-            </div>
-          )}
+        <CommonTable
+          headers={headers}
+          data={coupons}
+          tableLoading={tableLoading}
+          loading={loading}
+          renderActions={renderActions}
+          onRowClick={(row) => openViewModal(row)}
+          rowLabel={(row) => `View coupon ${row.code}`}
+          emptyTitle={searchParams.search ? 'No coupons match' : 'No coupons yet'}
+          emptyText={searchParams.search ? `Nothing matches “${searchParams.search}”.` : 'Create a code to offer a discount at checkout.'}
+          emptyAction={!searchParams.search && <Button size="sm" onClick={openAddModal}><FaPlus className="me-1" /> New coupon</Button>}
+        />
+
+        <Pager
+          page={pagination.current_page}
+          lastPage={pagination.last_page}
+          onPage={handlePageChange}
+          perPage={searchParams.limit}
+          onPerPage={(n) => handleLimitChange({ target: { value: n } })}
+        />
+      </ListCard>
 
           <Modal show={showModal} onHide={closeModal} centered size="lg">
             <Modal.Header closeButton>
@@ -807,8 +656,6 @@ const Coupons = () => {
             </Modal.Footer>
           </Modal>
 
-        </Card.Body>
-      </Card>
     </div>
   );
 };
