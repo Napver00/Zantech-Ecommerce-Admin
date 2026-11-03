@@ -89,6 +89,16 @@ const descSize = (d) => (d.length <= 260 ? 20 : d.length <= 380 ? 18 : d.length 
 // Where each signer's name is centred, by how many signers there are.
 const SIGNER_CENTRES = { 1: [900], 2: [591, 900], 3: [470, 705, 940] };
 
+// A signature's normal box; sig_size scales it (percent) and sig_x / sig_y move it (certificate pixels).
+export const SIG_BASE = { height: 52, width: 200 };
+export const SIG_LIMITS = { size: [40, 250], x: [-300, 300], y: [-200, 150] };
+const clamp = (v, [lo, hi]) => Math.min(hi, Math.max(lo, Math.round(Number(v) || 0)));
+export const sigLayout = (s) => ({
+  sig_size: clamp(s?.sig_size ?? 100, SIG_LIMITS.size),
+  sig_x: clamp(s?.sig_x ?? 0, SIG_LIMITS.x),
+  sig_y: clamp(s?.sig_y ?? 0, SIG_LIMITS.y),
+});
+
 export const qrDataUrl = (code) =>
   QRCode.toDataURL(verifyUrlFor(code || "PREVIEW"), {
     errorCorrectionLevel: "M",
@@ -114,9 +124,14 @@ export const buildCertificateHtml = (cert, { qr, assetBase = window.location.ori
   const signerHtml = signers
     .map((s, i) => {
       const left = centres[i] - 120;
+      const { sig_size: size, sig_x: x, sig_y: y } = sigLayout(s);
+      // Height grows upwards from the normal box so the name underneath never moves.
+      const h = (SIG_BASE.height * size) / 100;
+      const w = (SIG_BASE.width * size) / 100;
+      const sigStyle = `height:${h}px;max-width:${w}px;margin-top:${SIG_BASE.height - h}px;transform:translate(${x}px,${y}px)`;
       return `
       <div class="signer" style="left:${left}px">
-        ${s.signature ? `<img class="sig" src="${s.signature}" alt="" />` : ""}
+        ${s.signature ? `<img class="sig" data-signer="${i}" style="${sigStyle}" src="${s.signature}" alt="" />` : ""}
         <div class="sname">${escapeHtml(s.name)}</div>
         <div class="srole">${escapeHtml(s.designation)}</div>
       </div>`;
@@ -144,7 +159,7 @@ export const buildCertificateHtml = (cert, { qr, assetBase = window.location.ori
   .verify .code { font-family: Consolas, "Courier New", monospace; font-weight: 700; font-size: 17px; color: #1e2160; margin: 2px 0 5px; letter-spacing: .5px; }
   .verify .meta { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #374151; line-height: 1.45; }
   .signer { position: absolute; top: 640px; width: 240px; text-align: center; }
-  .sig { display: block; height: 52px; max-width: 200px; margin: 0 auto 4px; object-fit: contain; }
+  .sig { display: block; height: 52px; max-width: 200px; margin: 0 auto 4px; object-fit: contain; position: relative; }
   .signer:not(:has(.sig)) { top: 696px; }
   .sname { font-family: Arial, Helvetica, sans-serif; font-weight: 700; font-size: ${signers.length > 2 ? 19 : 22.5}px; line-height: 1.25; color: #151515; white-space: nowrap; }
   .srole { font-size: ${signers.length > 2 ? 18 : 21}px; line-height: 1.35; color: #151515; }

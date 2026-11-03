@@ -6,11 +6,13 @@ import { FaArrowLeft, FaEdit, FaPlus, FaSignature, FaTrash, FaUpload } from "rea
 import axiosInstance from "../../config/axios";
 import Loading from "../../components/Loading";
 import usePageTitle from "../../hooks/usePageTitle";
-import { signatureFromFile } from "../../utils/certificate";
+import { signatureFromFile, sigLayout } from "../../utils/certificate";
+import CertificatePreview from "../../components/Certificates/CertificatePreview";
+import SignatureControls from "../../components/Certificates/SignatureControls";
 import "./Certificates.css";
 
 import confirmDialog from "../../utils/confirmDialog";
-const EMPTY = { name: "", designation: "", signature: null, is_default: false };
+const EMPTY = { name: "", designation: "", signature: null, is_default: false, ...sigLayout() };
 
 /** Organizers, instructors and others who sign certificates. */
 const Signers = () => {
@@ -39,7 +41,7 @@ const Signers = () => {
 
   const open = (signer) => {
     setEditing(signer || EMPTY);
-    setForm(signer ? { name: signer.name, designation: signer.designation, signature: signer.signature, is_default: signer.is_default } : EMPTY);
+    setForm(signer ? { name: signer.name, designation: signer.designation, signature: signer.signature, is_default: signer.is_default, ...sigLayout(signer) } : EMPTY);
   };
 
   const pickSignature = async (e) => {
@@ -117,7 +119,7 @@ const Signers = () => {
         </Card.Body>
       </Card>
 
-      <Modal show={!!editing} onHide={() => !saving && setEditing(null)} centered>
+      <Modal show={!!editing} onHide={() => !saving && setEditing(null)} centered size={form.signature ? "lg" : undefined}>
         <Form onSubmit={save}>
           <Modal.Header closeButton><Modal.Title>{editing?.id ? "Edit signer" : "Add signer"}</Modal.Title></Modal.Header>
           <Modal.Body>
@@ -139,6 +141,25 @@ const Signers = () => {
               </div>
               <Form.Text muted>A PNG with a transparent background looks best. It is resized automatically.</Form.Text>
             </Form.Group>
+            {form.signature && (
+              <Form.Group className="mb-3">
+                <Form.Label>Size and position</Form.Label>
+                <CertificatePreview
+                  certificate={{
+                    title: "Certificate of Completion",
+                    recipient_name: "Recipient Name",
+                    description: "This is how the signature sits on new certificates. Drag it to move it, or drag its corner dot to resize it.",
+                    code: "ZT-XXXX-XXXX",
+                    signers: [{ name: form.name || "Signer name", designation: form.designation || "Role", signature: form.signature, ...sigLayout(form) }],
+                  }}
+                  onSignatureChange={(_, layout) => setForm((f) => ({ ...f, ...layout }))}
+                />
+                <div className="mt-2">
+                  <SignatureControls value={form} onChange={(layout) => setForm((f) => ({ ...f, ...layout }))} idPrefix="signer-sig" />
+                </div>
+                <Form.Text muted>New certificates start with this. Each certificate can still be adjusted on its own.</Form.Text>
+              </Form.Group>
+            )}
             <Form.Check type="switch" id="signer-default" label="Add to new certificates by default" checked={form.is_default} onChange={(e) => setForm((f) => ({ ...f, is_default: e.target.checked }))} />
           </Modal.Body>
           <Modal.Footer>

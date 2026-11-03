@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { Row, Col, Form, Button } from "react-bootstrap";
@@ -29,7 +29,7 @@ const COURSE_TYPES = [
 
 const emptySchedule = () => ({ course_type: "online_live", start_datetime: "" });
 const emptyMentor = () => ({
-  name: "", description: "", experience: "", is_student_mentor: false, image: null, imagePreview: null, imageUrl: null,
+  id: null, name: "", description: "", experience: "", is_student_mentor: false, image: null, imagePreview: null, imageUrl: null, removeImage: false,
 });
 
 const formFromCourse = (d, kind) => ({
@@ -74,6 +74,7 @@ const initialState = (course, kind) => ({
   mentors: course?.mentors?.length
     ? course.mentors.map((m) => ({
         ...emptyMentor(),
+        id: m.id ?? null,
         name: m.name || "",
         description: m.description || "",
         experience: m.experience || "",
@@ -105,6 +106,12 @@ const CourseEditor = ({ course = null, initialKind = "course", tabs = null, acti
   const [savedCourse, setSavedCourse] = useState(course);
 
   const { dirty, markSaved } = useUnsavedChanges(state);
+  // Mentors are refreshed from the server after a save; mark the form saved once that render is done.
+  const [saveCount, setSaveCount] = useState(0);
+  useEffect(() => {
+    if (saveCount) markSaved();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [saveCount]);
 
   const isBootcamp = form.kind === "bootcamp";
   const isMonthly = form.payment_type === "monthly";
@@ -181,11 +188,14 @@ const CourseEditor = ({ course = null, initialKind = "course", tabs = null, acti
       fd.append(`schedules[${i}][start_datetime]`, s.start_datetime);
     });
     mentors.filter((m) => m.name.trim()).forEach((m, i) => {
+      // The id keeps a saved mentor (and its photo); without it the server adds a new mentor.
+      if (m.id) fd.append(`mentors[${i}][id]`, m.id);
       fd.append(`mentors[${i}][name]`, m.name);
       if (m.description) fd.append(`mentors[${i}][description]`, m.description);
       if (m.experience) fd.append(`mentors[${i}][experience]`, m.experience);
       fd.append(`mentors[${i}][is_student_mentor]`, m.is_student_mentor ? 1 : 0);
       if (m.image) fd.append(`mentors[${i}][image]`, m.image);
+      else if (m.removeImage) fd.append(`mentors[${i}][remove_image]`, 1);
     });
 
     if (isEdit) {
@@ -215,12 +225,24 @@ const CourseEditor = ({ course = null, initialKind = "course", tabs = null, acti
     try {
       const url = isEdit ? `/courses/${savedCourse.id}` : "/courses";
       const res = await axiosInstance.post(url, buildFormData(current), { headers: { "Content-Type": "multipart/form-data" } });
-      markSaved();
       if (isEdit) {
         toast.success("Changes saved");
         setSavedCourse((c) => ({ ...c, title: form.title, is_active: form.is_active }));
         if (form.thumbnailPreview) patch("form", (f) => ({ ...f, thumbnailUrl: f.thumbnailPreview, thumbnail: null, thumbnailPreview: null }));
+        // New mentors get their ids here, so the next save updates them instead of adding them again.
+        try {
+          const fresh = await axiosInstance.get(`/courses/${res.data?.data?.slug || savedCourse.slug}`);
+          const freshMentors = fresh.data?.data?.mentors;
+          if (Array.isArray(freshMentors)) {
+            patch("mentors", initialState({ mentors: freshMentors }, initialKind).mentors);
+            setSavedCourse((c) => ({ ...c, mentors: freshMentors }));
+          }
+        } catch {
+          /* the save went through; the ids load next time the page opens */
+        }
+        setSaveCount((n) => n + 1);
       } else {
+        markSaved();
         const created = res.data?.data;
         toast.success(`${isBootcamp ? "Bootcamp" : "Course"} created as a draft`);
         navigate(created?.slug ? `/landing/courses/${created.slug}` : listUrl, { replace: true });
@@ -515,9 +537,10 @@ const CourseEditor = ({ course = null, initialKind = "course", tabs = null, acti
                     aspect="1 / 1"
                     hint="Square photo"
                     preview={m.imagePreview}
-                    currentUrl={m.imageUrl}
-                    onFile={(file) => patch("mentors", (l) => l.map((x, k) => (k === i ? { ...x, image: file, imagePreview: URL.createObjectURL(file) } : x)))}
+                    currentUrl={m.removeImage ? null : m.imageUrl}
+                    onFile={(file) => patch("mentors", (l) => l.map((x, k) => (k === i ? { ...x, image: file, imagePreview: URL.createObjectURL(file), removeImage: false } : x)))}
                     onRemove={() => patch("mentors", (l) => l.map((x, k) => (k === i ? { ...x, image: null, imagePreview: null } : x)))}
+                    onClearCurrent={() => patch("mentors", (l) => l.map((x, k) => (k === i ? { ...x, removeImage: true } : x)))}
                   />
                   <Form.Check className="mt-2" id={`mentor-student-${i}`} label="Student mentor"
                     checked={m.is_student_mentor} onChange={(e) => setMentor(i, "is_student_mentor", e.target.checked)} />

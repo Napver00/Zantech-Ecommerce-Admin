@@ -10,8 +10,9 @@ import Loading from "../../components/Loading";
 import usePageTitle from "../../hooks/usePageTitle";
 import CertificatePreview from "../../components/Certificates/CertificatePreview";
 import {
-  PROGRAM_TYPES, TEMPLATES, certificateFilename, createCertificatePdf, createCombinedPdf, suggestDescription,
+  PROGRAM_TYPES, TEMPLATES, certificateFilename, createCertificatePdf, createCombinedPdf, suggestDescription, sigLayout,
 } from "../../utils/certificate";
+import SignatureControls from "../../components/Certificates/SignatureControls";
 import { downloadBlob, emailInvoicePdf } from "../../utils/invoicePdf";
 import "./Certificates.css";
 
@@ -94,7 +95,7 @@ const CertificateForm = () => {
           setCode(c.code);
           setDescTouched(true);
         } else {
-          set({ signers: signers.filter((x) => x.is_default).slice(0, 3).map(({ name, designation, signature }) => ({ name, designation, signature })) });
+          set({ signers: signers.filter((x) => x.is_default).slice(0, 3).map(({ name, designation, signature, ...rest }) => ({ name, designation, signature, ...sigLayout(rest) })) });
         }
       } catch (err) {
         toast.error(err.response?.data?.message || "Could not load certificate data");
@@ -144,9 +145,14 @@ const CertificateForm = () => {
     [list[i], list[i + dir]] = [list[i + dir], list[i]];
     set({ signers: list });
   };
+  // The preview numbers only signers with a name; map back to this list.
+  const moveSignature = (shownIndex, layout) => {
+    const i = form.signers.map((x, j) => (x.name?.trim() ? j : null)).filter((j) => j !== null)[shownIndex];
+    if (i !== undefined) updateSigner(i, layout);
+  };
   const applySaved = (i, signerId) => {
     const s = savedSigners.find((x) => String(x.id) === signerId);
-    if (s) updateSigner(i, { name: s.name, designation: s.designation, signature: s.signature || null });
+    if (s) updateSigner(i, { name: s.name, designation: s.designation, signature: s.signature || null, ...sigLayout(s) });
   };
 
   // Recipients from the course
@@ -185,7 +191,7 @@ const CertificateForm = () => {
     program_title: form.program_title.trim() || null,
     description: form.description.trim(),
     issue_date: form.issue_date,
-    signers: form.signers.filter((s) => s.name?.trim()).map((s) => ({ name: s.name.trim(), designation: (s.designation || "").trim(), signature: s.signature || null })),
+    signers: form.signers.filter((s) => s.name?.trim()).map((s) => ({ name: s.name.trim(), designation: (s.designation || "").trim(), signature: s.signature || null, ...sigLayout(s) })),
   });
 
   const validate = () => {
@@ -440,6 +446,9 @@ const CertificateForm = () => {
                           <Col sm={6}><Form.Control size="sm" placeholder="Name" value={s.name} onChange={(e) => updateSigner(i, { name: e.target.value })} maxLength={120} /></Col>
                           <Col sm={6}><Form.Control size="sm" placeholder="Role, e.g. Instructor" value={s.designation} onChange={(e) => updateSigner(i, { designation: e.target.value })} maxLength={120} /></Col>
                         </Row>
+                        {s.signature && (
+                          <SignatureControls value={sigLayout(s)} onChange={(layout) => updateSigner(i, layout)} idPrefix={`cert-sig-${i}`} />
+                        )}
                       </div>
                       <div className="d-flex flex-column gap-1">
                         <Button size="sm" variant="light" disabled={i === 0} onClick={() => moveSigner(i, -1)} title="Move left"><FaArrowUp /></Button>
@@ -450,7 +459,7 @@ const CertificateForm = () => {
                   ))}
                 </div>
                 {form.signers.length < 3 && (
-                  <Button size="sm" variant="outline-primary" className="mt-2" onClick={() => set({ signers: [...form.signers, { name: "", designation: "", signature: null }] })}>
+                  <Button size="sm" variant="outline-primary" className="mt-2" onClick={() => set({ signers: [...form.signers, { name: "", designation: "", signature: null, ...sigLayout() }] })}>
                     <FaPlus className="me-1" /> Add signer
                   </Button>
                 )}
@@ -545,7 +554,10 @@ const CertificateForm = () => {
                 <span className="fw-semibold">Preview</span>
                 <span className="small text-muted">{mode === "bulk" && !isEdit ? "Showing the first name" : "Exactly as the PDF"}</span>
               </div>
-              <CertificatePreview certificate={previewCert} />
+              <CertificatePreview certificate={previewCert} onSignatureChange={moveSignature} />
+              {form.signers.some((x) => x.signature) && (
+                <p className="small text-muted mt-2 mb-0">Drag a signature to move it, or its corner dot to resize it. Click one and use the arrow keys to nudge.</p>
+              )}
             </div>
           </Col>
         </Row>

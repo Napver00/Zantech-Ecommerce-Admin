@@ -1,0 +1,46 @@
+/* Signature handles over the certificate preview: drag to move, corner to resize. */
+.cp-sig {
+  position: absolute;
+  border: 1px dashed color-mix(in srgb, var(--zt-primary, #0e7c86) 70%, transparent);
+  border-radius: 3px;
+  cursor: move;
+  touch-action: none;
+  background: transparent;
+}
+.cp-sig:hover,
+.cp-sig.is-active {
+  border-style: solid;
+  border-color: var(--zt-primary, #0e7c86);
+  background: color-mix(in srgb, var(--zt-primary, #0e7c86) 8%, transparent);
+}
+.cp-sig:focus-visible { outline: 2px solid var(--zt-primary, #0e7c86); outline-offset: 2px; }
+.cp-sig-grip {
+  position: absolute;
+  right: -7px;
+  top: -7px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--zt-primary, #0e7c86);
+  cursor: nesw-resize;
+  touch-action: none;
+}
+@media (pointer: coarse) {
+  .cp-sig-grip { width: 22px; height: 22px; right: -11px; top: -11px; }
+}
+
+/* Size slider and nudge arrows under a signer */
+.sig-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; font-size: 0.8rem; }
+.sig-size { display: flex; align-items: center; gap: 0.5rem; margin: 0; color: var(--zt-muted, #6b7280); flex: 1 1 220px; }
+.sig-size input { flex: 1; min-width: 90px; accent-color: var(--zt-primary, #0e7c86); }
+.sig-size output { min-width: 3.2em; text-align: right; font-weight: 600; color: var(--zt-text, #1f2937); font-variant-numeric: tabular-nums; }
+.sig-nudge { display: inline-flex; gap: 0.25rem; align-items: center; }
+.sig-nudge button {
+  height: 30px; min-width: 30px; padding: 0 0.45rem; border: 1px solid var(--zt-border, #dfe3ea); border-radius: 7px;
+  background: var(--zt-surface, #fff); color: var(--zt-text, #1f2937); display: inline-flex; align-items: center; justify-content: center; gap: 0.3rem;
+}
+.sig-nudge button:hover:not(:disabled) { border-color: var(--zt-primary, #0e7c86); color: var(--zt-primary, #0e7c86); }
+.sig-nudge button:disabled { opacity: 0.4; }
+.sig-nudge svg { width: 0.7rem; height: 0.7rem; }
+@media (pointer: coarse) { .sig-nudge button { height: 40px; min-width: 40px; } }

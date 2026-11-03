@@ -317,7 +317,7 @@ export const ChoiceGroup = ({ name, value, options, onChange, columns }) => (
 );
 
 /** Image picker with drag and drop, a preview, and replace / remove. */
-export const ImageDrop = ({ id, preview, currentUrl, onFile, onRemove, hint = "JPG, PNG or WebP, up to 2 MB", accept = "image/jpeg,image/png,image/gif,image/webp", aspect = "16 / 9" }) => {
+export const ImageDrop = ({ id, preview, currentUrl, onFile, onRemove, onClearCurrent, hint = "JPG, PNG or WebP, up to 2 MB", accept = "image/jpeg,image/png,image/gif,image/webp", aspect = "16 / 9" }) => {
   const inputRef = useRef(null);
   const [over, setOver] = useState(false);
   const shown = preview || currentUrl;
@@ -351,6 +351,10 @@ export const ImageDrop = ({ id, preview, currentUrl, onFile, onRemove, hint = "J
             <button type="button" onClick={() => inputRef.current?.click()}>Replace</button>
             {onRemove && preview && (
               <button type="button" onClick={onRemove} aria-label="Undo new image"><FaTimes /></button>
+            )}
+            {/* Removing a saved image only happens when the form is saved */}
+            {onClearCurrent && !preview && (
+              <button type="button" onClick={onClearCurrent} aria-label="Remove this image"><FaTimes /></button>
             )}
           </div>
         </>
