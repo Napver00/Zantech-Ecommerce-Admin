@@ -1,221 +1,45 @@
-.activity-container {
-  padding: 1.5rem;
+/* Activity log: a timeline grouped by day. */
+
+.al-select { width: auto; min-width: 150px; max-width: 220px; min-height: 40px; }
+
+.al-feed { padding: 0.25rem 1.1rem 0.5rem; transition: opacity 0.15s; }
+.al-feed.is-updating { opacity: 0.6; }
+.al-day + .al-day { margin-top: 0.5rem; }
+.al-day-title {
+  position: sticky; top: var(--zt-header-h, 64px); z-index: 1;
+  margin: 0; padding: 0.6rem 0 0.4rem; background: var(--zt-surface);
+  font-size: 0.8rem; font-weight: 700; color: var(--zt-muted);
 }
+.al-day-list { list-style: none; margin: 0; padding: 0; }
 
-.modern-card {
-  border: none;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
-  border-radius: 10px;
-  background-color: #fff;
+.al-entry { display: flex; gap: 0.75rem; padding: 0.7rem 0; border-bottom: 1px solid var(--zt-border); }
+.al-avatar {
+  width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; display: grid; place-items: center;
+  font-weight: 700; font-size: 0.85rem; background: color-mix(in srgb, var(--zt-primary) 12%, var(--zt-surface)); color: var(--zt-primary);
 }
-
-.page-title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--zt-ink);
+.al-body { min-width: 0; flex: 1; }
+.al-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.5rem; font-size: 0.875rem; }
+.al-head strong { color: var(--zt-ink); }
+.al-head time { margin-left: auto; font-size: 0.78rem; color: var(--zt-muted); font-variant-numeric: tabular-nums; }
+.al-type {
+  padding: 0.05rem 0.5rem; border-radius: 999px; font-size: 0.72rem; font-weight: 600;
+  background: var(--zt-subtle); color: var(--zt-text); border: 1px solid var(--zt-border);
 }
+.al-text { margin: 0.25rem 0 0; font-size: 0.875rem; color: var(--zt-text); overflow-wrap: anywhere; white-space: pre-line; }
+.al-text.is-clamped { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.al-actions { display: flex; gap: 0.9rem; margin-top: 0.25rem; font-size: 0.8rem; }
+.al-actions button { border: 0; background: none; padding: 0; color: var(--zt-primary); font-weight: 600; }
+.al-actions a { color: var(--zt-primary); font-weight: 600; text-decoration: none; }
+.al-actions a:hover, .al-actions button:hover { text-decoration: underline; }
 
-/* Filters Section */
-.filters-section {
-  background-color: var(--zt-subtle);
-  padding: 1rem;
-  border-radius: 8px;
-  margin-bottom: 1.5rem;
+.al-skeleton .al-avatar, .al-skeleton .al-body span {
+  background: linear-gradient(90deg, #eef2f7 0%, #f7f9fc 50%, #eef2f7 100%); background-size: 200% 100%;
+  animation: ls-shimmer 1.2s linear infinite;
 }
+.al-skeleton .al-body span { display: block; height: 11px; border-radius: 6px; width: 35%; margin-bottom: 8px; }
+.al-skeleton .al-body span + span { width: 80%; }
 
-.search-box {
-  position: relative;
+@media (max-width: 575.98px) {
+  .al-select { max-width: none; flex: 1 1 140px; }
+  .al-head time { margin-left: 0; width: 100%; }
 }
-
-.search-icon {
-  background-color: #fff;
-  border-right: none;
-  color: var(--zt-muted);
-}
-
-.search-input {
-  border-left: none;
-  padding-left: 0;
-}
-
-.search-input:focus {
-  box-shadow: none;
-  border-color: #ced4da;
-}
-
-.clear-search {
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--zt-muted);
-  padding: 0;
-  z-index: 10;
-}
-
-.clear-search:hover {
-  color: var(--zt-red);
-}
-
-.date-filter-box .date-picker-input {
-  border-left: none;
-}
-
-.date-filter-box .input-group-text {
-  background-color: #fff;
-  border-right: none;
-  color: var(--zt-muted);
-}
-
-.type-filter,
-.limit-select {
-  border-radius: 4px;
-  border-color: #ced4da;
-  color: #334155;
-}
-
-.clear-dates-btn {
-  border-color: #ced4da;
-  color: var(--zt-muted);
-}
-
-.clear-dates-btn:hover {
-  background-color: var(--zt-subtle);
-  border-color: #ced4da;
-  color: #334155;
-}
-
-/* Table Styles */
-.table-container {
-  background-color: #fff;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.modern-table {
-  margin-bottom: 0;
-}
-
-.modern-table thead th {
-  background-color: var(--zt-subtle);
-  border-bottom: 2px solid var(--zt-border);
-  color: #334155;
-  font-weight: 600;
-  padding: 1rem;
-  white-space: nowrap;
-}
-
-.modern-table tbody td {
-  padding: 1rem;
-  vertical-align: middle;
-  border-bottom: 1px solid var(--zt-border);
-  color: var(--zt-ink);
-}
-
-.modern-table tbody tr:hover {
-  background-color: var(--zt-subtle);
-}
-
-.user-link {
-  color: var(--zt-primary);
-  font-weight: 500;
-}
-
-.user-link:hover {
-  color: #0a58ca;
-}
-
-/* Badge Styles */
-.badge {
-  padding: 0.5em 0.75em;
-  font-weight: 500;
-  font-size: 0.75rem;
-}
-
-/* Pagination Styles */
-.pagination-container {
-  display: flex;
-  justify-content: center;
-  margin-top: 2rem;
-}
-
-.modern-pagination {
-  gap: 0.25rem;
-}
-
-.modern-pagination .page-link {
-  border: none;
-  color: #334155;
-  padding: 0.5rem 0.75rem;
-  border-radius: 4px;
-  margin: 0 2px;
-}
-
-.modern-pagination .page-item.active .page-link {
-  background-color: var(--zt-primary);
-  color: #fff;
-}
-
-.modern-pagination .page-item:not(.active) .page-link:hover {
-  background-color: var(--zt-border);
-  color: var(--zt-primary);
-}
-
-.modern-pagination .page-item.disabled .page-link {
-  color: var(--zt-muted);
-  background-color: transparent;
-}
-
-.user-details h6 {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--zt-muted);
-  margin-bottom: 1rem;
-}
-
-.user-details .text-muted {
-  font-size: 0.875rem;
-}
-
-.user-details .fw-medium {
-  font-weight: 500;
-}
-
-/* Loading Spinner */
-.spinner {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-/* Responsive Adjustments */
-@media (max-width: 768px) {
-  .activity-container {
-    padding: 1rem;
-  }
-
-  .filters-section .row {
-    margin-bottom: 0.5rem;
-  }
-
-  .filters-section .col-md-3,
-  .filters-section .col-md-2 {
-    margin-bottom: 0.5rem;
-  }
-
-  .modern-table {
-    font-size: 0.875rem;
-  }
-
-  .modern-table thead th,
-  .modern-table tbody td {
-    padding: 0.75rem;
-  }
-} 

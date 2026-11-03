@@ -1,0 +1,19 @@
+/* Buying prices: purchase history panel. */
+
+.bp-panel { width: min(440px, 100vw) !important; }
+.bp-panel .offcanvas-header { border-bottom: 1px solid var(--zt-border); }
+.bp-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; margin: 0 0 1.25rem; }
+.bp-facts > div { padding: 0.7rem 0.8rem; border: 1px solid var(--zt-border); border-radius: 10px; }
+.bp-facts dt { font-size: 0.75rem; font-weight: 600; color: var(--zt-muted); }
+.bp-facts dd { margin: 0.2rem 0 0; font-weight: 700; color: var(--zt-ink); font-variant-numeric: tabular-nums; }
+.bp-subtitle { font-size: 0.9rem; font-weight: 700; color: var(--zt-ink); margin: 0 0 0.5rem; }
+
+.bp-history { list-style: none; margin: 0; padding: 0; }
+.bp-history li { padding: 0.65rem 0; border-bottom: 1px solid var(--zt-border); }
+.bp-history-main { display: flex; align-items: center; gap: 0.6rem; }
+.bp-history-sub { font-size: 0.8rem; color: var(--zt-muted); margin-top: 0.15rem; }
+.bp-change { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.78rem; font-weight: 700; }
+.bp-change svg { width: 0.65rem; }
+/* Paying more is the bad direction here */
+.bp-change.is-up { color: var(--zt-red); }
+.bp-change.is-down { color: #1d8a4e; }

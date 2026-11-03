@@ -1,499 +1,197 @@
-import React, { useState, useEffect } from 'react';
-import { FaUser, FaCalendarAlt, FaSearch, FaSpinner, FaTimes } from 'react-icons/fa';
-import { toast } from 'react-hot-toast';
-import axiosInstance from '../../config/axios';
-import { Card, Modal, Button, Pagination, Badge, Form, InputGroup, Row, Col } from 'react-bootstrap';
-import Loading from '../../components/Loading';
-import './Activity.css';
-import usePageTitle from '../../hooks/usePageTitle';
-import CommonTable from '../../components/Common/CommonTable';
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { Form } from "react-bootstrap";
+import { FaTimes } from "react-icons/fa";
+import { toast } from "react-hot-toast";
+import axiosInstance from "../../config/axios";
+import usePageTitle from "../../hooks/usePageTitle";
+import { ListHeader, ListCard, ListToolbar, SearchBox, ResultCount, Pager } from "../../components/List/List";
+import { fullDate } from "../../components/List/format";
+import "../../components/List/List.css";
+import "./Activity.css";
 
-const Activity = () => {
-  usePageTitle('Activity Logs');
-  const [activities, setActivities] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showUserModal, setShowUserModal] = useState(false);
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [searchParams, setSearchParams] = useState({
-    search: "",
-    page: 1,
-    limit: 10,
-    startDate: null,
-    endDate: null,
-    type: "",
-  });
-  const [pagination, setPagination] = useState({
-    total_rows: 0,
-    current_page: 1,
-    per_page: 10,
-    total_pages: 1,
-    has_more_pages: false,
-  });
-  const [searchTimeout, setSearchTimeout] = useState(null);
-  const [isSearching, setIsSearching] = useState(false);
+// What each activity type is called and where its record lives (types are stored in mixed case).
+const TYPES = {
+  order: { label: "Order", to: (id) => `/orders/${id}` },
+  product: { label: "Product", to: (id) => `/products/${id}` },
+  challan: { label: "Challan", to: (id) => `/challans/${id}` },
+  expense: { label: "Expense", to: (id) => `/expenses/${id}` },
+  coupon: { label: "Coupon", to: () => "/coupons" },
+  category: { label: "Category", to: () => "/categories" },
+  student: { label: "Student", to: (id) => `/students/${id}` },
+  certificate: { label: "Certificate", to: (id) => `/certificates/${id}` },
+  course_invoice: { label: "Course invoice", to: (id) => `/course-invoices/${id}` },
+  course_registration: { label: "Registration", to: (id) => `/course-registrations?id=${id}` },
+  course_payment_method: { label: "Payment method", to: () => "/payment-methods" },
+  career: { label: "Career" },
+  orderinfo: { label: "Checkout charges", to: () => "/settings/documents?doc=checkout" },
+  user: { label: "Account" },
+};
+const typeInfo = (t) => TYPES[String(t || "").toLowerCase()] || { label: t ? t.charAt(0).toUpperCase() + t.slice(1).replace(/_/g, " ") : "Other" };
 
-  useEffect(() => {
-    fetchActivities();
-  }, [searchParams.page, searchParams.limit, searchParams.startDate, searchParams.endDate, searchParams.type]);
+const dayLabel = (value) => {
+  const d = new Date(value);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  if (d.toDateString() === today.toDateString()) return "Today";
+  if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
+  return d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+};
+const timeOf = (value) => new Date(value).toLocaleTimeString("en-GB", { hour: "numeric", minute: "2-digit", hour12: true });
 
-  useEffect(() => {
-    if (searchTimeout) {
-      clearTimeout(searchTimeout);
-    }
-
-    const timeoutId = setTimeout(() => {
-      if (searchParams.search !== "") {
-        setIsSearching(true);
-        fetchActivities(1);
-      }
-    }, 500);
-
-    setSearchTimeout(timeoutId);
-
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-    };
-  }, [searchParams.search]);
-
-  const fetchActivities = async (page = searchParams.page) => {
-    setLoading(true);
-    try {
-      const params = {
-        page,
-        limit: searchParams.limit,
-        ...(searchParams.search && { search: searchParams.search }),
-        ...(searchParams.startDate && {
-          start_date: searchParams.startDate.toISOString().split('T')[0]
-        }),
-        ...(searchParams.endDate && {
-          end_date: searchParams.endDate.toISOString().split('T')[0]
-        }),
-        ...(searchParams.type && { type: searchParams.type }),
-      };
-
-      const response = await axiosInstance.get("/activitys", { params });
-      const result = response.data;
-
-      if (!result.success) {
-        throw new Error(result.message || "Failed to fetch activities");
-      }
-
-      setActivities(result.data);
-      if (result.pagination) {
-        setPagination(result.pagination);
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to fetch activities");
-      setActivities([]);
-    } finally {
-      setLoading(false);
-      setIsSearching(false);
-    }
-  };
-
-  const handleSearch = (e) => {
-    const { value } = e.target;
-    setSearchParams((prev) => ({
-      ...prev,
-      search: value,
-      page: 1,
-    }));
-  };
-
-  const handlePageChange = (page) => {
-    setSearchParams((prev) => ({
-      ...prev,
-      page,
-    }));
-  };
-
-  const handleLimitChange = (e) => {
-    const limit = parseInt(e.target.value);
-    setSearchParams((prev) => ({
-      ...prev,
-      limit,
-      page: 1,
-    }));
-  };
-
-  const handleTypeChange = (e) => {
-    setSearchParams((prev) => ({
-      ...prev,
-      type: e.target.value,
-      page: 1,
-    }));
-  };
-
-  const handleDateChange = (e, type) => {
-    const value = e.target.value ? new Date(e.target.value) : null;
-
-    if (
-      type === "start" &&
-      value &&
-      searchParams.endDate &&
-      value > searchParams.endDate
-    ) {
-      toast.error("Start date cannot be after end date");
-      return;
-    }
-
-    if (
-      type === "end" &&
-      value &&
-      searchParams.startDate &&
-      value < searchParams.startDate
-    ) {
-      toast.error("End date cannot be before start date");
-      return;
-    }
-
-    setSearchParams(prev => ({
-      ...prev,
-      [type === "start" ? "startDate" : "endDate"]: value,
-      page: 1
-    }));
-  };
-
-  const clearDateFilter = () => {
-    setSearchParams(prev => ({
-      ...prev,
-      startDate: null,
-      endDate: null,
-      page: 1
-    }));
-  };
-
-  const handleUserClick = (user) => {
-    setSelectedUser(user);
-    setShowUserModal(true);
-  };
-
-  const handleCloseUserModal = () => {
-    setShowUserModal(false);
-    setSelectedUser(null);
-  };
-
-  const getActivityTypeText = (type) => {
-    const types = {
-      coupon: 'Coupon',
-      order: 'Order',
-      product: 'Product',
-      user: 'User',
-      default: type
-    };
-
-    return types[type] || types.default;
-  };
-
-  const renderPagination = () => {
-    const items = [];
-    const maxPages = 5;
-    let startPage = Math.max(1, pagination.current_page - Math.floor(maxPages / 2));
-    let endPage = Math.min(pagination.total_pages, startPage + maxPages - 1);
-
-    if (endPage - startPage + 1 < maxPages) {
-      startPage = Math.max(1, endPage - maxPages + 1);
-    }
-
-    items.push(
-      <Pagination.Prev
-        key="prev"
-        onClick={() => handlePageChange(pagination.current_page - 1)}
-        disabled={pagination.current_page === 1}
-      />
-    );
-
-    if (startPage > 1) {
-      items.push(
-        <Pagination.Item key={1} onClick={() => handlePageChange(1)}>
-          1
-        </Pagination.Item>
-      );
-      if (startPage > 2) {
-        items.push(<Pagination.Ellipsis key="ellipsis1" disabled />);
-      }
-    }
-
-    for (let number = startPage; number <= endPage; number++) {
-      items.push(
-        <Pagination.Item
-          key={number}
-          active={number === pagination.current_page}
-          onClick={() => handlePageChange(number)}
-        >
-          {number}
-        </Pagination.Item>
-      );
-    }
-
-    if (endPage < pagination.total_pages) {
-      if (endPage < pagination.total_pages - 1) {
-        items.push(<Pagination.Ellipsis key="ellipsis2" disabled />);
-      }
-      items.push(
-        <Pagination.Item
-          key={pagination.total_pages}
-          onClick={() => handlePageChange(pagination.total_pages)}
-        >
-          {pagination.total_pages}
-        </Pagination.Item>
-      );
-    }
-
-    items.push(
-      <Pagination.Next
-        key="next"
-        onClick={() => handlePageChange(pagination.current_page + 1)}
-        disabled={pagination.current_page === pagination.total_pages}
-      />
-    );
-
-    return items;
-  };
-
-  const headers = [
-    { key: 'id', label: 'ID', render: (row) => `#${row.id}` },
-    { key: 'type', label: 'Type', render: (row) => getActivityTypeText(row.type) },
-    {
-      key: 'user',
-      label: 'User',
-      render: (row) => (
-        <Button
-          variant="link"
-          className="p-0 text-decoration-none user-link"
-          onClick={() => handleUserClick(row.user)}
-        >
-          <FaUser className="me-1" />
-          {row.user.name}
-        </Button>
-      ),
-    },
-    { key: 'description', label: 'Description' },
-    {
-      key: 'created_at',
-      label: 'Date',
-      render: (row) => (
-        <div className="d-flex align-items-center">
-          <FaCalendarAlt className="me-2 text-muted" />
-          {new Date(row.created_at).toLocaleString()}
-        </div>
-      ),
-    },
-  ];
-
-  if (loading && activities.length === 0) {
-    return <Loading />;
-  }
+const Entry = ({ a }) => {
+  const [expanded, setExpanded] = useState(false);
+  const info = typeInfo(a.type);
+  const long = (a.description || "").length > 180;
+  const link = info.to && a.relatable_id ? info.to(a.relatable_id) : null;
+  const who = a.user?.name || "System";
 
   return (
-    <div className="activity-container">
-      <Card className="modern-card">
-        <Card.Body className="p-4">
-          <div className="d-flex justify-content-between align-items-center mb-4">
-            <div>
-              <h2 className="page-title mb-1">Activity Logs</h2>
-              <p className="text-muted mb-0">Track and monitor all system activities</p>
-            </div>
-          </div>
+    <li className="al-entry">
+      <span className="al-avatar" aria-hidden="true">{who.charAt(0).toUpperCase()}</span>
+      <div className="al-body">
+        <div className="al-head">
+          <strong>{who}</strong>
+          <span className={`al-type al-type-${String(a.type || "").toLowerCase()}`}>{info.label}</span>
+          <time dateTime={a.created_at} title={fullDate(a.created_at)}>{timeOf(a.created_at)}</time>
+        </div>
+        <p className={`al-text ${long && !expanded ? "is-clamped" : ""}`}>{a.description}</p>
+        <div className="al-actions">
+          {long && (
+            <button type="button" onClick={() => setExpanded((x) => !x)} aria-expanded={expanded}>
+              {expanded ? "Show less" : "Show more"}
+            </button>
+          )}
+          {link && <Link to={link}>Open {info.label.toLowerCase()}</Link>}
+        </div>
+      </div>
+    </li>
+  );
+};
 
-          <div className="filters-section mb-4">
-            <Row className="g-3">
-              <Col md={3}>
-                <div className="search-box">
-                  <InputGroup>
-                    <InputGroup.Text className="search-icon">
-                      {isSearching ? (
-                        <FaSpinner className="spinner" />
-                      ) : (
-                        <FaSearch />
-                      )}
-                    </InputGroup.Text>
-                    <Form.Control
-                      type="text"
-                      placeholder="Search activities..."
-                      value={searchParams.search}
-                      onChange={handleSearch}
-                      className="search-input"
-                    />
-                    {searchParams.search && (
-                      <Button
-                        variant="link"
-                        className="clear-search"
-                        onClick={() => {
-                          setSearchParams((prev) => ({ ...prev, search: "" }));
-                          fetchActivities(1);
-                        }}
-                      >
-                        <FaTimes />
-                      </Button>
-                    )}
-                  </InputGroup>
-                </div>
-              </Col>
-              <Col md={2}>
-                <Form.Select
-                  value={searchParams.type}
-                  onChange={handleTypeChange}
-                  className="type-filter"
-                >
-                  <option value="">All Types</option>
-                  <option value="coupon">Coupon</option>
-                  <option value="order">Order</option>
-                  <option value="product">Product</option>
-                  <option value="user">User</option>
-                </Form.Select>
-              </Col>
-              <Col md={3}>
-                <div className="date-filter-box">
-                  <InputGroup>
-                    <InputGroup.Text>
-                      <FaCalendarAlt />
-                    </InputGroup.Text>
-                    <Form.Control
-                      type="date"
-                      value={
-                        searchParams.startDate
-                          ? searchParams.startDate.toISOString().split("T")[0]
-                          : ""
-                      }
-                      onChange={(e) => handleDateChange(e, "start")}
-                      className="date-input"
-                      max={
-                        searchParams.endDate
-                          ? searchParams.endDate.toISOString().split("T")[0]
-                          : new Date().toISOString().split("T")[0]
-                      }
-                    />
-                    <Form.Control
-                      type="date"
-                      value={
-                        searchParams.endDate
-                          ? searchParams.endDate.toISOString().split("T")[0]
-                          : ""
-                      }
-                      onChange={(e) => handleDateChange(e, "end")}
-                      className="date-input"
-                      min={
-                        searchParams.startDate
-                          ? searchParams.startDate.toISOString().split("T")[0]
-                          : undefined
-                      }
-                      max={new Date().toISOString().split("T")[0]}
-                    />
-                  </InputGroup>
-                </div>
-              </Col>
-              <Col md={2}>
-                <Form.Select
-                  value={searchParams.limit}
-                  onChange={handleLimitChange}
-                  className="limit-select"
-                >
-                  <option value="5">5 per page</option>
-                  <option value="10">10 per page</option>
-                  <option value="20">20 per page</option>
-                  <option value="50">50 per page</option>
-                </Form.Select>
-              </Col>
-              <Col md={2}>
-                {(searchParams.startDate || searchParams.endDate) && (
-                  <Button
-                    variant="outline-secondary"
-                    onClick={clearDateFilter}
-                    className="clear-dates-btn w-100"
-                  >
-                    <FaTimes className="me-2" /> Clear Dates
-                  </Button>
-                )}
-              </Col>
-            </Row>
-          </div>
-          
-          <CommonTable
-            headers={headers}
-            data={activities}
-            tableLoading={loading}
-            loading={loading}
-          />
+const Activity = () => {
+  usePageTitle("Activity log");
+  const [rows, setRows] = useState([]);
+  const [facets, setFacets] = useState({ types: [], users: [] });
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [query, setQuery] = useState("");
+  const [type, setType] = useState("");
+  const [userId, setUserId] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(50);
+  const [pagination, setPagination] = useState({ total_rows: 0, total_pages: 1 });
 
-          {pagination.total_pages > 1 && (
-            <div className="pagination-container mt-4">
-              <Pagination className="modern-pagination">
-                {renderPagination()}
-              </Pagination>
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setQuery(search.trim());
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await axiosInstance.get("/activitys", {
+        params: {
+          page,
+          limit,
+          ...(query && { search: query }),
+          ...(type && { type }),
+          ...(userId && { user_id: userId }),
+          ...(from && { start_date: from }),
+          ...(to && { end_date: to }),
+        },
+      });
+      setRows(res.data?.data || []);
+      if (res.data?.facets) setFacets(res.data.facets);
+      setPagination(res.data?.pagination || { total_rows: 0, total_pages: 1 });
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Couldn't load the activity log");
+      setRows([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [page, limit, query, type, userId, from, to]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  // Group the page by day, newest first.
+  const days = useMemo(() => {
+    const groups = [];
+    rows.forEach((a) => {
+      const label = dayLabel(a.created_at);
+      const last = groups[groups.length - 1];
+      if (last && last.label === label) last.items.push(a);
+      else groups.push({ label, items: [a] });
+    });
+    return groups;
+  }, [rows]);
+
+  const filtered = !!(query || type || userId || from || to);
+  const reset = () => { setSearch(""); setType(""); setUserId(""); setFrom(""); setTo(""); setPage(1); };
+
+  return (
+    <div className="al-page">
+      <ListHeader title="Activity log" subtitle="Who changed what in the admin, newest first." />
+
+      <ListCard>
+        <ListToolbar end={<ResultCount page={page} perPage={limit} total={pagination.total_rows || 0} noun="entries" />}>
+          <SearchBox value={search} onChange={setSearch} placeholder="Search what was done" busy={loading && !!query} />
+          <Form.Select value={type} onChange={(e) => { setType(e.target.value); setPage(1); }} aria-label="Kind of change" className="al-select">
+            <option value="">Everything</option>
+            {facets.types.map((t) => (
+              <option key={t.type} value={t.type}>{typeInfo(t.type).label} ({t.count})</option>
+            ))}
+          </Form.Select>
+          <Form.Select value={userId} onChange={(e) => { setUserId(e.target.value); setPage(1); }} aria-label="Done by" className="al-select">
+            <option value="">Anyone</option>
+            {facets.users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+          </Form.Select>
+          <div className="ls-dates" role="group" aria-label="Dates">
+            <span>From</span>
+            <input type="date" value={from} max={to || undefined} onChange={(e) => { setFrom(e.target.value); setPage(1); }} aria-label="From date" />
+            <span>to</span>
+            <input type="date" value={to} min={from || undefined} onChange={(e) => { setTo(e.target.value); setPage(1); }} aria-label="To date" />
+            {(from || to) && (
+              <button type="button" onClick={() => { setFrom(""); setTo(""); setPage(1); }} aria-label="Clear dates"><FaTimes /></button>
+            )}
+          </div>
+        </ListToolbar>
+
+        <div className={`al-feed ${loading && rows.length ? "is-updating" : ""}`} aria-busy={loading}>
+          {loading && !rows.length ? (
+            <ul className="al-day-list">
+              {[0, 1, 2, 3].map((i) => (
+                <li key={i} className="al-entry al-skeleton"><span className="al-avatar" /><div className="al-body"><span /><span /></div></li>
+              ))}
+            </ul>
+          ) : days.length ? (
+            days.map((d) => (
+              <section key={d.label} className="al-day" aria-label={d.label}>
+                <h2 className="al-day-title">{d.label}</h2>
+                <ul className="al-day-list">
+                  {d.items.map((a) => <Entry key={a.id} a={a} />)}
+                </ul>
+              </section>
+            ))
+          ) : (
+            <div className="empty-state">
+              <p className="empty-state-title">{filtered ? "Nothing matches" : "No activity yet"}</p>
+              <p className="empty-state-text">{filtered ? "Try fewer filters." : "Changes made in the admin show up here."}</p>
+              {filtered && <button type="button" className="btn btn-outline-secondary btn-sm" onClick={reset}>Clear filters</button>}
             </div>
           )}
-        </Card.Body>
-      </Card>
+        </div>
 
-      <Modal show={showUserModal} onHide={handleCloseUserModal} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>
-            <FaUser className="me-2" />
-            User Details
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {selectedUser && (
-            <div className="user-details">
-              <div className="mb-3">
-                <h6 className="text-muted mb-2">Basic Information</h6>
-                <div className="d-flex justify-content-between mb-2">
-                  <span className="text-muted">Name:</span>
-                  <span className="fw-medium">{selectedUser.name}</span>
-                </div>
-                <div className="d-flex justify-content-between mb-2">
-                  <span className="text-muted">Email:</span>
-                  <span className="fw-medium">{selectedUser.email}</span>
-                </div>
-                <div className="d-flex justify-content-between mb-2">
-                  <span className="text-muted">Phone:</span>
-                  <span className="fw-medium">{selectedUser.phone || 'N/A'}</span>
-                </div>
-                <div className="d-flex justify-content-between mb-2">
-                  <span className="text-muted">Address:</span>
-                  <span className="fw-medium">{selectedUser.address || 'N/A'}</span>
-                </div>
-              </div>
-
-              <div className="mb-3">
-                <h6 className="text-muted mb-2">Account Information</h6>
-                <div className="d-flex justify-content-between mb-2">
-                  <span className="text-muted">Role:</span>
-                  <Badge bg={selectedUser.type === 'admin' ? 'primary' : 'secondary'}>
-                    {selectedUser.type.toUpperCase()}
-                  </Badge>
-                </div>
-                <div className="d-flex justify-content-between mb-2">
-                  <span className="text-muted">Status:</span>
-                  <Badge bg={selectedUser.status === 1 ? 'success' : 'danger'}>
-                    {selectedUser.status === 1 ? 'Active' : 'Inactive'}
-                  </Badge>
-                </div>
-                <div className="d-flex justify-content-between mb-2">
-                  <span className="text-muted">Member Since:</span>
-                  <span className="fw-medium">
-                    {new Date(selectedUser.created_at).toLocaleDateString()}
-                  </span>
-                </div>
-                <div className="d-flex justify-content-between">
-                  <span className="text-muted">Last Updated:</span>
-                  <span className="fw-medium">
-                    {new Date(selectedUser.updated_at).toLocaleDateString()}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={handleCloseUserModal}>
-            Close
-          </Button>
-        </Modal.Footer>
-      </Modal>
+        <Pager page={page} lastPage={pagination.total_pages || 1} onPage={setPage} perPage={limit} perPageOptions={[25, 50, 100]} onPerPage={(n) => { setLimit(n); setPage(1); }} />
+      </ListCard>
     </div>
   );
 };

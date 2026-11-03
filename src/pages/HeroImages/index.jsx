@@ -1,436 +1,182 @@
-import React, { useState, useEffect } from 'react';
-import { FaPlus, FaTrash, FaSpinner, FaTimes, FaSearch } from 'react-icons/fa';
-import { toast } from 'react-hot-toast';
-import axiosInstance from '../../config/axios';
-import { Card, Form, Button, Modal, InputGroup, Pagination, Row, Col } from 'react-bootstrap';
-import Loading from '../../components/Loading';
-import './HeroImages.css';
-import usePageTitle from '../../hooks/usePageTitle';
-import CommonTable from '../../components/Common/CommonTable';
-
+import React, { useEffect, useRef, useState } from "react";
+import { Button, Spinner } from "react-bootstrap";
+import { FaCloudUploadAlt, FaExternalLinkAlt, FaTimes, FaTrash, FaExpand } from "react-icons/fa";
+import { toast } from "react-hot-toast";
+import axiosInstance from "../../config/axios";
+import usePageTitle from "../../hooks/usePageTitle";
 import confirmDialog from "../../utils/confirmDialog";
+import { ListHeader } from "../../components/List/List";
+import { shortDate } from "../../components/List/format";
+import "../../components/List/List.css";
+import "./HeroImages.css";
+
+const STORE = "https://store.zantechbd.com";
+const MAX_MB = 2;
+const TYPES = ["image/jpeg", "image/png", "image/gif"];
+
 const HeroImages = () => {
-  usePageTitle('Manage Hero Images');
-  const [heroImages, setHeroImages] = useState([]);
+  usePageTitle("Store banners");
+  const [banners, setBanners] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showPreviewModal, setShowPreviewModal] = useState(false);
-  const [selectedImage, setSelectedImage] = useState(null);
-  const [selectedFile, setSelectedFile] = useState(null);
+  const [queue, setQueue] = useState([]); // [{ file, url, error }]
   const [uploading, setUploading] = useState(false);
-  const [searchParams, setSearchParams] = useState({
-    search: '',
-    page: 1,
-    limit: 10
-  });
-  const [pagination, setPagination] = useState({
-    total: 0,
-    current_page: 1,
-    per_page: 10,
-    last_page: 1,
-    from: 0,
-    to: 0
-  });
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchTimeout, setSearchTimeout] = useState(null);
+  const [over, setOver] = useState(false);
+  const [deleting, setDeleting] = useState({});
+  const inputRef = useRef(null);
 
-  useEffect(() => {
-    fetchHeroImages();
-  }, [searchParams.page, searchParams.limit]);
-
-  useEffect(() => {
-    if (searchTimeout) {
-      clearTimeout(searchTimeout);
-    }
-
-    const timeoutId = setTimeout(() => {
-      if (searchParams.search !== '') {
-        setIsSearching(true);
-        fetchHeroImages(1);
-      }
-    }, 500);
-
-    setSearchTimeout(timeoutId);
-
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-    };
-  }, [searchParams.search]);
-
-  const fetchHeroImages = async (page = searchParams.page) => {
-    setLoading(true);
+  const load = async () => {
     try {
-      const params = {
-        page,
-        limit: searchParams.limit,
-        search: searchParams.search
-      };
-
-      const response = await axiosInstance.get('/hero-images', { params });
-      if (response.data.success) {
-        setHeroImages(response.data.data);
-        setPagination(response.data.pagination || {
-          total: response.data.data.length,
-          current_page: page,
-          per_page: searchParams.limit,
-          last_page: Math.ceil(response.data.data.length / searchParams.limit),
-          from: (page - 1) * searchParams.limit + 1,
-          to: Math.min(page * searchParams.limit, response.data.data.length)
-        });
-      } else {
-        throw new Error(response.data.message || 'Failed to fetch hero images');
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to fetch hero images');
-      setHeroImages([]);
+      const res = await axiosInstance.get("/hero-images");
+      setBanners(res.data?.data || []);
+    } catch {
+      toast.error("Couldn't load the banners");
     } finally {
       setLoading(false);
-      setIsSearching(false);
     }
   };
 
-  const handleSearch = (e) => {
-    setSearchParams(prev => ({
-      ...prev,
-      search: e.target.value,
-      page: 1
-    }));
+  useEffect(() => {
+    load();
+  }, []);
+
+  const addFiles = (files) => {
+    const next = [...files].map((file) => {
+      let error = null;
+      if (!TYPES.includes(file.type)) error = "Use JPG, PNG or GIF";
+      else if (file.size > MAX_MB * 1024 * 1024) error = `Over ${MAX_MB} MB, make it smaller`;
+      return { file, url: URL.createObjectURL(file), error };
+    });
+    setQueue((q) => [...q, ...next]);
   };
 
-  const handleLimitChange = (e) => {
-    const limit = parseInt(e.target.value);
-    setSearchParams(prev => ({
-      ...prev,
-      limit,
-      page: 1
-    }));
-  };
-
-  const handlePageChange = (page) => {
-    setSearchParams(prev => ({
-      ...prev,
-      page
-    }));
-  };
-
-  const renderPagination = () => {
-    const items = [];
-    const { current_page, last_page } = pagination;
-    const maxPages = 5;
-    let startPage = Math.max(1, current_page - Math.floor(maxPages / 2));
-    let endPage = Math.min(last_page, startPage + maxPages - 1);
-
-    if (endPage - startPage + 1 < maxPages) {
-        startPage = Math.max(1, endPage - maxPages + 1);
-    }
-
-    items.push(<Pagination.Prev key="prev" onClick={() => handlePageChange(current_page - 1)} disabled={current_page === 1}/>);
-    if (startPage > 1) {
-        items.push(<Pagination.Item key={1} onClick={() => handlePageChange(1)}>1</Pagination.Item>);
-        if (startPage > 2) {
-            items.push(<Pagination.Ellipsis key="ellipsis1" disabled/>);
-        }
-    }
-    for (let number = startPage; number <= endPage; number++) {
-        items.push(<Pagination.Item key={number} active={number === current_page} onClick={() => handlePageChange(number)}>{number}</Pagination.Item>);
-    }
-    if (endPage < last_page) {
-        if (endPage < last_page - 1) {
-            items.push(<Pagination.Ellipsis key="ellipsis2" disabled/>);
-        }
-        items.push(<Pagination.Item key={last_page} onClick={() => handlePageChange(last_page)}>{last_page}</Pagination.Item>);
-    }
-    items.push(<Pagination.Next key="next" onClick={() => handlePageChange(current_page + 1)} disabled={current_page === last_page}/>);
-
-    return items;
-  };
-
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > 4 * 1024 * 1024) { // 4MB limit
-        toast.error('File size should be less than 4MB');
-        return;
-      }
-      if (!['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/svg+xml'].includes(file.type)) {
-        toast.error('Invalid file type. Please upload an image file');
-        return;
-      }
-      setSelectedFile(file);
-    }
-  };
-
-  const handleUpload = async (e) => {
-    e.preventDefault();
-    if (!selectedFile) {
-      toast.error('Please select an image to upload');
-      return;
-    }
-
+  const upload = async () => {
+    const ready = queue.filter((q) => !q.error);
+    if (!ready.length) return;
     setUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('image', selectedFile);
-
-      const response = await axiosInstance.post('/hero-images', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      });
-
-      if (response.data.success) {
-        toast.success('Hero image uploaded successfully');
-        setShowAddModal(false);
-        setSelectedFile(null);
-        fetchHeroImages(1);
-      } else {
-        throw new Error(response.data.message || 'Failed to upload hero image');
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to upload hero image');
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleDelete = async (id) => {
-    if (await confirmDialog('Are you sure you want to delete this hero image?')) {
+    let done = 0;
+    for (const item of ready) {
+      const fd = new FormData();
+      fd.append("image", item.file);
       try {
-        const response = await axiosInstance.delete(`/hero-images/${id}`);
-        if (response.data.success) {
-          toast.success('Hero image deleted successfully');
-          setHeroImages(heroImages.filter(img => img.id !== id));
-        } else {
-          throw new Error(response.data.message || 'Failed to delete hero image');
-        }
-      } catch (error) {
-        toast.error(error.response?.data?.message || 'Failed to delete hero image');
+        await axiosInstance.post("/hero-images", fd, { headers: { "Content-Type": "multipart/form-data" } });
+        done += 1;
+        setQueue((q) => q.filter((x) => x !== item));
+      } catch (err) {
+        setQueue((q) => q.map((x) => (x === item ? { ...x, error: err.response?.data?.message || "Upload failed" } : x)));
       }
+    }
+    setUploading(false);
+    if (done) {
+      toast.success(`${done} ${done === 1 ? "banner is" : "banners are"} live on the store`);
+      load();
     }
   };
 
-  const handleImageClick = (image) => {
-    setSelectedImage(image);
-    setShowPreviewModal(true);
+  const remove = async (banner, index) => {
+    const last = banners.length === 1;
+    if (!(await confirmDialog(last
+      ? "Delete the only banner? The store's homepage slideshow will be empty."
+      : `Delete banner ${index + 1}? It's removed from the store's homepage straight away.`))) return;
+    setDeleting((d) => ({ ...d, [banner.id]: true }));
+    try {
+      await axiosInstance.delete(`/hero-images/${banner.id}`);
+      setBanners((list) => list.filter((b) => b.id !== banner.id));
+      toast.success("Banner deleted");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Couldn't delete it");
+    } finally {
+      setDeleting((d) => ({ ...d, [banner.id]: false }));
+    }
   };
 
-  const headers = [
-    { key: 'id', label: 'ID', render: (row) => `#${row.id}` },
-    {
-      key: 'path',
-      label: 'Image',
-      render: (row) => (
-        <img
-          src={row.path}
-          alt={`Hero Image ${row.id}`}
-          className="rounded img-thumbnail cursor-pointer"
-          style={{ width: '200px', height: '100px', objectFit: 'cover' }}
-          onClick={() => handleImageClick(row)}
-        />
-      ),
-    },
-    { key: 'created_at', label: 'Created At', render: (row) => new Date(row.created_at).toLocaleString() },
-  ];
-
-  const renderActions = (image) => (
-    <Button
-      variant="outline-danger"
-      size="sm"
-      onClick={() => handleDelete(image.id)}
-      disabled={loading}
-      className="delete-btn"
-    >
-      <FaTrash className="me-1" /> Delete
-    </Button>
-  );
-
-  if (loading && heroImages.length === 0) {
-    return <Loading />;
-  }
+  const readyCount = queue.filter((q) => !q.error).length;
 
   return (
-    <div className="hero-images-container">
-      <Card className="modern-card">
-        <Card.Body className="p-4">
-          <div className="d-flex justify-content-between align-items-center mb-4">
-            <div>
-              <h2 className="page-title mb-1">Hero Section Images</h2>
-              <p className="text-muted mb-0">Manage and organize your hero section images</p>
-            </div>
-            <Button
-              variant="primary"
-              onClick={() => setShowAddModal(true)}
-              className="create-image-btn"
-            >
-              <FaPlus className="me-2" /> Add Hero Image
-            </Button>
-          </div>
+    <div className="hb-page">
+      <ListHeader
+        title="Store banners"
+        subtitle="The slideshow at the top of the store's homepage. The newest banner shows first."
+        actions={
+          <a className="btn btn-outline-secondary" href={STORE} target="_blank" rel="noreferrer">
+            <FaExternalLinkAlt className="me-2" aria-hidden="true" />View store
+          </a>
+        }
+      />
 
-          <div className="filters-section mb-4">
-            <Row className="g-3">
-              <Col md={3}>
-                <div className="search-box">
-                  <InputGroup>
-                    <InputGroup.Text className="search-icon">
-                      {isSearching ? (
-                        <FaSpinner className="spinner" />
-                      ) : (
-                        <FaSearch />
-                      )}
-                    </InputGroup.Text>
-                    <Form.Control
-                      type="text"
-                      placeholder="Search hero images..."
-                      value={searchParams.search}
-                      onChange={handleSearch}
-                      className="search-input"
-                    />
-                    {searchParams.search && (
-                      <Button
-                        variant="link"
-                        className="clear-search"
-                        onClick={() => {
-                          setSearchParams(prev => ({ ...prev, search: '' }));
-                          fetchHeroImages(1);
-                        }}
-                      >
-                        <FaTimes />
-                      </Button>
-                    )}
-                  </InputGroup>
+      <section className="hb-upload" aria-labelledby="hb-upload-title">
+        <div
+          className={`hb-drop ${over ? "is-over" : ""}`}
+          onDragOver={(e) => { e.preventDefault(); setOver(true); }}
+          onDragLeave={() => setOver(false)}
+          onDrop={(e) => { e.preventDefault(); setOver(false); addFiles(e.dataTransfer.files); }}
+        >
+          <input ref={inputRef} type="file" accept={TYPES.join(",")} multiple className="visually-hidden" id="hb-file"
+            onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
+          <FaCloudUploadAlt className="hb-drop-icon" aria-hidden="true" />
+          <h2 id="hb-upload-title">Add banners</h2>
+          <p>Drop images here or <button type="button" className="hb-link" onClick={() => inputRef.current?.click()}>choose files</button>.</p>
+          <p className="hb-hint">Wide images work best, about 1600 × 800 (2:1). Keep text and faces in the middle; the edges are cropped on phones. JPG, PNG or GIF, up to {MAX_MB} MB each.</p>
+        </div>
+
+        {queue.length > 0 && (
+          <div className="hb-queue">
+            <ul>
+              {queue.map((q, i) => (
+                <li key={q.url} className={q.error ? "has-error" : ""}>
+                  <div className="hb-frame"><img src={q.url} alt="" /></div>
+                  <div className="hb-queue-meta">
+                    <span className="text-truncate">{q.file.name}</span>
+                    {q.error ? <span className="hb-error">{q.error}</span> : <span className="text-muted">{(q.file.size / 1024 / 1024).toFixed(1)} MB</span>}
+                  </div>
+                  <button type="button" className="hb-x" onClick={() => setQueue((list) => list.filter((_, k) => k !== i))} disabled={uploading} aria-label={`Remove ${q.file.name}`}>
+                    <FaTimes aria-hidden="true" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <div className="hb-queue-actions">
+              <Button variant="link" className="ed-discard" onClick={() => setQueue([])} disabled={uploading}>Clear</Button>
+              <Button onClick={upload} disabled={uploading || !readyCount}>
+                {uploading ? <><Spinner animation="border" size="sm" className="me-2" />Uploading…</> : `Publish ${readyCount} ${readyCount === 1 ? "banner" : "banners"}`}
+              </Button>
+            </div>
+          </div>
+        )}
+      </section>
+
+      <section aria-labelledby="hb-live-title">
+        <h2 id="hb-live-title" className="hb-section-title">
+          On the store now {banners.length > 0 && <span className="ls-tab-count">{banners.length}</span>}
+        </h2>
+        {loading ? (
+          <div className="hb-grid" aria-busy="true">
+            {[0, 1].map((i) => <div key={i} className="hb-card hb-skeleton" />)}
+          </div>
+        ) : banners.length ? (
+          <ol className="hb-grid">
+            {banners.map((b, i) => (
+              <li key={b.id} className="hb-card">
+                <a className="hb-frame" href={b.path} target="_blank" rel="noreferrer" title="Open full size">
+                  <img src={b.path} alt={`Banner ${i + 1}`} loading="lazy" />
+                  <span className="hb-order">{i === 0 ? "Shows first" : `Slide ${i + 1}`}</span>
+                  <span className="hb-expand" aria-hidden="true"><FaExpand /></span>
+                </a>
+                <div className="hb-card-foot">
+                  <span className="text-muted small">Added {shortDate(b.created_at)}</span>
+                  <Button variant="outline-danger" size="sm" onClick={() => remove(b, i)} disabled={!!deleting[b.id]} aria-label={`Delete banner ${i + 1}`}>
+                    <FaTrash className="me-1" aria-hidden="true" />Delete
+                  </Button>
                 </div>
-              </Col>
-              <Col md={3}>
-                <Form.Select
-                  value={searchParams.limit}
-                  onChange={handleLimitChange}
-                  className="limit-select"
-                >
-                  <option value="5">5 per page</option>
-                  <option value="10">10 per page</option>
-                  <option value="20">20 per page</option>
-                  <option value="50">50 per page</option>
-                </Form.Select>
-              </Col>
-            </Row>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <div className="empty-state">
+            <p className="empty-state-title">No banners yet</p>
+            <p className="empty-state-text">The store's homepage slideshow is empty. Add one above.</p>
           </div>
-
-          <CommonTable
-            headers={headers}
-            data={heroImages}
-            tableLoading={loading}
-            loading={loading}
-            renderActions={renderActions}
-          />
-          
-          {pagination.last_page > 1 && (
-            <div className="pagination-container mt-4">
-              <Pagination className="modern-pagination">
-                {renderPagination()}
-              </Pagination>
-            </div>
-          )}
-        </Card.Body>
-      </Card>
-
-      <Modal
-        show={showAddModal}
-        onHide={() => setShowAddModal(false)}
-        centered
-        className="modern-modal"
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>Add Hero Image</Modal.Title>
-        </Modal.Header>
-        <Form onSubmit={handleUpload}>
-          <Modal.Body>
-            <Form.Group className="mb-3">
-              <Form.Label>Select Image</Form.Label>
-              <Form.Control
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                required
-                className="modern-file-input"
-              />
-              <Form.Text className="text-muted">
-                Maximum file size: 4MB. Supported formats: JPG, PNG, GIF, SVG
-              </Form.Text>
-            </Form.Group>
-            {selectedFile && (
-              <div className="mt-3">
-                <p className="mb-2">Preview:</p>
-                <img
-                  src={URL.createObjectURL(selectedFile)}
-                  alt="Preview"
-                  className="rounded img-thumbnail"
-                  style={{ maxWidth: '100%', maxHeight: '200px', objectFit: 'contain' }}
-                />
-              </div>
-            )}
-          </Modal.Body>
-          <Modal.Footer>
-            <Button
-              variant="secondary"
-              onClick={() => setShowAddModal(false)}
-              className="cancel-btn"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={!selectedFile || uploading}
-              className="upload-btn"
-            >
-              {uploading ? (
-                <>
-                  <FaSpinner className="spinner me-2" />
-                  Uploading...
-                </>
-              ) : (
-                'Upload Image'
-              )}
-            </Button>
-          </Modal.Footer>
-        </Form>
-      </Modal>
-
-      <Modal
-        show={showPreviewModal}
-        onHide={() => setShowPreviewModal(false)}
-        centered
-        size="lg"
-        className="modern-modal image-preview-modal"
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>Image Preview</Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="text-center p-0">
-          {selectedImage && (
-            <img
-              src={selectedImage.path}
-              alt={`Hero Image ${selectedImage.id}`}
-              style={{
-                maxWidth: '100%',
-                maxHeight: '80vh',
-                objectFit: 'contain'
-              }}
-            />
-          )}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button
-            variant="secondary"
-            onClick={() => setShowPreviewModal(false)}
-            className="close-btn"
-          >
-            Close
-          </Button>
-        </Modal.Footer>
-      </Modal>
+        )}
+      </section>
     </div>
   );
 };

@@ -1,358 +1,222 @@
-import React, { useState, useEffect } from 'react';
-import { FaSearch, FaSpinner, FaTimes, FaCalendarAlt } from 'react-icons/fa';
-import { toast } from 'react-hot-toast';
-import axiosInstance from '../../config/axios';
-import { Card, Form, InputGroup, Button, Pagination, Row, Col, Table, Modal } from 'react-bootstrap';
-import Loading from '../../components/Loading';
-import usePageTitle from '../../hooks/usePageTitle';
+import React, { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { Offcanvas, Spinner } from "react-bootstrap";
+import { FaArrowDown, FaArrowUp, FaTimes } from "react-icons/fa";
+import { toast } from "react-hot-toast";
+import axiosInstance from "../../config/axios";
+import usePageTitle from "../../hooks/usePageTitle";
+import CommonTable from "../../components/Common/CommonTable";
+import { ListHeader, ListCard, ListToolbar, SearchBox, ResultCount, Pager, Pill } from "../../components/List/List";
+import { taka, shortDate } from "../../components/List/format";
+import "../../components/List/List.css";
+import "./BuyingPrice.css";
+
+// Margin = what the store sells it for now minus what it last cost.
+const marginOf = (row) => {
+  if (row.selling_price == null || row.buying_price == null) return null;
+  const profit = Number(row.selling_price) - Number(row.buying_price);
+  const pct = Number(row.selling_price) > 0 ? (profit / Number(row.selling_price)) * 100 : null;
+  return { profit, pct };
+};
+
+const MarginPill = ({ row }) => {
+  const m = marginOf(row);
+  if (!m) return <span className="text-muted">—</span>;
+  const tone = m.profit < 0 ? "bad" : m.pct != null && m.pct < 10 ? "warn" : "good";
+  return (
+    <Pill tone={tone} title={m.profit < 0 ? "Selling below the last buying price" : undefined}>
+      {m.profit < 0 ? "−" : ""}{taka(Math.abs(m.profit))}{m.pct != null ? ` · ${Math.round(m.pct)}%` : ""}
+    </Pill>
+  );
+};
 
 const ProductBuyingPrice = () => {
-    usePageTitle('Product Buying Prices');
-    const [items, setItems] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [searchParams, setSearchParams] = useState({
-        search: '',
-        page: 1,
-        limit: 10,
-        date: null,
-        startDate: null,
-        endDate: null,
-    });
-    const [pagination, setPagination] = useState({
-        total_rows: 0,
-        current_page: 1,
-        per_page: 10,
-        total_pages: 1,
-        has_more_pages: false,
-    });
-    const [searchTimeout, setSearchTimeout] = useState(null);
-    const [isSearching, setIsSearching] = useState(false);
-    const [showHistoryModal, setShowHistoryModal] = useState(false);
-    const [selectedItemHistory, setSelectedItemHistory] = useState([]);
-    const [historyLoading, setHistoryLoading] = useState(false);
+  usePageTitle("Buying prices");
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [query, setQuery] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
+  const [pagination, setPagination] = useState({ total_rows: 0, total_pages: 1 });
+  const [open, setOpen] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
-    useEffect(() => {
-        fetchBuyingPriceItems();
-    }, [searchParams.page, searchParams.limit, searchParams.date, searchParams.startDate, searchParams.endDate]);
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setQuery(search.trim());
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [search]);
 
-    useEffect(() => {
-        if (searchTimeout) {
-            clearTimeout(searchTimeout);
-        }
-
-        const timeoutId = setTimeout(() => {
-            if (searchParams.search !== '') {
-                setIsSearching(true);
-                fetchBuyingPriceItems(1);
-            }
-        }, 500);
-
-        setSearchTimeout(timeoutId);
-
-        return () => {
-            if (timeoutId) {
-                clearTimeout(timeoutId);
-            }
-        };
-    }, [searchParams.search]);
-
-    const fetchBuyingPriceItems = async (page = searchParams.page) => {
-        setLoading(true);
-        try {
-            const params = {
-                page,
-                limit: searchParams.limit,
-                ...(searchParams.search && { search: searchParams.search }),
-                ...(searchParams.date && { date: searchParams.date }),
-                ...(searchParams.startDate && { start_date: searchParams.startDate }),
-                ...(searchParams.endDate && { end_date: searchParams.endDate }),
-            };
-
-            const response = await axiosInstance.get('/buying-price-items', { params });
-            if (response.data.success) {
-                setItems(response.data.data);
-                setPagination(response.data.pagination);
-            } else {
-                toast.error('Failed to fetch buying price items');
-            }
-        } catch (error) {
-            toast.error(error.response?.data?.message || 'An error occurred');
-        } finally {
-            setLoading(false);
-            setIsSearching(false);
-        }
-    };
-
-    const fetchItemHistory = async (itemId) => {
-        setHistoryLoading(true);
-        setShowHistoryModal(true);
-        try {
-            const response = await axiosInstance.get(`/item-buying-history/${itemId}`);
-            if (response.data.success) {
-                setSelectedItemHistory(response.data.data);
-            } else {
-                toast.error('Failed to fetch item history');
-            }
-        } catch (error) {
-            toast.error(error.response?.data?.message || 'An error occurred');
-        } finally {
-            setHistoryLoading(false);
-        }
-    };
-
-    const handleSearch = (e) => {
-        setSearchParams(prev => ({ ...prev, search: e.target.value, page: 1 }));
-    };
-
-    const handlePageChange = (page) => {
-        setSearchParams(prev => ({ ...prev, page }));
-    };
-
-    const handleLimitChange = (e) => {
-        setSearchParams(prev => ({ ...prev, limit: parseInt(e.target.value), page: 1 }));
-    };
-
-    const handleExactDateChange = (e) => {
-        setSearchParams(prev => ({ ...prev, date: e.target.value || null, startDate: null, endDate: null, page: 1 }));
-    };
-
-    const handleDateRangeChange = (e, type) => {
-        const value = e.target.value || null;
-
-        if (type === 'startDate' && value && searchParams.endDate && value > searchParams.endDate) {
-            toast.error('Start date cannot be after end date');
-            return;
-        }
-
-        if (type === 'endDate' && value && searchParams.startDate && value < searchParams.startDate) {
-            toast.error('End date cannot be before start date');
-            return;
-        }
-
-        setSearchParams(prev => ({ ...prev, [type]: value, date: null, page: 1 }));
-    };
-
-    const clearDateFilters = () => {
-        setSearchParams(prev => ({ ...prev, date: null, startDate: null, endDate: null, page: 1 }));
-    };
-
-    const renderPagination = () => {
-        const items = [];
-        const { current_page, total_pages } = pagination;
-        const maxPages = 5;
-        let startPage = Math.max(1, current_page - Math.floor(maxPages / 2));
-        let endPage = Math.min(total_pages, startPage + maxPages - 1);
-
-        if (endPage - startPage + 1 < maxPages) {
-            startPage = Math.max(1, endPage - maxPages + 1);
-        }
-
-        items.push(
-            <Pagination.Prev key="prev" onClick={() => handlePageChange(current_page - 1)} disabled={current_page === 1} />
-        );
-
-        if (startPage > 1) {
-            items.push(<Pagination.Item key={1} onClick={() => handlePageChange(1)}>1</Pagination.Item>);
-            if (startPage > 2) {
-                items.push(<Pagination.Ellipsis key="ellipsis1" disabled />);
-            }
-        }
-
-        for (let number = startPage; number <= endPage; number++) {
-            items.push(
-                <Pagination.Item key={number} active={number === current_page} onClick={() => handlePageChange(number)}>
-                    {number}
-                </Pagination.Item>
-            );
-        }
-
-        if (endPage < total_pages) {
-            if (endPage < total_pages - 1) {
-                items.push(<Pagination.Ellipsis key="ellipsis2" disabled />);
-            }
-            items.push(<Pagination.Item key={total_pages} onClick={() => handlePageChange(total_pages)}>{total_pages}</Pagination.Item>);
-        }
-
-        items.push(
-            <Pagination.Next key="next" onClick={() => handlePageChange(current_page + 1)} disabled={current_page === total_pages} />
-        );
-
-        return items;
-    };
-
-    if (loading && items.length === 0) {
-        return <Loading />;
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      // The API only applies a date range when both ends are set.
+      const range = from || to ? { start_date: from || "2000-01-01", end_date: `${to || new Date().toISOString().slice(0, 10)} 23:59:59` } : {};
+      const res = await axiosInstance.get("/buying-price-items", { params: { page, limit, ...(query && { search: query }), ...range } });
+      setRows(res.data?.data || []);
+      setPagination(res.data?.pagination || { total_rows: 0, total_pages: 1 });
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Couldn't load buying prices");
+      setRows([]);
+    } finally {
+      setLoading(false);
     }
+  }, [page, limit, query, from, to]);
 
-    return (
-        <div className="orders-container">
-            <Card className="modern-card">
-                <Card.Body className="p-4">
-                    <div className="d-flex justify-content-between align-items-center mb-4">
-                        <div>
-                            <h2 className="page-title mb-1">Product Buying Prices</h2>
-                            <p className="text-muted mb-0">Latest buying prices from challans</p>
-                        </div>
-                    </div>
+  useEffect(() => {
+    load();
+  }, [load]);
 
-                    <div className="filters-section mb-4">
-                        <Row className="g-3">
-                            <Col md={3}>
-                                <InputGroup className="search-box">
-                                    <InputGroup.Text>
-                                        {isSearching ? <FaSpinner className="spinner" /> : <FaSearch />}
-                                    </InputGroup.Text>
-                                    <Form.Control
-                                        type="text"
-                                        placeholder="Search by item name..."
-                                        value={searchParams.search}
-                                        onChange={handleSearch}
-                                    />
-                                    {searchParams.search && (
-                                        <Button
-                                            variant="link"
-                                            className="clear-search"
-                                            onClick={() => {
-                                                setSearchParams(prev => ({ ...prev, search: '' }));
-                                                fetchBuyingPriceItems(1);
-                                            }}
-                                        >
-                                            <FaTimes />
-                                        </Button>
-                                    )}
-                                </InputGroup>
-                            </Col>
-                            <Col md={2}>
-                                <InputGroup>
-                                    <InputGroup.Text><FaCalendarAlt /></InputGroup.Text>
-                                    <Form.Control
-                                        type="date"
-                                        value={searchParams.date || ''}
-                                        onChange={handleExactDateChange}
-                                        max={new Date().toISOString().split('T')[0]}
-                                        placeholder="Exact date"
-                                    />
-                                </InputGroup>
-                            </Col>
-                            <Col md={3}>
-                                <InputGroup>
-                                    <InputGroup.Text><FaCalendarAlt /></InputGroup.Text>
-                                    <Form.Control
-                                        type="date"
-                                        value={searchParams.startDate || ''}
-                                        onChange={(e) => handleDateRangeChange(e, 'startDate')}
-                                        max={searchParams.endDate || new Date().toISOString().split('T')[0]}
-                                        placeholder="Start date"
-                                    />
-                                    <Form.Control
-                                        type="date"
-                                        value={searchParams.endDate || ''}
-                                        onChange={(e) => handleDateRangeChange(e, 'endDate')}
-                                        min={searchParams.startDate || undefined}
-                                        max={new Date().toISOString().split('T')[0]}
-                                        placeholder="End date"
-                                    />
-                                </InputGroup>
-                            </Col>
-                            <Col md={2}>
-                                <Form.Select value={searchParams.limit} onChange={handleLimitChange}>
-                                    <option value="5">5 per page</option>
-                                    <option value="10">10 per page</option>
-                                    <option value="20">20 per page</option>
-                                    <option value="50">50 per page</option>
-                                </Form.Select>
-                            </Col>
-                            <Col md={2}>
-                                {(searchParams.date || searchParams.startDate || searchParams.endDate) && (
-                                    <Button variant="outline-secondary" className="w-100" onClick={clearDateFilters}>
-                                        <FaTimes className="me-2" /> Clear Dates
-                                    </Button>
-                                )}
-                            </Col>
-                        </Row>
-                    </div>
+  const openHistory = async (row) => {
+    setOpen(row);
+    setHistory([]);
+    setHistoryLoading(true);
+    try {
+      const res = await axiosInstance.get(`/item-buying-history/${row.item_id}`);
+      setHistory(res.data?.data || []);
+    } catch {
+      toast.error("Couldn't load the purchase history");
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
 
-                    <div className="table-container">
-                        <Table striped bordered hover responsive className="modern-table">
-                            <thead>
-                                <tr>
-                                    <th>Item ID</th>
-                                    <th>Item Name</th>
-                                    <th>Buying Price</th>
-                                    <th>Last Updated</th>
-                                    <th>Supplier</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {items.map(item => (
-                                    <tr key={item.item_id}>
-                                        <td>{item.item_id}</td>
-                                        <td>
-                                            <Button variant="link" onClick={() => fetchItemHistory(item.item_id)}>
-                                                {item.item_name}
-                                            </Button>
-                                        </td>
-                                        <td>৳{item.buying_price.toLocaleString()}</td>
-                                        <td>{new Date(item.created_at).toLocaleString()}</td>
-                                        <td>{item.supplier_name}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </Table>
-                    </div>
-                    {pagination.total_pages > 1 && (
-                        <div className="pagination-container mt-4">
-                            <Pagination className="modern-pagination">
-                                {renderPagination()}
-                            </Pagination>
-                        </div>
-                    )}
-                </Card.Body>
-            </Card>
+  const filtered = !!(query || from || to);
 
-            <Modal show={showHistoryModal} onHide={() => setShowHistoryModal(false)} dialogClassName="modal-90w" centered>
-                <Modal.Header closeButton>
-                    <Modal.Title>Buying History for {selectedItemHistory[0]?.item_name}</Modal.Title>
-                </Modal.Header>
-                <Modal.Body>
-                    {historyLoading ? (
-                        <div className="text-center">
-                            <FaSpinner className="spinner" />
-                            <p>Loading history...</p>
-                        </div>
-                    ) : (
-                        <Table striped bordered hover responsive>
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Supplier</th>
-                                    <th>Quantity</th>
-                                    <th>Buying Price</th>
-                                    <th>Challan ID</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {selectedItemHistory.map((historyItem, index) => (
-                                    <tr key={index}>
-                                        <td>{new Date(historyItem.challan_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
-                                        <td>{historyItem.supplier_name}</td>
-                                        <td>{historyItem.quantity}</td>
-                                        <td>৳{historyItem.buying_price.toLocaleString()}</td>
-                                        <td>{historyItem.challan_id}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </Table>
-                    )}
-                </Modal.Body>
-                <Modal.Footer>
-                    <Button variant="secondary" onClick={() => setShowHistoryModal(false)}>
-                        Close
-                    </Button>
-                </Modal.Footer>
-            </Modal>
-        </div>
-    );
+  const headers = [
+    {
+      key: "item_name",
+      label: "Product",
+      render: (row) => (
+        <>
+          <span className="ls-cell-main">{row.item_name}</span>
+          <span className="ls-cell-sub">{row.stock != null ? `${row.stock} in stock` : `#${row.item_id}`}</span>
+        </>
+      ),
+    },
+    {
+      key: "buying_price",
+      label: "Last bought at",
+      align: "end",
+      nowrap: true,
+      render: (row) => (
+        <>
+          <span className="ls-money d-block">{taka(row.buying_price)}</span>
+          <span className="ls-cell-sub">{shortDate(row.created_at)}</span>
+        </>
+      ),
+    },
+    {
+      key: "supplier_name",
+      label: "From",
+      render: (row) => row.supplier_name || <span className="text-muted">Unknown</span>,
+    },
+    {
+      key: "selling_price",
+      label: "Sells for",
+      align: "end",
+      nowrap: true,
+      render: (row) => (row.selling_price != null ? taka(row.selling_price) : <span className="text-muted">—</span>),
+    },
+    { key: "margin", label: "Margin", nowrap: true, render: (row) => <MarginPill row={row} /> },
+  ];
+
+  // Oldest first, so each purchase can be compared with the one before it.
+  const ordered = [...history].reverse();
+
+  return (
+    <div className="bp-page">
+      <ListHeader
+        title="Buying prices"
+        subtitle="The last price paid for each product, from challans, next to what the store sells it for now."
+      />
+
+      <ListCard>
+        <ListToolbar end={<ResultCount page={page} perPage={limit} total={pagination.total_rows || 0} noun="products" />}>
+          <SearchBox value={search} onChange={setSearch} placeholder="Search products" busy={loading && !!query} />
+          <div className="ls-dates" role="group" aria-label="Bought between">
+            <span>Bought</span>
+            <input type="date" value={from} max={to || undefined} onChange={(e) => { setFrom(e.target.value); setPage(1); }} aria-label="From date" />
+            <span>to</span>
+            <input type="date" value={to} min={from || undefined} onChange={(e) => { setTo(e.target.value); setPage(1); }} aria-label="To date" />
+            {(from || to) && (
+              <button type="button" onClick={() => { setFrom(""); setTo(""); setPage(1); }} aria-label="Clear dates"><FaTimes /></button>
+            )}
+          </div>
+        </ListToolbar>
+
+        <CommonTable
+          headers={headers}
+          data={rows.map((r) => ({ ...r, id: r.item_id }))}
+          tableLoading={loading}
+          loading={loading}
+          onRowClick={openHistory}
+          rowLabel={(row) => `See every purchase of ${row.item_name}`}
+          emptyTitle={filtered ? "Nothing matches" : "No buying prices yet"}
+          emptyText={filtered ? "Try another product name or clear the dates." : "Prices appear here once you record a challan."}
+        />
+
+        <Pager page={page} lastPage={pagination.total_pages || 1} onPage={setPage} perPage={limit} onPerPage={(n) => { setLimit(n); setPage(1); }} />
+      </ListCard>
+
+      <Offcanvas show={!!open} onHide={() => setOpen(null)} placement="end" className="bp-panel">
+        {open && (
+          <>
+            <Offcanvas.Header closeButton>
+              <Offcanvas.Title as="h2" className="h5 mb-0">{open.item_name}</Offcanvas.Title>
+            </Offcanvas.Header>
+            <Offcanvas.Body>
+              <dl className="bp-facts">
+                <div><dt>Last bought at</dt><dd>{taka(open.buying_price)}</dd></div>
+                <div><dt>Sells for</dt><dd>{open.selling_price != null ? taka(open.selling_price) : "—"}</dd></div>
+                <div><dt>Margin</dt><dd><MarginPill row={open} /></dd></div>
+                <div><dt>In stock</dt><dd>{open.stock ?? "—"}</dd></div>
+              </dl>
+
+              <h3 className="bp-subtitle">Every purchase</h3>
+              {historyLoading ? (
+                <div className="text-center py-4"><Spinner animation="border" size="sm" /></div>
+              ) : history.length ? (
+                <ol className="bp-history">
+                  {ordered.map((h, i) => {
+                    const prev = ordered[i - 1];
+                    const change = prev ? Number(h.buying_price) - Number(prev.buying_price) : 0;
+                    return { h, change };
+                  }).reverse().map(({ h, change }) => (
+                    <li key={`${h.challan_id}-${h.created_at}`}>
+                      <div className="bp-history-main">
+                        <span className="ls-money">{taka(h.buying_price)}</span>
+                        {change !== 0 && (
+                          <span className={`bp-change ${change > 0 ? "is-up" : "is-down"}`}>
+                            {change > 0 ? <FaArrowUp aria-hidden="true" /> : <FaArrowDown aria-hidden="true" />}
+                            {taka(Math.abs(change))}
+                            <span className="visually-hidden">{change > 0 ? " more than before" : " less than before"}</span>
+                          </span>
+                        )}
+                      </div>
+                      <div className="bp-history-sub">
+                        {h.quantity} {Number(h.quantity) === 1 ? "unit" : "units"}
+                        {h.supplier_name ? ` from ${h.supplier_name}` : ""} · {shortDate(h.challan_date || h.created_at)}
+                        {h.challan_id && <> · <Link to={`/challans/${h.challan_id}`}>Challan #{h.challan_id}</Link></>}
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p className="text-muted small">No purchases found.</p>
+              )}
+            </Offcanvas.Body>
+          </>
+        )}
+      </Offcanvas>
+    </div>
+  );
 };
 
 export default ProductBuyingPrice;

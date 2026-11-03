@@ -1,705 +1,261 @@
-import React, { useState, useEffect } from "react";
-import {
-  FaSpinner,
-  FaCalendarAlt,
-  FaSearch,
-  FaTimes,
-  FaEye,
-} from "react-icons/fa";
+import React, { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { Offcanvas } from "react-bootstrap";
+import { FaTimes } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 import axiosInstance from "../../config/axios";
-import {
-  Card,
-  Form,
-  Pagination,
-  Modal,
-  Button,
-  Row,
-  Col,
-  InputGroup,
-} from "react-bootstrap";
-import Loading from "../../components/Loading";
-import "./Transitions.css";
-import "../Categories/Categories.css";
-import usePageTitle from '../../hooks/usePageTitle';
+import usePageTitle from "../../hooks/usePageTitle";
+import useRole from "../../hooks/useRole";
 import CommonTable from "../../components/Common/CommonTable";
+import { ListHeader, ListCard, ListToolbar, FilterTabs, ResultCount, Pager, Pill } from "../../components/List/List";
+import { taka, fullDate, timeAgo } from "../../components/List/format";
+import "../../components/List/List.css";
+import "../Customers/CustomerDetail.css";
+import "./Transitions.css";
+
+// Order payment types as the backend stores them.
+const ORDER_METHODS = { 1: "Cash on delivery", 2: "bKash", 3: "Online payment", 4: "Bank transfer" };
+const PERIODS = [
+  { value: "", label: "All time" },
+  { value: "today", label: "Today" },
+  { value: "this_week", label: "This week" },
+  { value: "this_month", label: "This month" },
+];
+const cap = (t) => (t ? t.charAt(0).toUpperCase() + t.slice(1).replace(/_/g, " ") : "—");
+
+const isCourse = (row) => row.source === "course_invoice";
+const methodOf = (row) =>
+  isCourse(row) ? cap(row.course_invoice_details?.payment_method) : ORDER_METHODS[Number(row.payment_details?.payment_type)] || "—";
 
 const Transitions = () => {
-  usePageTitle('Manage Transitions');
-  const [transitions, setTransitions] = useState([]);
+  usePageTitle("Transactions");
+  const role = useRole();
+  const isAdmin = role === "admin";
+  const [rows, setRows] = useState([]);
+  const [totals, setTotals] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [searchParams, setSearchParams] = useState({
-    page: 1,
-    limit: 10,
-    start_date: null,
-    end_date: null,
-    duration: "",
-  });
-  const [pagination, setPagination] = useState({
-    total: 0,
-    current_page: 1,
-    per_page: 10,
-    last_page: 1,
-    from: 1,
-    to: 1,
-  });
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [selectedPayment, setSelectedPayment] = useState(null);
+  const [source, setSource] = useState("");
+  const [period, setPeriod] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
+  const [pagination, setPagination] = useState({ total: 0, last_page: 1 });
+  const [open, setOpen] = useState(null);
 
-  useEffect(() => {
-    fetchTransitions();
-  }, [
-    searchParams.page,
-    searchParams.limit,
-    searchParams.duration,
-    searchParams.start_date,
-    searchParams.end_date,
-  ]);
-
-  const formatDateForAPI = (date) => {
-    if (!date) return null;
-    return date.toISOString().split('T')[0];
-  };
-
-  const fetchTransitions = async (page = searchParams.page) => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
-      const params = {
-        page,
-        limit: searchParams.limit,
-        duration: searchParams.duration,
-        start_date: formatDateForAPI(searchParams.start_date),
-        end_date: formatDateForAPI(searchParams.end_date),
-      };
-
-      const response = await axiosInstance.get("/transiions", { params });
-      const result = response.data;
-
-      if (!result.success) {
-        throw new Error(result.message || "Failed to fetch transitions");
-      }
-
-      setTransitions(result.data);
-      if (result.pagination) {
-        setPagination(result.pagination);
-      }
-    } catch (error) {
-      toast.error(
-        error.response?.data?.message || "Failed to fetch transitions"
-      );
-      setTransitions([]);
+      const res = await axiosInstance.get("/transiions", {
+        params: {
+          page,
+          limit,
+          ...(source && { source }),
+          ...(period && { duration: period }),
+          ...(from && { start_date: from }),
+          ...(to && { end_date: to }),
+        },
+      });
+      setRows(res.data?.data || []);
+      setTotals(res.data?.totals || null);
+      setPagination(res.data?.pagination || { total: 0, last_page: 1 });
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Couldn't load transactions");
+      setRows([]);
     } finally {
       setLoading(false);
     }
+  }, [page, limit, source, period, from, to]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const pickPeriod = (p) => {
+    setPeriod(p);
+    setFrom("");
+    setTo("");
+    setPage(1);
+  };
+  const setDate = (which, value) => {
+    which === "from" ? setFrom(value) : setTo(value);
+    setPeriod("");
+    setPage(1);
   };
 
-  const handleDurationChange = (e) => {
-    const duration = e.target.value;
-    setSearchParams((prev) => ({
-      ...prev,
-      duration,
-      start_date: null,
-      end_date: null,
-      page: 1,
-    }));
-  };
-
-  const handleDateChange = (e, type) => {
-    const value = e.target.value ? new Date(e.target.value + 'T00:00:00') : null;
-    
-    if (type === 'start' && value && searchParams.end_date && value > searchParams.end_date) {
-      toast.error("Start date cannot be after end date");
-      return;
-    }
-    
-    if (type === 'end' && value && searchParams.start_date && value < searchParams.start_date) {
-      toast.error("End date cannot be before start date");
-      return;
-    }
-
-    if (type === 'end' && value) {
-      value.setHours(23, 59, 59, 999);
-    }
-
-    setSearchParams((prev) => ({
-      ...prev,
-      [type === 'start' ? 'start_date' : 'end_date']: value,
-      duration: "",
-      page: 1,
-    }));
-  };
-
-  const clearFilters = () => {
-    setSearchParams((prev) => ({
-      ...prev,
-      start_date: null,
-      end_date: null,
-      duration: "",
-      page: 1,
-    }));
-  };
-
-  const handlePageChange = (page) => {
-    setSearchParams((prev) => ({
-      ...prev,
-      page,
-    }));
-  };
-
-  const handleLimitChange = (e) => {
-    const limit = parseInt(e.target.value);
-    setSearchParams((prev) => ({
-      ...prev,
-      limit,
-      page: 1,
-    }));
-  };
-
-  const handleRowClick = (transition) => {
-    setSelectedPayment(transition);
-    setShowPaymentModal(true);
-  };
-
-  const handleCloseModal = () => {
-    setShowPaymentModal(false);
-    setSelectedPayment(null);
-  };
-
-  const getPaymentTypeText = (type) => {
-    switch (type) {
-      case "1":
-        return "Cash";
-      case "3":
-        return "Bank";
-      case "4":
-        return "Mobile Banking";
-      case "0":
-        return "Not Paid";
-      default:
-        return "Unknown";
-    }
-  };
-
-  const getStatusText = (status) => {
-    return status === "1" ? "Paid" : "Unpaid";
-  };
-
-  // Course invoices use their own human-readable status/payment-method strings
-  // (e.g. "due"/"partial"/"paid", "bkash"/"cash") rather than the order flow's
-  // numeric codes, so they get their own display helpers.
-  const capitalize = (text) => (text ? text.charAt(0).toUpperCase() + text.slice(1) : "—");
-
-  const renderPagination = () => {
-    const items = [];
-    const maxPages = 5;
-    let startPage = Math.max(
-      1,
-      pagination.current_page - Math.floor(maxPages / 2)
-    );
-    let endPage = Math.min(pagination.last_page, startPage + maxPages - 1);
-
-    if (endPage - startPage + 1 < maxPages) {
-      startPage = Math.max(1, endPage - maxPages + 1);
-    }
-
-    items.push(
-      <Pagination.First
-        key="first"
-        onClick={() => handlePageChange(1)}
-        disabled={pagination.current_page === 1}
-      />
-    );
-
-    items.push(
-      <Pagination.Prev
-        key="prev"
-        onClick={() => handlePageChange(pagination.current_page - 1)}
-        disabled={pagination.current_page === 1}
-      />
-    );
-
-    for (let number = startPage; number <= endPage; number++) {
-      items.push(
-        <Pagination.Item
-          key={number}
-          active={number === pagination.current_page}
-          onClick={() => handlePageChange(number)}
-        >
-          {number}
-        </Pagination.Item>
-      );
-    }
-
-    items.push(
-      <Pagination.Next
-        key="next"
-        onClick={() => handlePageChange(pagination.current_page + 1)}
-        disabled={pagination.current_page === pagination.last_page}
-      />
-    );
-
-    items.push(
-      <Pagination.Last
-        key="last"
-        onClick={() => handlePageChange(pagination.last_page)}
-        disabled={pagination.current_page === pagination.last_page}
-      />
-    );
-
-    return items;
-  };
+  const filtered = !!(period || from || to || source);
+  const scopeLabel = role === "course_manager" ? "course fees" : ["stuff", "member"].includes(role) ? "store orders" : "store orders and course fees";
 
   const headers = [
-    { key: 'transition_id', label: 'ID', render: (row) => `#${row.transition_id}` },
-    { key: 'payment_id', label: 'Payment ID' },
-    { key: 'amount', label: 'Amount', render: (row) => `৳${parseFloat(row.amount).toLocaleString()}` },
     {
-      key: 'payment_details.order_id',
-      label: 'Order / Invoice',
-      render: (row) =>
-        row.source === 'course_invoice'
-          ? row.course_invoice_details?.invoice_no ?? '—'
-          : row.payment_details?.order_id ?? '—',
+      key: "created_at",
+      label: "When",
+      nowrap: true,
+      render: (row) => (
+        <>
+          <span className="d-block">{timeAgo(row.created_at)}</span>
+          <span className="ls-cell-sub" title={fullDate(row.created_at)}>#{row.transition_id}</span>
+        </>
+      ),
     },
     {
-      key: 'payment_details.status',
-      label: 'Status',
+      key: "from",
+      label: "For",
       render: (row) => {
-        if (row.source === 'course_invoice') {
-          if (!row.course_invoice_details) {
-            return (
-              <span className="status-badge inactive" title="This transition's linked course invoice no longer exists">
-                Unlinked
-              </span>
-            );
-          }
-          return (
-            <span className={`status-badge ${row.course_invoice_details.status === "paid" ? "active" : "inactive"}`}>
-              {capitalize(row.course_invoice_details.status)}
-            </span>
-          );
+        if (isCourse(row)) {
+          const c = row.course_invoice_details;
+          return c ? (
+            <>
+              <span className="ls-cell-main">{c.student_name || "Student"}</span>
+              <span className="ls-cell-sub">{c.course_title || "Course"} · {c.invoice_no}</span>
+            </>
+          ) : <span className="text-muted">Course invoice (removed)</span>;
         }
-        return row.payment_details ? (
-          <span className={`status-badge ${row.payment_details.status === "1" ? "active" : "inactive"}`}>
-            {getStatusText(row.payment_details.status)}
-          </span>
-        ) : (
-          <span className="status-badge inactive" title="This transition's linked payment/order no longer exists">
-            Unlinked
-          </span>
-        );
+        const p = row.payment_details;
+        return p ? (
+          <>
+            <span className="ls-cell-main">{p.customer_name || "Store customer"}</span>
+            <span className="ls-cell-sub">Order {p.invoice_code || `#${p.order_id}`}</span>
+          </>
+        ) : <span className="text-muted">Order (removed)</span>;
       },
     },
     {
-      key: 'payment_details.payment_type',
-      label: 'Payment Type',
-      render: (row) => {
-        if (row.source === 'course_invoice') {
-          return row.course_invoice_details ? capitalize(row.course_invoice_details.payment_method) : '—';
-        }
-        return row.payment_details ? getPaymentTypeText(row.payment_details.payment_type) : '—';
-      },
+      key: "type",
+      label: "Type",
+      render: (row) => (isCourse(row) ? <Pill tone="info">Course</Pill> : <Pill tone="muted">Store</Pill>),
     },
-    { key: 'created_at', label: 'Date', render: (row) => new Date(row.created_at).toLocaleString() },
+    { key: "method", label: "Paid by", render: (row) => methodOf(row) },
+    {
+      key: "amount",
+      label: "Amount",
+      align: "end",
+      nowrap: true,
+      render: (row) => <span className="ls-money">{taka(row.amount)}</span>,
+    },
   ];
 
-  const renderActions = (transition) => (
-    <Button
-      variant="outline-primary"
-      size="sm"
-      className="view-btn"
-      onClick={() => handleRowClick(transition)}
-    >
-      <FaEye className="me-1" /> View
-    </Button>
-  );
-
-  if (loading && !transitions.length) {
-    return <Loading />;
-  }
+  const detail = open && (isCourse(open) ? open.course_invoice_details : open.payment_details);
 
   return (
-    <div className="transitions-container">
-      <Card className="modern-card">
-        <Card.Body className="p-4">
-          <div className="d-flex justify-content-between align-items-center mb-4">
-            <div>
-              <h2 className="page-title mb-1">Transitions</h2>
-              <p className="text-muted mb-0">
-                Manage and track all payment transitions
-              </p>
-            </div>
-          </div>
+    <div className="tx-page">
+      <ListHeader title="Transactions" subtitle={`Money received from ${scopeLabel}. Newest first.`} />
 
-          <div className="filters-section mb-4">
-            <Row className="g-3">
-              <Col md={3}>
-                <Form.Select
-                  value={searchParams.duration}
-                  onChange={handleDurationChange}
-                  className="status-filter"
-                >
-                  <option value="">All Time</option>
-                  <option value="today">Today</option>
-                  <option value="this_week">This Week</option>
-                  <option value="this_month">This Month</option>
-                </Form.Select>
-              </Col>
-              <Col md={3}>
-                <div className="date-filter-box">
-                  <InputGroup>
-                    <InputGroup.Text>
-                      <FaCalendarAlt />
-                    </InputGroup.Text>
-                    <Form.Control
-                      type="date"
-                      value={searchParams.start_date ? formatDateForAPI(searchParams.start_date) : ''}
-                      onChange={(e) => handleDateChange(e, 'start')}
-                      className="date-input"
-                      max={searchParams.end_date ? formatDateForAPI(searchParams.end_date) : formatDateForAPI(new Date())}
-                    />
-                    <Form.Control
-                      type="date"
-                      value={searchParams.end_date ? formatDateForAPI(searchParams.end_date) : ''}
-                      onChange={(e) => handleDateChange(e, 'end')}
-                      className="date-input"
-                      min={searchParams.start_date ? formatDateForAPI(searchParams.start_date) : undefined}
-                      max={formatDateForAPI(new Date())}
-                    />
-                  </InputGroup>
-                </div>
-              </Col>
-              <Col md={2}>
-                <Form.Select
-                  value={searchParams.limit}
-                  onChange={handleLimitChange}
-                  className="limit-select"
-                >
-                  <option value="5">5 per page</option>
-                  <option value="10">10 per page</option>
-                  <option value="20">20 per page</option>
-                  <option value="50">50 per page</option>
-                </Form.Select>
-              </Col>
-              <Col md={1}>
-                {(searchParams.duration ||
-                  searchParams.start_date ||
-                  searchParams.end_date) && (
-                  <Button
-                    variant="outline-secondary"
-                    onClick={clearFilters}
-                    className="clear-dates-btn w-100"
-                  >
-                    <FaTimes />
-                  </Button>
-                )}
-              </Col>
-            </Row>
+      {totals && (
+        <dl className="cd-stats tx-stats">
+          <div>
+            <dt>Received</dt>
+            <dd>{taka(totals.amount)}</dd>
+            <span className="cd-stat-note">{totals.count.toLocaleString()} {totals.count === 1 ? "payment" : "payments"}{period || from || to ? " in this period" : ""}</span>
           </div>
-          
-          <CommonTable
-            headers={headers}
-            data={transitions}
-            tableLoading={loading}
-            loading={loading}
-            renderActions={renderActions}
+          {isAdmin && (
+            <>
+              <div>
+                <dt>From the store</dt>
+                <dd>{taka(totals.store)}</dd>
+              </div>
+              <div>
+                <dt>From courses</dt>
+                <dd>{taka(totals.course)}</dd>
+              </div>
+            </>
+          )}
+        </dl>
+      )}
+
+      <ListCard>
+        {isAdmin && (
+          <FilterTabs
+            label="Money from"
+            value={source}
+            onChange={(v) => { setSource(v); setPage(1); }}
+            tabs={[
+              { value: "", label: "Everything" },
+              { value: "order", label: "Store orders" },
+              { value: "course", label: "Course fees" },
+            ]}
           />
+        )}
+        <ListToolbar end={<ResultCount page={page} perPage={limit} total={pagination.total || 0} noun="payments" />}>
+          <div className="tx-periods" role="group" aria-label="Period">
+            {PERIODS.map((p) => (
+              <button
+                key={p.value}
+                type="button"
+                className={`tx-period ${period === p.value && !(from || to) ? "is-active" : ""}`}
+                aria-pressed={period === p.value && !(from || to)}
+                onClick={() => pickPeriod(p.value)}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+          <div className="ls-dates" role="group" aria-label="Custom dates">
+            <span>From</span>
+            <input type="date" value={from} max={to || undefined} onChange={(e) => setDate("from", e.target.value)} aria-label="From date" />
+            <span>to</span>
+            <input type="date" value={to} min={from || undefined} onChange={(e) => setDate("to", e.target.value)} aria-label="To date" />
+            {(from || to) && (
+              <button type="button" onClick={() => { setFrom(""); setTo(""); setPage(1); }} aria-label="Clear dates"><FaTimes /></button>
+            )}
+          </div>
+        </ListToolbar>
 
-          {pagination.last_page > 1 && (
-            <div className="pagination-container mt-4">
-              <Pagination className="modern-pagination">
-                {renderPagination()}
-              </Pagination>
-            </div>
-          )}
-        </Card.Body>
-      </Card>
+        <CommonTable
+          headers={headers}
+          data={rows.map((r) => ({ ...r, id: r.transition_id }))}
+          tableLoading={loading}
+          loading={loading}
+          onRowClick={setOpen}
+          rowLabel={(row) => `Payment #${row.transition_id}, ${taka(row.amount)}`}
+          emptyTitle={filtered ? "No payments in this view" : "No payments yet"}
+          emptyText={filtered ? "Try a longer period or another tab." : "Payments appear when orders are paid or course fees are recorded."}
+        />
 
-      <Modal
-        show={showPaymentModal}
-        onHide={handleCloseModal}
-        centered
-        className="modern-modal"
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>Payment Details</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {selectedPayment && (
-            <div className="payment-details">
-              <Card className="border mb-4">
-                <Card.Header className="bg-light">
-                  <h5 className="mb-0">Basic Information</h5>
-                </Card.Header>
-                <Card.Body>
-                  <Row>
-                    <Col md={6}>
-                      <div className="mb-3">
-                        <label className="text-muted d-block mb-1">
-                          Transition ID
-                        </label>
-                        <span className="fw-medium">
-                          #{selectedPayment.transition_id}
-                        </span>
-                      </div>
-                      <div className="mb-3">
-                        <label className="text-muted d-block mb-1">
-                          Payment ID
-                        </label>
-                        <span className="fw-medium">
-                          {selectedPayment.payment_id}
-                        </span>
-                      </div>
-                    </Col>
-                    <Col md={6}>
-                      <div className="mb-3">
-                        <label className="text-muted d-block mb-1">
-                          {selectedPayment.source === 'course_invoice' ? 'Invoice No' : 'Order ID'}
-                        </label>
-                        <span className="fw-medium">
-                          {selectedPayment.source === 'course_invoice'
-                            ? selectedPayment.course_invoice_details?.invoice_no ?? '—'
-                            : selectedPayment.payment_details?.order_id ?? '—'}
-                        </span>
-                      </div>
-                      <div className="mb-3">
-                        <label className="text-muted d-block mb-1">Date</label>
-                        <span className="fw-medium">
-                          {new Date(
-                            selectedPayment.created_at
-                          ).toLocaleString()}
-                        </span>
-                      </div>
-                    </Col>
-                  </Row>
-                </Card.Body>
-              </Card>
+        <Pager page={page} lastPage={pagination.last_page || 1} onPage={setPage} perPage={limit} onPerPage={(n) => { setLimit(n); setPage(1); }} />
+      </ListCard>
 
-              <Card className="border">
-                <Card.Header className="bg-light">
-                  <h5 className="mb-0">
-                    {selectedPayment.source === 'course_invoice' ? 'Course Invoice Information' : 'Payment Information'}
-                  </h5>
-                </Card.Header>
-                <Card.Body>
-                  {selectedPayment.source === 'course_invoice' ? (
-                    !selectedPayment.course_invoice_details ? (
-                      <p className="text-muted mb-0">
-                        This transition's linked course invoice no longer exists, so no
-                        further details are available.
-                      </p>
-                    ) : (
-                      <>
-                        <Row>
-                          <Col md={6}>
-                            <div className="mb-3">
-                              <label className="text-muted d-block mb-1">Student</label>
-                              <span className="fw-medium">
-                                {selectedPayment.course_invoice_details.student_name}
-                              </span>
-                            </div>
-                            <div className="mb-3">
-                              <label className="text-muted d-block mb-1">Course</label>
-                              <span className="fw-medium">
-                                {selectedPayment.course_invoice_details.course_title ?? '—'}
-                              </span>
-                            </div>
-                          </Col>
-                          <Col md={6}>
-                            <div className="mb-3">
-                              <label className="text-muted d-block mb-1">Payment For</label>
-                              <span className="fw-medium">
-                                {capitalize(selectedPayment.course_invoice_details.payment_for)}
-                                {selectedPayment.course_invoice_details.month_number
-                                  ? ` (Month ${selectedPayment.course_invoice_details.month_number})`
-                                  : ''}
-                              </span>
-                            </div>
-                            <div className="mb-3">
-                              <label className="text-muted d-block mb-1">Payment Method</label>
-                              <span className="fw-medium">
-                                {capitalize(selectedPayment.course_invoice_details.payment_method)}
-                              </span>
-                            </div>
-                          </Col>
-                        </Row>
-                        <Row>
-                          <Col md={6}>
-                            <div className="mb-3">
-                              <label className="text-muted d-block mb-1">Invoice Amount</label>
-                              <span className="fw-medium">
-                                ৳{parseFloat(selectedPayment.course_invoice_details.amount).toLocaleString()}
-                              </span>
-                            </div>
-                            <div className="mb-3">
-                              <label className="text-muted d-block mb-1">Paid Amount</label>
-                              <span className="fw-medium text-success">
-                                ৳{parseFloat(selectedPayment.course_invoice_details.paid_amount).toLocaleString()}
-                              </span>
-                            </div>
-                          </Col>
-                          <Col md={6}>
-                            <div className="mb-3">
-                              <label className="text-muted d-block mb-1">Due Amount</label>
-                              <span
-                                className={`fw-medium ${
-                                  parseFloat(selectedPayment.course_invoice_details.due_amount) > 0
-                                    ? 'text-danger'
-                                    : 'text-success'
-                                }`}
-                              >
-                                ৳{parseFloat(selectedPayment.course_invoice_details.due_amount).toLocaleString()}
-                              </span>
-                            </div>
-                            <div className="mb-3">
-                              <label className="text-muted d-block mb-1">Status</label>
-                              <span
-                                className={`status-badge ${
-                                  selectedPayment.course_invoice_details.status === 'paid' ? 'active' : 'inactive'
-                                }`}
-                              >
-                                {capitalize(selectedPayment.course_invoice_details.status)}
-                              </span>
-                            </div>
-                          </Col>
-                        </Row>
-                        {selectedPayment.course_invoice_details.trx_id && (
-                          <Row>
-                            <Col md={6}>
-                              <div className="mb-3">
-                                <label className="text-muted d-block mb-1">Transaction ID</label>
-                                <span className="fw-medium">
-                                  {selectedPayment.course_invoice_details.trx_id}
-                                </span>
-                              </div>
-                            </Col>
-                          </Row>
-                        )}
-                      </>
-                    )
-                  ) : !selectedPayment.payment_details ? (
-                    <p className="text-muted mb-0">
-                      This transition's linked payment/order no longer exists, so no
-                      further payment details are available.
-                    </p>
-                  ) : (
-                    <>
-                      <Row>
-                        <Col md={6}>
-                          <div className="mb-3">
-                            <label className="text-muted d-block mb-1">
-                              Total Amount
-                            </label>
-                            <span className="fw-medium">
-                              ৳
-                              {parseFloat(
-                                selectedPayment.payment_details.total_amount
-                              ).toLocaleString()}
-                            </span>
-                          </div>
-                          <div className="mb-3">
-                            <label className="text-muted d-block mb-1">
-                              Paid Amount
-                            </label>
-                            <span className="fw-medium text-success">
-                              ৳
-                              {parseFloat(
-                                selectedPayment.payment_details.padi_amount
-                              ).toLocaleString()}
-                            </span>
-                          </div>
-                        </Col>
-                        <Col md={6}>
-                          <div className="mb-3">
-                            <label className="text-muted d-block mb-1">
-                              Due Amount
-                            </label>
-                            <span
-                              className={`fw-medium ${
-                                parseFloat(
-                                  selectedPayment.payment_details.due_amount
-                                ) > 0
-                                  ? "text-danger"
-                                  : "text-success"
-                              }`}
-                            >
-                              ৳
-                              {parseFloat(
-                                selectedPayment.payment_details.due_amount
-                              ).toLocaleString()}
-                            </span>
-                          </div>
-                          <div className="mb-3">
-                            <label className="text-muted d-block mb-1">
-                              Payment Type
-                            </label>
-                            <span className="fw-medium">
-                              {getPaymentTypeText(
-                                selectedPayment.payment_details.payment_type
-                              )}
-                            </span>
-                          </div>
-                        </Col>
-                      </Row>
-                      <Row>
-                        <Col md={6}>
-                          <div className="mb-3">
-                            <label className="text-muted d-block mb-1">
-                              Status
-                            </label>
-                            <span
-                              className={`status-badge ${
-                                selectedPayment.payment_details.status === "1"
-                                  ? "active"
-                                  : "inactive"
-                              }`}
-                            >
-                              {getStatusText(
-                                selectedPayment.payment_details.status
-                              )}
-                            </span>
-                          </div>
-                        </Col>
-                        {selectedPayment.payment_details.trxed && (
-                          <Col md={6}>
-                            <div className="mb-3">
-                              <label className="text-muted d-block mb-1">
-                                Transaction ID
-                              </label>
-                              <span className="fw-medium">
-                                {selectedPayment.payment_details.trxed}
-                              </span>
-                            </div>
-                          </Col>
-                        )}
-                      </Row>
-                      {selectedPayment.payment_details.phone && (
-                        <Row>
-                          <Col md={6}>
-                            <div className="mb-3">
-                              <label className="text-muted d-block mb-1">
-                                Phone
-                              </label>
-                              <span className="fw-medium">
-                                {selectedPayment.payment_details.phone}
-                              </span>
-                            </div>
-                          </Col>
-                        </Row>
-                      )}
-                    </>
-                  )}
-                </Card.Body>
-              </Card>
-            </div>
-          )}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={handleCloseModal}>
-            Close
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <Offcanvas show={!!open} onHide={() => setOpen(null)} placement="end" className="tx-panel">
+        {open && (
+          <>
+            <Offcanvas.Header closeButton>
+              <Offcanvas.Title as="h2" className="h5 mb-0">{taka(open.amount)} received</Offcanvas.Title>
+            </Offcanvas.Header>
+            <Offcanvas.Body>
+              <p className="text-muted small mb-3">{fullDate(open.created_at)} · payment #{open.transition_id}</p>
+              {!detail ? (
+                <p className="text-muted">The {isCourse(open) ? "course invoice" : "order"} behind this payment has been removed.</p>
+              ) : isCourse(open) ? (
+                <>
+                  <dl className="tx-details">
+                    <div><dt>Student</dt><dd>{detail.student_name || "—"}</dd></div>
+                    <div><dt>Course</dt><dd>{detail.course_title || "—"}</dd></div>
+                    <div><dt>For</dt><dd>{cap(detail.payment_for)}{detail.month_number ? ` (month ${detail.month_number})` : ""}</dd></div>
+                    <div><dt>Paid by</dt><dd>{cap(detail.payment_method)}{detail.trx_id ? ` · ${detail.trx_id}` : ""}</dd></div>
+                    <div><dt>Invoice</dt><dd>{taka(Number(detail.amount) - Number(detail.discount || 0))}</dd></div>
+                    <div><dt>Paid so far</dt><dd>{taka(detail.paid_amount)}</dd></div>
+                    <div><dt>Still due</dt><dd className={Number(detail.due_amount) > 0 ? "text-danger" : ""}>{Number(detail.due_amount) > 0 ? taka(detail.due_amount) : "Nothing"}</dd></div>
+                  </dl>
+                  <Link className="btn btn-outline-primary btn-sm" to={`/course-invoices/${detail.invoice_id}`}>Open invoice {detail.invoice_no}</Link>
+                </>
+              ) : (
+                <>
+                  <dl className="tx-details">
+                    <div><dt>Customer</dt><dd>{detail.customer_name || "—"}</dd></div>
+                    <div><dt>Order</dt><dd>{detail.invoice_code || `#${detail.order_id}`}</dd></div>
+                    <div><dt>Paid by</dt><dd>{ORDER_METHODS[Number(detail.payment_type)] || "—"}{detail.trxed ? ` · ${detail.trxed}` : ""}</dd></div>
+                    {detail.phone && <div><dt>Payment phone</dt><dd>{detail.phone}</dd></div>}
+                    <div><dt>Order total</dt><dd>{taka(detail.total_amount)}</dd></div>
+                    <div><dt>Paid so far</dt><dd>{taka(detail.padi_amount)}</dd></div>
+                    <div><dt>Still due</dt><dd className={Number(detail.due_amount) > 0 ? "text-danger" : ""}>{Number(detail.due_amount) > 0 ? taka(detail.due_amount) : "Nothing"}</dd></div>
+                  </dl>
+                  <Link className="btn btn-outline-primary btn-sm" to={`/orders/${detail.order_id}`}>Open order {detail.invoice_code || ""}</Link>
+                </>
+              )}
+            </Offcanvas.Body>
+          </>
+        )}
+      </Offcanvas>
     </div>
   );
 };
