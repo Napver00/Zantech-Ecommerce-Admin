@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useCallback, useEffect, useState } from "react";
+import { Navigate, useParams, useSearchParams } from "react-router-dom";
 import { Button, Form, Modal, Row, Col } from "react-bootstrap";
-import { FaPlus, FaChevronRight, FaTimes, FaPaperclip, FaUpload } from "react-icons/fa";
+import { FaPlus, FaChevronRight, FaTimes, FaPaperclip } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 import axiosInstance from "../../config/axios";
 import usePageTitle from "../../hooks/usePageTitle";
@@ -10,10 +10,10 @@ import { ListHeader, ListCard, ListToolbar, SearchBox, FilterTabs, ResultCount, 
 import { taka, shortDate } from "../../components/List/format";
 import "../../components/List/List.css";
 import "../Customers/CustomerDetail.css";
+import ExpensePanel, { ReceiptPicker } from "./ExpensePanel";
+import "../Transitions/Transitions.css";
 import "./Expenses.css";
 
-const MAX_MB = 3;
-const FILE_TYPES = ["image/jpeg", "image/png", "application/pdf"];
 const today = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -22,43 +22,13 @@ const today = () => {
 const SUGGESTED_TITLES = ["Office rent", "Electricity bill", "Internet bill", "Delivery charge", "Facebook ads", "Printing", "Transport", "Food and refreshments", "Salary", "Tools"];
 const EMPTY = { date: today(), title: "", amount: "", description: "" };
 
-/** Pick receipts: images or PDFs, checked before upload. */
-export const ReceiptPicker = ({ files, onChange, id = "ex-files" }) => {
-  const ref = useRef(null);
-  const add = (list) => {
-    const next = [];
-    [...list].forEach((f) => {
-      if (!FILE_TYPES.includes(f.type)) toast.error(`${f.name}: use JPG, PNG or PDF`);
-      else if (f.size > MAX_MB * 1024 * 1024) toast.error(`${f.name} is over ${MAX_MB} MB`);
-      else next.push(f);
-    });
-    onChange([...files, ...next]);
-  };
-  return (
-    <div className="ex-receipts-pick">
-      <input ref={ref} id={id} type="file" multiple accept={FILE_TYPES.join(",")} className="visually-hidden" onChange={(e) => { add(e.target.files); e.target.value = ""; }} />
-      <Button type="button" variant="outline-secondary" size="sm" onClick={() => ref.current?.click()}>
-        <FaUpload className="me-1" aria-hidden="true" />Add receipt
-      </Button>
-      <span className="text-muted small ms-2">JPG, PNG or PDF, up to {MAX_MB} MB each</span>
-      {files.length > 0 && (
-        <ul className="ex-file-list">
-          {files.map((f, i) => (
-            <li key={`${f.name}-${i}`}>
-              <FaPaperclip aria-hidden="true" />
-              <span className="text-truncate">{f.name}</span>
-              <button type="button" onClick={() => onChange(files.filter((_, k) => k !== i))} aria-label={`Remove ${f.name}`}><FaTimes aria-hidden="true" /></button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-};
-
 const Expenses = () => {
   usePageTitle("Expenses");
-  const navigate = useNavigate();
+  // The open expense lives in the address (?open=12), so links and the back button work.
+  const [params, setParams] = useSearchParams();
+  const openId = params.get("open");
+  const openExpense = (id) => setParams((p) => { const n = new URLSearchParams(p); n.set("open", id); return n; });
+  const closeExpense = () => setParams((p) => { const n = new URLSearchParams(p); n.delete("open"); return n; }, { replace: true });
   const [rows, setRows] = useState([]);
   const [totals, setTotals] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -203,7 +173,7 @@ const Expenses = () => {
           tableLoading={loading}
           loading={loading}
           renderActions={() => <FaChevronRight className="text-muted" aria-hidden="true" />}
-          onRowClick={(row) => navigate(`/expenses/${row.id}`)}
+          onRowClick={(row) => openExpense(row.id)}
           rowLabel={(row) => `Open ${row.title}, ${taka(row.amount)}`}
           emptyTitle={filtered ? "Nothing matches" : "No expenses yet"}
           emptyText={filtered ? "Try another search, tab or dates." : "Record rent, bills, ads and other spending here."}
@@ -211,6 +181,8 @@ const Expenses = () => {
         />
         <Pager page={page} lastPage={pagination.last_page || 1} onPage={setPage} perPage={limit} onPerPage={(n) => { setLimit(n); setPage(1); }} />
       </ListCard>
+
+      <ExpensePanel id={openId} onClose={closeExpense} onChanged={load} />
 
       <Modal show={adding} onHide={() => !saving && setAdding(false)} centered>
         <Form onSubmit={save} noValidate>
@@ -255,6 +227,12 @@ const Expenses = () => {
       </Modal>
     </div>
   );
+};
+
+/** Old /expenses/:id links open the list with that expense in the side panel. */
+export const ExpenseRedirect = () => {
+  const { id } = useParams();
+  return <Navigate to={`/expenses?open=${id}`} replace />;
 };
 
 export default Expenses;

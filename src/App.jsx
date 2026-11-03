@@ -16,8 +16,7 @@ import Suppliers from "./pages/Suppliers";
 import Challen from "./pages/Challen";
 import AddChallan from "./pages/Challen/AddChallan";
 import ViewChallan from "./pages/Challen/ViewChallan";
-import Expenses from "./pages/Expenses";
-import ViewExpense from "./pages/Expenses/ViewExpense";
+import Expenses, { ExpenseRedirect } from "./pages/Expenses";
 import Coupons from "./pages/Coupons";
 import Ratings from "./pages/Ratings";
 import Customers from "./pages/Customers";
@@ -160,7 +159,7 @@ const App = () => {
                         <Route path="/challans/add" element={<AddChallan />} />
                         <Route path="/challans/:id" element={<ViewChallan />} />
                         <Route path="/expenses" element={<Expenses />} />
-                        <Route path="/expenses/:id" element={<ViewExpense />} />
+                        <Route path="/expenses/:id" element={<ExpenseRedirect />} />
                         <Route path="/coupons" element={<Coupons />} />
                         <Route path="/ratings" element={<Ratings />} />
                         <Route path="/contact" element={<Contact />} />

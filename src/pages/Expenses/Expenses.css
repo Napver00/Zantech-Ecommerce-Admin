@@ -93,23 +93,6 @@
   font-size: 0.7rem;
 }
 
-.ex-side dl {
-  margin: 0;
-  display: grid;
-  gap: 0.75rem;
-}
-
-.ex-side dt {
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: var(--zt-muted);
-}
-
-.ex-side dd {
-  margin: 0;
-  color: var(--zt-ink);
-}
-
 .ex-receipt-grid {
   list-style: none;
   margin: 0 0 1rem;
@@ -187,4 +170,63 @@
   .ex-grid-2 {
     grid-template-columns: 1fr;
   }
+}
+
+/* Expense details side panel */
+.ex-panel {
+  width: min(480px, 100vw) !important;
+}
+
+.ex-panel .offcanvas-header {
+  align-items: flex-start;
+  border-bottom: 1px solid var(--zt-border);
+}
+
+.ex-panel-head {
+  min-width: 0;
+}
+
+.ex-panel-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.75rem;
+  font-size: 0.875rem;
+  color: var(--zt-muted);
+}
+
+.ex-panel-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.ex-panel-form .offcanvas-body {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.ex-panel-sub {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0 0 0.6rem;
+}
+
+.ex-panel .ex-receipt-grid {
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+}
+
+.ex-panel-facts {
+  margin: 1.5rem 0 0;
+}
+
+.ex-panel-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--zt-border);
+  background: #fff;
 }

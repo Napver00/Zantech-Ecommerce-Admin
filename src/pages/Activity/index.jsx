@@ -15,7 +15,7 @@ const TYPES = {
   order: { label: "Order", to: (id) => `/orders/${id}` },
   product: { label: "Product", to: (id) => `/products/${id}` },
   challan: { label: "Challan", to: (id) => `/challans/${id}` },
-  expense: { label: "Expense", to: (id) => `/expenses/${id}` },
+  expense: { label: "Expense", to: (id) => `/expenses?open=${id}` },
   coupon: { label: "Coupon", to: () => "/coupons" },
   category: { label: "Category", to: () => "/categories" },
   student: { label: "Student", to: (id) => `/students/${id}` },
