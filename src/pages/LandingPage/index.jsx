@@ -5,6 +5,8 @@ import { ListHeader } from "../../components/List/List";
 import "../../components/List/List.css";
 import "./Landing.css";
 import usePageTitle from "../../hooks/usePageTitle";
+import useRole from "../../hooks/useRole";
+import { canUse, LANDING_TAB_AREAS } from "../../config/access";
 
 import Projects from "./Projects";
 import Courses from "./Courses";
@@ -19,8 +21,12 @@ const SECTIONS = [
 
 const LandingPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const active = SECTIONS.some((s) => s.key === searchParams.get("tab")) ? searchParams.get("tab") : "projects";
-  usePageTitle(`${SECTIONS.find((s) => s.key === active).label} · Website`);
+  const role = useRole();
+  // Only the sections this role works on (a course manager sees courses and bootcamps).
+  const sections = SECTIONS.filter((s) => canUse(role, LANDING_TAB_AREAS[s.key]));
+  const asked = searchParams.get("tab");
+  const active = sections.some((s) => s.key === asked) ? asked : sections[0]?.key;
+  usePageTitle(`${sections.find((s) => s.key === active)?.label || "Website"} · Website`);
 
   return (
     <div className="lp-page">
@@ -34,8 +40,9 @@ const LandingPage = () => {
         }
       />
 
+      {sections.length > 1 && (
       <nav className="lp-sections" aria-label="Website sections">
-        {SECTIONS.map(({ key, label, hint, icon: Icon }) => (
+        {sections.map(({ key, label, hint, icon: Icon }) => (
           <button
             key={key}
             type="button"
@@ -53,6 +60,7 @@ const LandingPage = () => {
           </button>
         ))}
       </nav>
+      )}
 
       {active === "projects" && <Projects />}
       {active === "courses" && <Courses key="course" />}

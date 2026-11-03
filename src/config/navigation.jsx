@@ -29,6 +29,7 @@ import {
   MdFolderOpen,
   MdWorkspacePremium,
 } from "react-icons/md";
+import { canOpen } from "./access";
 
 /**
  * Single source of truth for app navigation — consumed by the Sidebar, the
@@ -142,7 +143,7 @@ export const NAV_SECTIONS = [
       {
         path: "/landing?tab=projects",
         icon: MdWeb,
-        label: "Projects & company",
+        label: "Projects",
         match: ["/landing/projects/"],
         keywords: "landing page main site company info about",
       },
@@ -193,6 +194,24 @@ export const FLAT_NAV_ITEMS = [
   ...NAV_SECTIONS.flatMap(leafItems),
   ...QUICK_CREATE.map((q) => ({ ...q, group: "Create", section: "Create" })),
 ];
+
+const splitPath = (path) => {
+  const [pathname, query = ""] = path.split("?");
+  return [pathname, query ? `?${query}` : ""];
+};
+const allowed = (role, path) => canOpen(role, ...splitPath(path));
+
+/** The menu sections with only the pages this role may open (empty sections dropped). */
+export const navSectionsFor = (role) =>
+  NAV_SECTIONS.map((section) => ({
+    ...section,
+    items: section.items
+      .map((item) => (item.subItems ? { ...item, subItems: item.subItems.filter((sub) => allowed(role, sub.path)) } : item))
+      .filter((item) => (item.subItems ? item.subItems.length > 0 : allowed(role, item.path))),
+  })).filter((section) => section.items.length > 0);
+
+/** FLAT_NAV_ITEMS for this role. */
+export const flatNavFor = (role) => FLAT_NAV_ITEMS.filter((item) => allowed(role, item.path));
 
 /**
  * Finds the nav entry for the current URL: exact path (+ ?tab) first, then the

@@ -59,11 +59,21 @@ import ViewStudent from "./pages/Students/ViewStudent";
 import CommandPalette from "./components/CommandPalette";
 import PageTrail from "./components/PageTrail";
 import MobileTabBar from "./components/MobileTabBar";
+import { AccessGate } from "./components/NoAccess";
+import useRole, { refreshStoredUser } from "./hooks/useRole";
+import { homeFor } from "./config/access";
 
 const PrivateRoute = ({ children }) => {
   const token = localStorage.getItem("token");
+  // Pick up a role an admin changed since this login.
+  React.useEffect(() => {
+    if (token) refreshStoredUser();
+  }, [token]);
   return token ? children : <Navigate to="/login" />;
 };
+
+/** "/" opens each role's own start page. */
+const HomeRedirect = () => <Navigate to={homeFor(useRole())} replace />;
 
 const App = () => {
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
@@ -117,11 +127,9 @@ const App = () => {
                     </div>
                     <div className="contentwrapper">
                       <PageTrail />
+                      <AccessGate>
                       <Routes>
-                        <Route
-                          path="/"
-                          element={<Navigate to="/dashboard" />}
-                        />
+                        <Route path="/" element={<HomeRedirect />} />
                         <Route path="/dashboard" element={<Dashboard />} />
                         <Route path="/analytics" element={<Analytics />} />
                         <Route path="/profile" element={<Profile />} />
@@ -211,6 +219,7 @@ const App = () => {
                         <Route path="/certificates/:id/edit" element={<CertificateForm />} />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
+                      </AccessGate>
                     </div>
                   </div>
                 </>

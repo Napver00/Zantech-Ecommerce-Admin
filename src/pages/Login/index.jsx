@@ -7,6 +7,8 @@ import logo from "../../assets/zantechLogo.png";
 import { authService } from "../../services/api";
 import "./Login.css";
 import usePageTitle from "../../hooks/usePageTitle";
+import { announceUserChange } from "../../hooks/useRole";
+import { homeFor } from "../../config/access";
 
 const HIGHLIGHTS = [
   { icon: ShoppingBag, text: "Store orders, products & stock" },
@@ -46,9 +48,11 @@ const Login = () => {
 
       localStorage.setItem("user", JSON.stringify(response.data.user));
       localStorage.setItem("token", response.data.token);
+      announceUserChange();
 
       toast.success("Login successful!");
-      navigate("/dashboard");
+      // Each role starts on its own main page
+      navigate(homeFor(response.data.user?.role || response.data.user?.type));
     } catch (error) {
       toast.error(error.message || "Login failed. Please try again.");
     } finally {

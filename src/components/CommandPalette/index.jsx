@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { MdSearch, MdClose, MdSubdirectoryArrowLeft } from "react-icons/md";
-import { FLAT_NAV_ITEMS } from "../../config/navigation";
+import { flatNavFor } from "../../config/navigation";
+import useRole from "../../hooks/useRole";
 import "./CommandPalette.css";
 
 const CommandPalette = ({ show, onClose }) => {
@@ -9,19 +10,21 @@ const CommandPalette = ({ show, onClose }) => {
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef(null);
+  const role = useRole();
 
   const results = useMemo(() => {
+    const items = flatNavFor(role);
     const q = query.trim().toLowerCase();
     // Create shortcuts first, then every page
     const ordered = [
-      ...FLAT_NAV_ITEMS.filter((i) => i.section === "Create"),
-      ...FLAT_NAV_ITEMS.filter((i) => i.section !== "Create"),
+      ...items.filter((i) => i.section === "Create"),
+      ...items.filter((i) => i.section !== "Create"),
     ];
     if (!q) return ordered;
     return ordered.filter((item) =>
       `${item.label} ${item.group} ${item.keywords || ""}`.toLowerCase().includes(q)
     );
-  }, [query]);
+  }, [query, role]);
 
   useEffect(() => {
     setActiveIndex(0);

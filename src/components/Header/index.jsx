@@ -6,6 +6,8 @@ import { format, formatDistanceToNow } from "date-fns";
 import axiosInstance from "../../config/axios";
 import logo from "../../assets/zantechLogo.png";
 import "./Header.css";
+import useRole from "../../hooks/useRole";
+import { canUse, roleLabel } from "../../config/access";
 
 const greeting = () => {
   const h = new Date().getHours();
@@ -19,17 +21,20 @@ const Header = ({ onToggleSidebar, onOpenSearch }) => {
   const [user, setUser] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [unseenCount, setUnseenCount] = useState(0);
+  const role = useRole();
+  // The bell shows new course registrations, so only roles that handle them poll for it.
+  const seesRegistrations = canUse(role, "course");
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
     if (userData) {
       setUser(JSON.parse(userData));
     }
-  }, []);
+  }, [role]);
 
   // New course registrations from the website (polled; refreshed when one is reviewed)
   const fetchNotifications = useCallback(async () => {
-    if (!localStorage.getItem("token")) return;
+    if (!localStorage.getItem("token") || !seesRegistrations) return;
     try {
       const res = await axiosInstance.get("/course-registrations/notifications");
       const d = res.data.data || {};
@@ -48,7 +53,7 @@ const Header = ({ onToggleSidebar, onOpenSearch }) => {
     } catch {
       // keep the last known state; the next poll retries
     }
-  }, []);
+  }, [seesRegistrations]);
 
   useEffect(() => {
     fetchNotifications();
@@ -114,7 +119,8 @@ const Header = ({ onToggleSidebar, onOpenSearch }) => {
         <button className="action-button header-search-icon-only" onClick={onOpenSearch} aria-label="Search pages">
           <Search size={20} />
         </button>
-        {/* Notifications */}
+        {/* Notifications: new course registrations */}
+        {seesRegistrations && (
         <Dropdown align="end">
           <Dropdown.Toggle as={CustomToggle}>
             <div className="action-button">
@@ -162,6 +168,7 @@ const Header = ({ onToggleSidebar, onOpenSearch }) => {
             </Dropdown.Item>
           </Dropdown.Menu>
         </Dropdown>
+        )}
 
         {/* User Profile */}
         <Dropdown align="end">
@@ -176,7 +183,7 @@ const Header = ({ onToggleSidebar, onOpenSearch }) => {
               </div>
               <div className="user-info">
                 <span className="user-name">{user?.name || "Guest"}</span>
-                <span className="user-role">{user?.type || "User"}</span>
+                <span className="user-role">{roleLabel(role)}</span>
               </div>
             </div>
           </Dropdown.Toggle>

@@ -10,7 +10,8 @@ import {
 } from "react-icons/md";
 import { Collapse } from "react-bootstrap";
 import { useOrderContext } from "../../context/OrderContext";
-import { NAV_SECTIONS, FLAT_NAV_ITEMS, findActiveNav } from "../../config/navigation";
+import { navSectionsFor, flatNavFor, findActiveNav } from "../../config/navigation";
+import useRole from "../../hooks/useRole";
 import logo from "../../assets/zantechLogo.png";
 import "./Sidebar.css";
 
@@ -38,6 +39,10 @@ const Sidebar = ({ onClose }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { statusSummary } = useOrderContext();
+  const role = useRole();
+  // Only the pages this staff member's role can open
+  const sections = useMemo(() => navSectionsFor(role), [role]);
+  const navItems = useMemo(() => flatNavFor(role), [role]);
   const [search, setSearch] = useState("");
   const [pins, setPins] = useState(() => readJson(PINS_KEY, []));
   const [collapsed, setCollapsed] = useState(() => readJson(COLLAPSED_KEY, {}));
@@ -89,13 +94,13 @@ const Sidebar = ({ onClose }) => {
 
   // Search: show a flat list of matching pages (labels + keywords)
   const searchResults = useMemo(
-    () => (isSearching ? FLAT_NAV_ITEMS.filter((i) => i.section !== "Create" && textOf(i).includes(query)) : []),
-    [isSearching, query]
+    () => (isSearching ? navItems.filter((i) => i.section !== "Create" && textOf(i).includes(query)) : []),
+    [isSearching, query, navItems]
   );
 
   const pinnedItems = useMemo(
-    () => pins.map((p) => FLAT_NAV_ITEMS.find((i) => i.path === p && i.section !== "Create")).filter(Boolean),
-    [pins]
+    () => pins.map((p) => navItems.find((i) => i.path === p && i.section !== "Create")).filter(Boolean),
+    [pins, navItems]
   );
 
   const handleSearchKeyDown = (e) => {
@@ -231,7 +236,7 @@ const Sidebar = ({ onClose }) => {
               </div>
             )}
 
-            {NAV_SECTIONS.map((section) => {
+            {sections.map((section) => {
               const holdsActive = section.items.some((i) =>
                 i.subItems ? i.subItems.some((s) => isActive(s)) : isActive(i)
               );

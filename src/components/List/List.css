@@ -274,3 +274,11 @@
 }
 .star-picker button.is-on { color: #e8a317; }
 .star-picker button:focus-visible { outline: 2px solid var(--zt-primary, #0e7c86); outline-offset: 1px; }
+
+/* Staff page: what each role covers */
+.staff-roles {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.6rem; margin: 0 0 1.25rem;
+}
+.staff-roles > div { padding: 0.75rem 0.9rem; border: 1px solid var(--zt-border); border-radius: var(--zt-radius); background: var(--zt-surface); }
+.staff-roles dt { font-size: 0.875rem; font-weight: 700; color: var(--zt-ink); }
+.staff-roles dd { margin: 0.15rem 0 0; font-size: 0.8rem; color: var(--zt-muted); }

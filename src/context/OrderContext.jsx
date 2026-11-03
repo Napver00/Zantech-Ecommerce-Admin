@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axiosInstance from '../config/axios';
+import { canUse } from '../config/access';
+import useRole from '../hooks/useRole';
 
 const OrderContext = createContext();
 
@@ -20,12 +22,16 @@ export const OrderProvider = ({ children }) => {
     refunded: 0
   });
 
+  const role = useRole();
+  const canSeeOrders = canUse(role, 'store');
+
   const fetchStatusSummary = async () => {
     const token = localStorage.getItem('token');
-    if (!token) return;
+    if (!token || !canSeeOrders) return;
 
     try {
-      const response = await axiosInstance.get('/orders');
+      // One row is enough: the counts come back with any page.
+      const response = await axiosInstance.get('/orders', { params: { page: 1, limit: 1 } });
       if (response.data.success && response.data.status_summary) {
         setStatusSummary(response.data.status_summary);
       }
@@ -36,12 +42,14 @@ export const OrderProvider = ({ children }) => {
     }
   };
 
-  // Fetch status summary every 30 seconds
+  // Fetch status summary every 30 seconds (store roles only)
   useEffect(() => {
+    if (!canSeeOrders) return undefined;
     fetchStatusSummary();
     const interval = setInterval(fetchStatusSummary, 30000);
     return () => clearInterval(interval);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canSeeOrders]);
 
   const value = {
     statusSummary,

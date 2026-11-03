@@ -1,450 +1,287 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { FaPlus, FaSearch, FaSpinner, FaTimes, FaTrash } from 'react-icons/fa';
-import { toast } from 'react-hot-toast';
-import axiosInstance from '../../config/axios';
-import { Card, Form, InputGroup, Button, Pagination, Row, Col } from 'react-bootstrap';
-import Loading from '../../components/Loading';
-import usePageTitle from '../../hooks/usePageTitle';
-
+import React, { useEffect, useMemo, useState } from "react";
+import { FaPlus, FaTrash } from "react-icons/fa";
+import { toast } from "react-hot-toast";
+import { Button, Form, Modal, Row, Col } from "react-bootstrap";
+import axiosInstance from "../../config/axios";
+import usePageTitle from "../../hooks/usePageTitle";
+import CommonTable from "../../components/Common/CommonTable";
+import { ListHeader, ListCard, ListToolbar, SearchBox, ResultCount, FilterTabs, Pill } from "../../components/List/List";
+import { ChoiceGroup } from "../../components/Editor/Editor";
+import "../../components/Editor/Editor.css";
+import "../../components/List/List.css";
 import confirmDialog from "../../utils/confirmDialog";
+import { ROLES, ASSIGNABLE_ROLES, roleLabel } from "../../config/access";
+
+const EMPTY = { name: "", email: "", phone: "", password: "", address: "", type: "stuff" };
+
+const roleOf = (s) => s.role || s.type;
+const myId = () => {
+  try {
+    return JSON.parse(localStorage.getItem("user") || "{}").id;
+  } catch {
+    return null;
+  }
+};
+
 const Staff = () => {
-  usePageTitle('Manage Staff');
-  const navigate = useNavigate();
+  usePageTitle("Staff");
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
   const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    password: "",
-    address: "",
-    type: "member", // Added type field with default value
-  });
-  const [searchParams, setSearchParams] = useState({
-    search: "",
-    page: 1,
-    limit: 10,
-  });
-  const [pagination, setPagination] = useState({
-    total_rows: 0,
-    current_page: 1,
-    per_page: 10,
-    total_pages: 1,
-    has_more_pages: false,
-  });
-  const [searchTimeout, setSearchTimeout] = useState(null);
-  const [isSearching, setIsSearching] = useState(false);
+  const [form, setForm] = useState(EMPTY);
+  const [saving, setSaving] = useState(false);
+  const [busy, setBusy] = useState({});
+  const me = myId();
 
-  useEffect(() => {
-    fetchStaff();
-  }, [searchParams.page, searchParams.limit]);
-
-  useEffect(() => {
-    if (searchTimeout) {
-      clearTimeout(searchTimeout);
-    }
-
-    const timeoutId = setTimeout(() => {
-      setIsSearching(true);
-      fetchStaff(1);
-    }, 500);
-
-    setSearchTimeout(timeoutId);
-
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams.search]);
-
-  const fetchStaff = async (page = searchParams.page) => {
-    setLoading(true);
+  const load = async () => {
     try {
-      const params = {
-        page,
-        limit: searchParams.limit,
-        ...(searchParams.search && { search: searchParams.search }),
-      };
-      const response = await axiosInstance.get("/stuff", { params });
-      const result = response.data;
-
-      if (!result.success) {
-        throw new Error(result.message || "Failed to fetch staff");
-      }
-
-      setStaff(result.data);
-      setPagination(
-        result.pagination || {
-          total_rows: result.data.length,
-          current_page: page,
-          per_page: searchParams.limit,
-          total_pages: Math.ceil(result.data.length / searchParams.limit),
-          has_more_pages: result.data.length > page * searchParams.limit,
-        }
-      );
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to fetch staff");
+      const res = await axiosInstance.get("/stuff");
+      setStaff(res.data?.data || []);
+    } catch (err) {
+      // The API answers 404 when there are no staff yet
+      if (err.response?.status !== 404) toast.error(err.response?.data?.message || "Couldn't load staff");
       setStaff([]);
     } finally {
       setLoading(false);
-      setIsSearching(false);
     }
   };
 
-  const handleSearch = (e) => {
-    const { value } = e.target;
-    setSearchParams((prev) => ({
-      ...prev,
-      search: value,
-      page: 1,
-    }));
+  useEffect(() => {
+    load();
+  }, []);
+
+  // A handful of people, so search and the role filter run here.
+  const shown = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return staff.filter(
+      (s) =>
+        (!roleFilter || roleOf(s) === roleFilter) &&
+        (!q || [s.name, s.email, s.phone].some((v) => String(v || "").toLowerCase().includes(q)))
+    );
+  }, [staff, search, roleFilter]);
+
+  const counts = useMemo(() => staff.reduce((c, s) => ({ ...c, [roleOf(s)]: (c[roleOf(s)] || 0) + 1 }), {}), [staff]);
+  const tabs = [
+    { value: "", label: "Everyone", count: staff.length },
+    ...ASSIGNABLE_ROLES.filter((r) => counts[r] || r !== "member").map((r) => ({ value: r, label: ROLES[r].label, count: counts[r] || 0 })),
+  ];
+
+  const changeRole = async (s, role) => {
+    if (role === roleOf(s)) return;
+    if (!(await confirmDialog(`Make ${s.name} a ${roleLabel(role)}? ${ROLES[role].hint}.`))) return;
+    setBusy((b) => ({ ...b, [s.id]: true }));
+    try {
+      await axiosInstance.put(`/stuff/role/${s.id}`, { role });
+      setStaff((list) => list.map((x) => (x.id === s.id ? { ...x, role, type: role } : x)));
+      toast.success(`${s.name} is now a ${roleLabel(role)}`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Couldn't change the role");
+    } finally {
+      setBusy((b) => ({ ...b, [s.id]: false }));
+    }
   };
 
-  const handlePageChange = (page) => {
-    setSearchParams((prev) => ({
-      ...prev,
-      page,
-    }));
+  const toggleStatus = async (s) => {
+    setBusy((b) => ({ ...b, [s.id]: true }));
+    try {
+      await axiosInstance.patch(`/users/toggle-status/${s.id}`);
+      setStaff((list) => list.map((x) => (x.id === s.id ? { ...x, status: x.status === 1 ? 0 : 1 } : x)));
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Couldn't change that");
+    } finally {
+      setBusy((b) => ({ ...b, [s.id]: false }));
+    }
   };
 
-  const handleLimitChange = (e) => {
-    const limit = parseInt(e.target.value);
-    setSearchParams((prev) => ({
-      ...prev,
-      limit,
-      page: 1,
-    }));
+  const remove = async (s) => {
+    if (!(await confirmDialog(`Delete ${s.name}'s staff account? They can no longer sign in to the admin.`))) return;
+    try {
+      await axiosInstance.delete(`/stuff/delete/${s.id}`);
+      setStaff((list) => list.filter((x) => x.id !== s.id));
+      toast.success("Staff account deleted");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Couldn't delete the account");
+    }
   };
 
-  const openAddModal = () => {
-    setFormData({ 
-      name: "", 
-      email: "", 
-      phone: "", 
-      password: "", 
-      address: "", 
-      type: "member" // Reset with default type
-    });
-    setShowModal(true);
-  };
-
-  const closeModal = () => {
-    setShowModal(false);
-    setFormData({ 
-      name: "", 
-      email: "", 
-      phone: "", 
-      password: "", 
-      address: "", 
-      type: "member" 
-    });
-  };
-
-  const handleSubmit = async (e) => {
+  const submit = async (e) => {
     e.preventDefault();
+    setSaving(true);
     try {
-      const response = await axiosInstance.post("/register", formData);
-      if (response.data.success) {
-        toast.success(response.data.message || "Staff added successfully");
-        closeModal();
-        fetchStaff(1);
-      } else {
-        throw new Error(response.data.message || "Failed to add staff");
-      }
-    } catch (error) {
-      const errorMessage = error.response?.data?.message ||
-        error.response?.data?.errors ?
-          Object.values(error.response.data.errors).flat().join(', ') :
-          error.message ||
-          "Failed to add staff";
-     
-      toast.error(errorMessage);
-     
-      if (error.response?.status === 422 || error.response?.status === 400) {
-        return;
-      }
-     
-      closeModal();
+      await axiosInstance.post("/register", form);
+      toast.success(`${form.name} added as ${roleLabel(form.type)}`);
+      setShowModal(false);
+      setForm(EMPTY);
+      load();
+    } catch (err) {
+      const errors = err.response?.data?.errors;
+      toast.error(
+        errors && typeof errors === "object"
+          ? Object.values(errors).flat().join(" ")
+          : err.response?.data?.message || "Couldn't add the staff member"
+      );
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleDeleteStaff = async (id) => {
-    if (await confirmDialog("Are you sure you want to delete this staff member?")) {
-      try {
-        await axiosInstance.delete(`/stuff/delete/${id}`);
-        toast.success("Staff member deleted successfully");
-        fetchStaff();
-      } catch (error) {
-        toast.error(error.response?.data?.message || "Failed to delete staff member");
-      }
-    }
-  };
+  const headers = [
+    {
+      key: "name",
+      label: "Person",
+      render: (row) => (
+        <>
+          <span className="ls-cell-main">{row.name}{row.id === me && <span className="ls-cell-sub d-inline ms-2">(you)</span>}</span>
+          <span className="ls-cell-sub">{row.email}{row.phone ? ` · ${row.phone}` : ""}</span>
+        </>
+      ),
+    },
+    {
+      key: "role",
+      label: "Role",
+      render: (row) => (
+        <Form.Select
+          size="sm"
+          value={roleOf(row)}
+          disabled={row.id === me || !!busy[row.id]}
+          onChange={(e) => changeRole(row, e.target.value)}
+          aria-label={`Role of ${row.name}`}
+          title={row.id === me ? "Another admin has to change your role" : ROLES[roleOf(row)]?.hint}
+          style={{ maxWidth: 200 }}
+        >
+          {ASSIGNABLE_ROLES.filter((r) => r !== "member" || roleOf(row) === "member").map((r) => (
+            <option key={r} value={r}>{ROLES[r].label}</option>
+          ))}
+        </Form.Select>
+      ),
+    },
+    {
+      key: "status",
+      label: "Can sign in",
+      render: (row) =>
+        row.id === me ? (
+          <Pill tone="good">Active</Pill>
+        ) : (
+          <Form.Check
+            type="switch"
+            id={`staff-active-${row.id}`}
+            checked={row.status === 1}
+            disabled={!!busy[row.id]}
+            onChange={() => toggleStatus(row)}
+            label={<span className="small text-muted">{row.status === 1 ? "Active" : "Turned off"}</span>}
+          />
+        ),
+    },
+  ];
 
-  const handleToggleStatus = async (id) => {
-    try {
-      await axiosInstance.patch(`/users/toggle-status/${id}`);
-      toast.success("Staff status updated successfully");
-      fetchStaff();
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to update staff status");
-    }
-  };
-
-  if (loading && !staff.length) {
-    return <Loading />;
-  }
+  const renderActions = (row) =>
+    row.id === me ? null : (
+      <Button variant="outline-danger" size="sm" onClick={() => remove(row)} title="Delete" aria-label={`Delete ${row.name}`}>
+        <FaTrash />
+      </Button>
+    );
 
   return (
-    <div className="customers-container">
-      <Card className="modern-card">
-        <Card.Body className="p-4">
-          <div className="d-flex justify-content-between align-items-center mb-4">
-            <div>
-              <h2 className="page-title mb-1">Staff</h2>
-              <p className="text-muted mb-0">Manage and track all your staff</p>
-            </div>
-            <Button
-              variant="primary"
-              onClick={openAddModal}
-              className="create-customer-btn"
-            >
-              <FaPlus className="me-2" /> Add Staff
-            </Button>
-          </div>
+    <div className="staff-page">
+      <ListHeader
+        title="Staff"
+        subtitle="Who can sign in to this admin, and what each person can use."
+        actions={<Button onClick={() => { setForm(EMPTY); setShowModal(true); }}><FaPlus className="me-2" aria-hidden="true" />Add staff</Button>}
+      />
 
-          <div className="filters-section mb-4">
+      <dl className="staff-roles">
+        {["admin", "stuff", "course_manager", "content_manager"].map((r) => (
+          <div key={r}>
+            <dt>{ROLES[r].label}</dt>
+            <dd>{ROLES[r].hint}</dd>
+          </div>
+        ))}
+      </dl>
+
+      <ListCard>
+        <FilterTabs label="Filter staff by role" value={roleFilter} onChange={setRoleFilter} tabs={tabs} />
+        <ListToolbar end={<ResultCount total={shown.length} perPage={Math.max(1, shown.length)} noun="people" />}>
+          <SearchBox value={search} onChange={setSearch} placeholder="Search by name, email or phone" />
+        </ListToolbar>
+        <CommonTable
+          headers={headers}
+          data={shown}
+          tableLoading={loading}
+          loading={loading}
+          renderActions={renderActions}
+          emptyTitle={search || roleFilter ? "Nobody matches" : "No staff yet"}
+          emptyText={search || roleFilter ? "Try another name or role." : "Add the people who run the store, courses and website."}
+        />
+      </ListCard>
+
+      <Modal show={showModal} onHide={() => !saving && setShowModal(false)} centered size="lg">
+        <Form onSubmit={submit}>
+          <Modal.Header closeButton>
+            <Modal.Title as="h2" className="h5 mb-0">Add staff</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <Form.Group className="mb-3">
+              <Form.Label>Role</Form.Label>
+              <ChoiceGroup
+                name="staff-role"
+                value={form.type}
+                onChange={(v) => setForm((f) => ({ ...f, type: v }))}
+                columns={2}
+                options={["stuff", "course_manager", "content_manager", "admin"].map((r) => ({ value: r, label: ROLES[r].label, hint: ROLES[r].hint }))}
+              />
+            </Form.Group>
             <Row className="g-3">
-              <Col md={6}>
-                <div className="search-box">
-                  <InputGroup>
-                    <InputGroup.Text className="search-icon">
-                      {isSearching ? <FaSpinner className="spinner" /> : <FaSearch />}
-                    </InputGroup.Text>
-                    <Form.Control
-                      type="text"
-                      placeholder="Search staff..."
-                      value={searchParams.search}
-                      onChange={handleSearch}
-                      className="search-input"
-                      disabled={loading}
-                    />
-                    {searchParams.search && !isSearching && (
-                      <Button
-                        variant="link"
-                        className="clear-search"
-                        onClick={() => {
-                          setSearchParams((prev) => ({ ...prev, search: "" }));
-                          fetchStaff(1);
-                        }}
-                        disabled={loading}
-                      >
-                        <FaTimes />
-                      </Button>
-                    )}
-                  </InputGroup>
-                </div>
+              <Col sm={6}>
+                <Form.Group controlId="staff-name">
+                  <Form.Label>Full name</Form.Label>
+                  <Form.Control value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} required />
+                </Form.Group>
               </Col>
-              <Col md={2}>
-                <Form.Select
-                  value={searchParams.limit}
-                  onChange={handleLimitChange}
-                  className="limit-select"
-                  disabled={loading}
-                >
-                  <option value="5">5 per page</option>
-                  <option value="10">10 per page</option>
-                  <option value="20">20 per page</option>
-                  <option value="50">50 per page</option>
-                </Form.Select>
-              </Col>
-            </Row>
-          </div>
-
-          <div className="table-container">
-            <div className="table-responsive">
-              <table className="table table-hover modern-table">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Phone</th>
-                    <th>Address</th>
-                    <th>Staff Type</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {staff.map((staffMember) => (
-                    <tr key={staffMember.id}>
-                      <td className="fw-medium">#{staffMember.id}</td>
-                      <td>{staffMember.name}</td>
-                      <td>{staffMember.email}</td>
-                      <td>{staffMember.phone}</td>
-                      <td>{staffMember.address || "N/A"}</td>
-                      <td>{staffMember.type.toUpperCase()}</td>
-                      <td>
-                        <Button
-                          variant={staffMember.status === 1 ? "success" : "danger"}
-                          size="sm"
-                          onClick={() => handleToggleStatus(staffMember.id)}
-                        >
-                          {staffMember.status === 1 ? "Active" : "Inactive"}
-                        </Button>
-                      </td>
-                      <td>
-                        <Button
-                          variant="outline-danger"
-                          size="sm"
-                          onClick={() => handleDeleteStaff(staffMember.id)}
-                        >
-                          <FaTrash />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {pagination.total_pages > 1 && (
-            <div className="pagination-container mt-4">
-              <Pagination className="modern-pagination">
-                <Pagination.Prev
-                  onClick={() => handlePageChange(pagination.current_page - 1)}
-                  disabled={pagination.current_page === 1}
-                />
-                {[...Array(pagination.total_pages)].map((_, index) => (
-                  <Pagination.Item
-                    key={index + 1}
-                    active={index + 1 === pagination.current_page}
-                    onClick={() => handlePageChange(index + 1)}
-                  >
-                    {index + 1}
-                  </Pagination.Item>
-                ))}
-                <Pagination.Next
-                  onClick={() => handlePageChange(pagination.current_page + 1)}
-                  disabled={!pagination.has_more_pages}
-                />
-              </Pagination>
-            </div>
-          )}
-        </Card.Body>
-      </Card>
-
-      {/* Add Staff Modal */}
-      {showModal && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3>Add New Staff</h3>
-              <button className="btn-close" onClick={closeModal} />
-            </div>
-            <form onSubmit={handleSubmit}>
-              <div className="modal-body">
-                <div className="mb-3">
-                  <label className="form-label">Name</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Email</label>
-                  <input
-                    type="email"
-                    className="form-control"
-                    value={formData.email}
-                    onChange={(e) =>
-                      setFormData({ ...formData, email: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Phone</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={formData.phone}
-                    onChange={(e) =>
-                      setFormData({ ...formData, phone: e.target.value })
-                    }
+              <Col sm={6}>
+                <Form.Group controlId="staff-phone">
+                  <Form.Label>Phone</Form.Label>
+                  <Form.Control
+                    type="tel"
+                    inputMode="numeric"
+                    placeholder="01XXXXXXXXX"
+                    value={form.phone}
+                    onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value.replace(/\D/g, "").slice(0, 11) }))}
                     required
                     pattern="[0-9]{11}"
-                    title="Phone number must be exactly 11 digits"
+                    title="11 digits, for example 01712345678"
                   />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Staff Type</label>
-                  <Form.Select
-                    value={formData.type}
-                    onChange={(e) =>
-                      setFormData({ ...formData, type: e.target.value })
-                    }
-                    required
-                    className="form-control"
-                  >
-                    <option value="admin">Admin</option>
-                    <option value="staff">Staff</option>
-                    <option value="member">Member</option>
-                  </Form.Select>
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Password</label>
-                  <input
+                </Form.Group>
+              </Col>
+              <Col sm={6}>
+                <Form.Group controlId="staff-email">
+                  <Form.Label>Email (they sign in with this)</Form.Label>
+                  <Form.Control type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} required />
+                </Form.Group>
+              </Col>
+              <Col sm={6}>
+                <Form.Group controlId="staff-password">
+                  <Form.Label>Password</Form.Label>
+                  <Form.Control
                     type="password"
-                    className="form-control"
-                    value={formData.password}
-                    onChange={(e) =>
-                      setFormData({ ...formData, password: e.target.value })
-                    }
+                    autoComplete="new-password"
+                    value={form.password}
+                    onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
                     required
-                    minLength="8"
+                    minLength={8}
                   />
-                  <small className="text-muted">
-                    Password must be at least 8 characters long
-                  </small>
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Address</label>
-                  <textarea
-                    className="form-control"
-                    value={formData.address}
-                    onChange={(e) =>
-                      setFormData({ ...formData, address: e.target.value })
-                    }
-                    rows="3"
-                  />
-                </div>
-              </div>
-              <div className="modal-footer">
-                <Button
-                  variant="secondary"
-                  onClick={closeModal}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" variant="primary">
-                  Add Staff
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+                  <Form.Text>At least 8 characters. Share it with them privately.</Form.Text>
+                </Form.Group>
+              </Col>
+            </Row>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="outline-secondary" onClick={() => setShowModal(false)} disabled={saving}>Cancel</Button>
+            <Button type="submit" disabled={saving}>{saving ? "Adding…" : `Add ${roleLabel(form.type).toLowerCase()}`}</Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
     </div>
   );
 };
