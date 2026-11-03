@@ -25,12 +25,16 @@ const Header = ({ onToggleSidebar, onOpenSearch }) => {
   // The bell shows new course registrations, so only roles that handle them poll for it.
   const seesRegistrations = canUse(role, "course");
 
+  // The saved login; reread when it changes (role refresh, profile edits).
   useEffect(() => {
-    const userData = localStorage.getItem("user");
-    if (userData) {
-      setUser(JSON.parse(userData));
-    }
-  }, [role]);
+    const read = () => {
+      const userData = localStorage.getItem("user");
+      if (userData) setUser(JSON.parse(userData));
+    };
+    read();
+    window.addEventListener("zt:user", read);
+    return () => window.removeEventListener("zt:user", read);
+  }, []);
 
   // New course registrations from the website (polled; refreshed when one is reviewed)
   const fetchNotifications = useCallback(async () => {

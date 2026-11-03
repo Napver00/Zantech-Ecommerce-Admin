@@ -4,11 +4,15 @@ import { Card, Button } from "react-bootstrap";
 import { FaWallet } from "react-icons/fa";
 import usePageTitle from "../../hooks/usePageTitle";
 import RegistrationsPanel from "./RegistrationsPanel";
+import useRole from "../../hooks/useRole";
+import { canUse } from "../../config/access";
 
 const CourseRegistrations = () => {
   usePageTitle("Course Registrations");
   const [searchParams] = useSearchParams();
   const openId = searchParams.get("id");
+  // Payment methods are set up by admins only.
+  const canEditPaymentMethods = canUse(useRole(), "admin");
 
   return (
     <div className="students-container">
@@ -21,9 +25,11 @@ const CourseRegistrations = () => {
                 Enrollments submitted from the website. Verify the payment, then approve to enroll the student and create their invoice.
               </p>
             </div>
-            <Button as={Link} to="/payment-methods" variant="outline-primary">
-              <FaWallet className="me-2" /> Payment Methods
-            </Button>
+            {canEditPaymentMethods && (
+              <Button as={Link} to="/payment-methods" variant="outline-primary">
+                <FaWallet className="me-2" /> Payment Methods
+              </Button>
+            )}
           </div>
           <RegistrationsPanel openId={openId} />
         </Card.Body>

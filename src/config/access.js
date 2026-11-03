@@ -74,7 +74,7 @@ const PATH_AREAS = [
   ["/students", "course"],
   ["/course-invoices", "course"],
   ["/certificates", "course"],
-  ["/payment-methods", "course"],
+  ["/payment-methods", "admin"],
   ["/landing/courses", "course"],
   ["/blog", "content"],
   ["/landing/projects", "content"],

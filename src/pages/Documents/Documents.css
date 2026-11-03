@@ -1,33 +1,52 @@
-.doc-inline-loader {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 320px;
-    background: #fff;
-    border-radius: var(--radius);
-    border: 1px solid var(--border-color);
+/* Legal documents & settings: a list of pages beside the editor. */
+
+.doc-layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+
+.doc-list {
+  display: grid; gap: 0.4rem; position: sticky; top: calc(var(--zt-header-h, 64px) + 1.25rem);
+}
+.doc-item {
+  display: flex; align-items: center; gap: 0.75rem; text-align: left; width: 100%;
+  padding: 0.75rem 0.9rem; border: 1px solid var(--zt-border); border-radius: var(--zt-radius);
+  background: var(--zt-surface); color: var(--zt-text); transition: border-color 0.15s;
+}
+.doc-item svg { flex-shrink: 0; color: var(--zt-muted); }
+.doc-item strong { display: block; font-size: 0.9rem; }
+.doc-item small { display: block; font-size: 0.75rem; color: var(--zt-muted); }
+.doc-item:hover { border-color: var(--zt-primary); }
+.doc-item.is-active { border-color: var(--zt-primary); box-shadow: inset 3px 0 0 var(--zt-primary); }
+.doc-item.is-active svg { color: var(--zt-primary); }
+.doc-item:focus-visible { outline: 2px solid var(--zt-primary); outline-offset: 2px; }
+
+.doc-panel { min-width: 0; }
+.doc-panel .ed-section + .ed-section { margin-top: 1.25rem; }
+.doc-loading { display: grid; gap: 0.75rem; padding: 1.5rem; }
+.doc-loading .skeleton-line {
+  display: block; height: 12px; border-radius: 6px;
+  background: linear-gradient(90deg, #eef2f7 0%, #f7f9fc 50%, #eef2f7 100%); background-size: 200% 100%;
+  animation: ls-shimmer 1.2s linear infinite;
 }
 
-.doc-unsaved-hint {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.8rem;
-    color: var(--warning-color);
-    font-weight: 500;
-}
+/* % sits after the number */
+.ed-money.is-suffix > span { left: auto; right: 0.85rem; }
+.ed-money.is-suffix > .form-control { padding-left: 0.75rem; padding-right: 2rem; }
 
-.doc-unsaved-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--warning-color);
-    flex-shrink: 0;
-    animation: doc-pulse 1.6s ease-in-out infinite;
-}
+/* Worked example */
+.doc-example { width: 100%; border-collapse: collapse; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+.doc-example th, .doc-example td { padding: 0.6rem 0.5rem; border-bottom: 1px solid var(--zt-border); vertical-align: top; }
+.doc-example thead th { font-size: 0.75rem; font-weight: 600; color: var(--zt-muted); }
+.doc-example tbody th { font-weight: 600; color: var(--zt-ink); }
+.doc-example td { font-weight: 600; }
+.doc-example-fee { display: block; font-size: 0.75rem; font-weight: 400; color: var(--zt-muted); }
 
-@keyframes doc-pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.35; }
+@media (max-width: 991.98px) {
+  .doc-layout { grid-template-columns: minmax(0, 1fr); }
+  .doc-list {
+    position: static; display: flex; overflow-x: auto; scrollbar-width: none;
+    margin: 0 -1rem; padding: 0 1rem 0.25rem;
+  }
+  .doc-list::-webkit-scrollbar { display: none; }
+  .doc-item { width: auto; flex: 0 0 auto; padding: 0.55rem 0.8rem; }
+  .doc-item small { display: none; }
+  .doc-item.is-active { box-shadow: inset 0 -3px 0 var(--zt-primary); }
 }
