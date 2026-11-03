@@ -29,6 +29,7 @@ import {
   MdFolderOpen,
   MdWorkspacePremium,
   MdWarehouse,
+  MdPriceChange,
 } from "react-icons/md";
 import { canOpen } from "./access";
 
@@ -37,8 +38,10 @@ import { canOpen } from "./access";
  * breadcrumb bar, the mobile tab bar and the command palette (Ctrl/Cmd+K) so
  * they never drift.
  *
- * Sections follow how ZAN Tech actually works: the store, the education side
- * (courses & bootcamps), money & stock, the public websites, and the team.
+ * Sections follow the day's work, busiest first: selling, the products and
+ * stock behind it, buying stock in, money, the education side, the public
+ * websites, and admin settings. Every page is one click away (no hidden
+ * sub-menus); adding things lives on each list page and in Ctrl/Cmd+K.
  *
  * Item fields:
  *   path      where the link goes (may include ?tab=…)
@@ -48,7 +51,7 @@ import { canOpen } from "./access";
  *             (detail / edit pages, e.g. /orders/123)
  *   keywords  extra words for search ("transactions" finds Transitions)
  *   badgeKey  live count shown next to the item (see Sidebar)
- *   subItems  nested links (only used where a page really has variants)
+ *   subItems  nested links (supported, but avoided: flat lists are quicker)
  */
 export const NAV_SECTIONS = [
   {
@@ -56,13 +59,13 @@ export const NAV_SECTIONS = [
     title: "Overview",
     items: [
       { path: "/dashboard", icon: MdDashboard, label: "Dashboard", keywords: "home overview today" },
-      { path: "/analytics", icon: MdInsertChart, label: "Analytics", keywords: "charts graphs" },
       { path: "/reports", icon: MdAnalytics, label: "Reports", keywords: "profit sales summary export" },
+      { path: "/analytics", icon: MdInsertChart, label: "Analytics", keywords: "charts graphs" },
     ],
   },
   {
-    key: "store",
-    title: "Store",
+    key: "sales",
+    title: "Sales",
     items: [
       {
         path: "/orders",
@@ -70,28 +73,55 @@ export const NAV_SECTIONS = [
         label: "Orders",
         badgeKey: "processing",
         match: ["/orders/"],
-        keywords: "sales invoice create order custom invoice",
+        keywords: "sales invoice create order new order",
       },
+      { path: "/customers", icon: MdPeople, label: "Customers", match: ["/customers/"], keywords: "buyers users" },
+      { path: "/coupons", icon: MdLocalOffer, label: "Coupons", keywords: "discount promo code" },
+      { path: "/ratings", icon: MdStar, label: "Reviews", keywords: "ratings feedback" },
+    ],
+  },
+  {
+    key: "catalog",
+    title: "Products & Stock",
+    items: [
       {
-        label: "Products",
+        path: "/products",
         icon: MdInventory,
-        keywords: "items stock inventory",
-        subItems: [
-          { path: "/products", label: "All products", match: ["/products/"] },
-          { path: "/products/add", label: "Add product" },
-          { path: "/products/buying-price", label: "Buying prices", keywords: "cost purchase price" },
-        ],
+        label: "Products",
+        match: ["/products/"],
+        keywords: "items catalogue add product new product",
       },
+      { path: "/categories", icon: MdCategory, label: "Categories", keywords: "groups collections" },
       {
         path: "/inventory",
         icon: MdWarehouse,
         label: "Inventory",
         keywords: "stock count in stock equipment supplies tools shelf",
       },
-      { path: "/categories", icon: MdCategory, label: "Categories" },
-      { path: "/coupons", icon: MdLocalOffer, label: "Coupons", keywords: "discount promo code" },
-      { path: "/customers", icon: MdPeople, label: "Customers", match: ["/customers/"], keywords: "buyers users" },
-      { path: "/ratings", icon: MdStar, label: "Reviews", keywords: "ratings feedback" },
+      { path: "/products/buying-price", icon: MdPriceChange, label: "Buying prices", keywords: "cost purchase price margin" },
+    ],
+  },
+  {
+    key: "purchasing",
+    title: "Purchasing",
+    items: [
+      { path: "/challans", icon: MdLocalShipping, label: "Challans", match: ["/challans/"], keywords: "purchase delivery stock in buy" },
+      { path: "/suppliers", icon: MdBusiness, label: "Suppliers", keywords: "vendors pay supplier owed" },
+    ],
+  },
+  {
+    key: "money",
+    title: "Money",
+    items: [
+      { path: "/transitions", icon: MdSwapHoriz, label: "Transactions", keywords: "transitions payments money in received" },
+      {
+        path: "/custom-invoices",
+        icon: MdReceiptLong,
+        label: "Custom invoices",
+        match: ["/custom-invoices/"],
+        keywords: "r&d research project invoice bill quotation equipment software service",
+      },
+      { path: "/expenses", icon: MdAttachMoney, label: "Expenses", match: ["/expenses/"], keywords: "costs spending money out bills" },
     ],
   },
   {
@@ -103,8 +133,9 @@ export const NAV_SECTIONS = [
         icon: MdHowToReg,
         label: "Registrations",
         badgeKey: "registrations",
-        keywords: "enroll admission applications new students",
+        keywords: "enroll enrolments admission applications new students",
       },
+      { path: "/students", icon: MdGroups, label: "Students", match: ["/students/"] },
       {
         path: "/landing?tab=courses",
         icon: MdSchool,
@@ -113,7 +144,6 @@ export const NAV_SECTIONS = [
         keywords: "classes programmes curriculum",
       },
       { path: "/landing?tab=bootcamps", icon: MdRocketLaunch, label: "Bootcamps", keywords: "camp workshop" },
-      { path: "/students", icon: MdGroups, label: "Students", match: ["/students/"] },
       {
         path: "/course-invoices",
         icon: MdRequestQuote,
@@ -128,31 +158,13 @@ export const NAV_SECTIONS = [
         match: ["/certificates/"],
         keywords: "certificate award qr verify signers participation completion",
       },
-      { path: "/payment-methods", icon: MdAccountBalanceWallet, label: "Payment methods", keywords: "bkash rocket bank" },
-    ],
-  },
-  {
-    key: "finance",
-    title: "Finance & Stock",
-    items: [
-      { path: "/transitions", icon: MdSwapHoriz, label: "Transactions", keywords: "transitions payments money in out" },
-      {
-        path: "/custom-invoices",
-        icon: MdReceiptLong,
-        label: "Custom invoices",
-        match: ["/custom-invoices/"],
-        keywords: "r&d research project invoice bill quotation equipment software service",
-      },
-      { path: "/expenses", icon: MdAttachMoney, label: "Expenses", match: ["/expenses/"], keywords: "costs spending" },
-      { path: "/suppliers", icon: MdBusiness, label: "Suppliers", keywords: "vendors" },
-      { path: "/challans", icon: MdLocalShipping, label: "Challans", match: ["/challans/"], keywords: "purchase delivery stock in" },
     ],
   },
   {
     key: "website",
     title: "Website",
     items: [
-      { path: "/settings/hero", icon: MdViewCarousel, label: "Store banners", keywords: "hero images slider home" },
+      { path: "/contact", icon: MdMarkEmailUnread, label: "Messages", keywords: "contacts inbox contact form" },
       {
         path: "/landing?tab=projects",
         icon: MdWeb,
@@ -162,15 +174,21 @@ export const NAV_SECTIONS = [
       },
       { path: "/blog", icon: MdArticle, label: "Blog", match: ["/blog/"], keywords: "posts tutorials articles" },
       { path: "/faq", icon: MdQuestionAnswer, label: "FAQ", keywords: "questions" },
-      { path: "/contact", icon: MdMarkEmailUnread, label: "Messages", keywords: "contacts inbox contact form" },
-      { path: "/settings/documents", icon: MdFolderOpen, label: "Documents", keywords: "files pdf" },
+      { path: "/settings/hero", icon: MdViewCarousel, label: "Store banners", keywords: "hero images slider home" },
     ],
   },
   {
-    key: "team",
-    title: "Team",
+    key: "admin",
+    title: "Settings",
     items: [
-      { path: "/staff", icon: MdBadge, label: "Staff", keywords: "users admins employees" },
+      { path: "/staff", icon: MdBadge, label: "Staff", keywords: "users admins employees roles team" },
+      { path: "/payment-methods", icon: MdAccountBalanceWallet, label: "Payment methods", keywords: "bkash rocket bank nagad" },
+      {
+        path: "/settings/documents",
+        icon: MdFolderOpen,
+        label: "Documents & policies",
+        keywords: "files pdf legal terms privacy refund checkout charges delivery",
+      },
       { path: "/activity", icon: MdHistory, label: "Activity log", keywords: "history audit" },
     ],
   },
