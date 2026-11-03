@@ -28,6 +28,7 @@ import {
   MdInsertChart,
   MdFolderOpen,
   MdWorkspacePremium,
+  MdWarehouse,
 } from "react-icons/md";
 import { canOpen } from "./access";
 
@@ -78,9 +79,14 @@ export const NAV_SECTIONS = [
         subItems: [
           { path: "/products", label: "All products", match: ["/products/"] },
           { path: "/products/add", label: "Add product" },
-          { path: "/products/in-stock", label: "In stock" },
           { path: "/products/buying-price", label: "Buying prices", keywords: "cost purchase price" },
         ],
+      },
+      {
+        path: "/inventory",
+        icon: MdWarehouse,
+        label: "Inventory",
+        keywords: "stock count in stock equipment supplies tools shelf",
       },
       { path: "/categories", icon: MdCategory, label: "Categories" },
       { path: "/coupons", icon: MdLocalOffer, label: "Coupons", keywords: "discount promo code" },

@@ -24,6 +24,10 @@ export const ROLES = {
     label: "Content manager",
     hint: "Blog posts, tutorials, workshops and projects",
   },
+  inventory_manager: {
+    label: "Inventory manager",
+    hint: "Stock counts for products, equipment and supplies",
+  },
   member: {
     label: "Member (store)",
     hint: "Older role, same access as a store manager",
@@ -31,7 +35,7 @@ export const ROLES = {
 };
 
 /** Roles offered when adding staff or changing a role, most used first. */
-export const ASSIGNABLE_ROLES = ["stuff", "course_manager", "content_manager", "admin", "member"];
+export const ASSIGNABLE_ROLES = ["stuff", "course_manager", "content_manager", "inventory_manager", "admin", "member"];
 
 // What each area covers is listed in navigation.jsx (each item has an `area`).
 const AREA_ROLES = {
@@ -40,7 +44,8 @@ const AREA_ROLES = {
   course: ["admin", "course_manager"],
   content: ["admin", "content_manager"],
   money: ["admin", "stuff", "member", "course_manager"],
-  any: ["admin", "stuff", "member", "course_manager", "content_manager"],
+  inventory: ["admin", "stuff", "member", "inventory_manager"],
+  any: ["admin", "stuff", "member", "course_manager", "content_manager", "inventory_manager"],
 };
 
 export const roleLabel = (role) => ROLES[role]?.label || role || "Staff";
@@ -59,6 +64,7 @@ const PATH_AREAS = [
   ["/faq", "admin"],
   ["/settings/documents", "admin"],
   ["/settings/hero", "store"],
+  ["/inventory", "inventory"],
   ["/orders", "store"],
   ["/products", "store"],
   ["/categories", "store"],
@@ -107,6 +113,7 @@ export const homeFor = (role) =>
     member: "/orders",
     course_manager: "/course-registrations",
     content_manager: "/blog",
+    inventory_manager: "/inventory",
   })[role] || "/profile";
 
 /** The signed-in staff member's role, from the saved login. */

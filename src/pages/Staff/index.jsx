@@ -192,7 +192,7 @@ const Staff = () => {
       />
 
       <dl className="staff-roles">
-        {["admin", "stuff", "course_manager", "content_manager"].map((r) => (
+        {["admin", "stuff", "course_manager", "content_manager", "inventory_manager"].map((r) => (
           <div key={r}>
             <dt>{ROLES[r].label}</dt>
             <dd>{ROLES[r].hint}</dd>
@@ -229,7 +229,7 @@ const Staff = () => {
                 value={form.type}
                 onChange={(v) => setForm((f) => ({ ...f, type: v }))}
                 columns={2}
-                options={["stuff", "course_manager", "content_manager", "admin"].map((r) => ({ value: r, label: ROLES[r].label, hint: ROLES[r].hint }))}
+                options={["stuff", "course_manager", "content_manager", "inventory_manager", "admin"].map((r) => ({ value: r, label: ROLES[r].label, hint: ROLES[r].hint }))}
               />
             </Form.Group>
             <Row className="g-3">

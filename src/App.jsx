@@ -8,7 +8,7 @@ import Categories from "./pages/Categories";
 import AddProduct from "./pages/Products/AddProduct";
 import ViewProduct from "./pages/Products/ViewProduct";
 import ProductBuyingPrice from "./pages/Products/ProductBuyingPrice";
-import InStockProducts from "./pages/Products/InStockProducts";
+import Inventory from "./pages/Inventory";
 import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
 import { Toaster } from "react-hot-toast";
@@ -139,10 +139,9 @@ const App = () => {
                           path="/products/buying-price"
                           element={<ProductBuyingPrice />}
                         />
-                        <Route
-                          path="/products/in-stock"
-                          element={<InStockProducts />}
-                        />
+                        <Route path="/inventory" element={<Inventory />} />
+                        {/* The old In stock page now lives in Inventory */}
+                        <Route path="/products/in-stock" element={<Navigate to="/inventory" replace />} />
                         <Route path="/products/:id" element={<ViewProduct />} />
                         <Route path="/categories" element={<Categories />} />
                         <Route path="/blog" element={<Blog />} />

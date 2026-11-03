@@ -25,6 +25,7 @@ const TABS_BY_ROLE = {
   ],
 };
 TABS_BY_ROLE.member = TABS_BY_ROLE.stuff;
+TABS_BY_ROLE.inventory_manager = [{ to: "/inventory", label: "Inventory", icon: MdInventory }];
 
 /** Phone-only bottom bar for the pages staff open most. */
 const MobileTabBar = ({ onOpenMenu }) => {
