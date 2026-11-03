@@ -1,1180 +1,379 @@
-import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import {
-  FaArrowLeft,
-  FaSpinner,
-  FaDownload,
-  FaEdit,
-  FaSave,
-  FaTimes,
-  FaPlus,
-  FaTrash,
-  FaPencilAlt,
-  FaUpload,
-  FaEye,
-} from "react-icons/fa";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { Button, Form, Modal, Spinner } from "react-bootstrap";
+import { FaArrowLeft, FaPen, FaPhoneAlt, FaPlus, FaTrash, FaFilePdf, FaUpload, FaMinus } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 import axiosInstance from "../../config/axios";
-import {
-  Card,
-  Button,
-  Row,
-  Col,
-  Table,
-  Image,
-  Form,
-  Modal,
-} from "react-bootstrap";
-import Select from "react-select/async";
 import Loading from "../../components/Loading";
+import confirmDialog from "../../utils/confirmDialog";
+import usePageTitle from "../../hooks/usePageTitle";
+import { taka, shortDate } from "../../components/List/format";
+import "../../components/Editor/Editor.css";
+import "../../components/List/List.css";
+import "../Orders/CreateOrder.css";
+import "../Customers/CustomerDetail.css";
 import "./Challan.css";
-import usePageTitle from '../../hooks/usePageTitle';
+import ChallanLines, { ProductPicker, lastBuyingPrice } from "./ChallanLines";
+
+const MAX_RECEIPT_MB = 2;
+const isPdf = (url) => /\.pdf($|\?)/i.test(url || "");
 
 const ViewChallan = () => {
-  usePageTitle('View Challan Details');
   const { id } = useParams();
   const navigate = useNavigate();
   const [challan, setChallan] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [isEditing, setIsEditing] = useState(false);
   const [suppliers, setSuppliers] = useState([]);
-  const [formData, setFormData] = useState({
-    Date: "",
-    delivery_price: "",
-    supplier_id: "",
-  });
-  const [submitting, setSubmitting] = useState(false);
-  const [selectedItems, setSelectedItems] = useState([]);
-  const [isAddingItems, setIsAddingItems] = useState(false);
-  const [addingItemsLoading, setAddingItemsLoading] = useState(false);
-  const [showQuantityModal, setShowQuantityModal] = useState(false);
-  const [selectedItem, setSelectedItem] = useState(null);
-  const [updatingQuantity, setUpdatingQuantity] = useState(false);
-  const [newQuantity, setNewQuantity] = useState("");
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [deletingItem, setDeletingItem] = useState(false);
-  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
-  const [uploadingInvoice, setUploadingInvoice] = useState(false);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [showDeleteInvoiceModal, setShowDeleteInvoiceModal] = useState(false);
-  const [deletingInvoice, setDeletingInvoice] = useState(false);
-  const [selectedInvoice, setSelectedInvoice] = useState(null);
+  const [busy, setBusy] = useState({});
+  const [editOpen, setEditOpen] = useState(false);
+  const [edit, setEdit] = useState({ Date: "", supplier_id: "", delivery_price: "" });
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [adding, setAdding] = useState([]);
+  const [savingAdd, setSavingAdd] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef(null);
+
+  usePageTitle(challan ? `Challan #${challan.id}` : "Challan");
+
+  const load = useCallback(async () => {
+    try {
+      const res = await axiosInstance.get(`/challans/${id}`);
+      setChallan(res.data?.data);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Couldn't find that challan");
+      navigate("/challans");
+    }
+  }, [id, navigate]);
 
   useEffect(() => {
-    fetchChallan();
-    fetchSuppliers();
-  }, [id]);
+    load();
+    axiosInstance.get("/suppliers").then((r) => setSuppliers(r.data?.data || [])).catch(() => {});
+  }, [load]);
 
-  const fetchSuppliers = async () => {
-    try {
-      const response = await axiosInstance.get("/suppliers");
-      setSuppliers(response.data.data);
-    } catch (err) {
-      console.error("Failed to fetch suppliers:", err);
-      toast.error(err.response?.data?.message || "Failed to fetch suppliers");
-    }
+  if (!challan) return <Loading />;
+
+  const products = Number(challan.totalproductprice) || 0;
+  const delivery = Number(challan.delivery_price) || 0;
+  const units = (challan.items || []).reduce((s, i) => s + Number(i.quantity || 0), 0);
+  const mark = (key, on) => setBusy((b) => ({ ...b, [key]: on }));
+
+  // ─── Details ───────────────────────────────────────────────────────────────
+
+  const openEdit = () => {
+    setEdit({ Date: String(challan.Date || "").slice(0, 10), supplier_id: String(challan.supplier_id || challan.supplier?.id || ""), delivery_price: String(challan.delivery_price ?? "") });
+    setEditOpen(true);
   };
 
-  const fetchChallan = async () => {
-    try {
-      const response = await axiosInstance.get(`/challans/${id}`);
-      if (response.data.success) {
-        const challanData = response.data.data;
-        setChallan(challanData);
-        setFormData({
-          Date: challanData.Date,
-          delivery_price: challanData.delivery_price,
-          supplier_id: challanData.supplier.id,
-        });
-      } else {
-        throw new Error(response.data.message || "Failed to fetch challan");
-      }
-    } catch (error) {
-      toast.error(
-        error.response?.data?.message || "Failed to fetch challan details"
-      );
-      navigate("/challans");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleEdit = () => {
-    setIsEditing(true);
-  };
-
-  const handleCancel = () => {
-    setIsEditing(false);
-    setFormData({
-      Date: challan.Date,
-      delivery_price: challan.delivery_price,
-      supplier_id: challan.supplier.id,
-    });
-  };
-
-  const handleSubmit = async (e) => {
+  const saveEdit = async (e) => {
     e.preventDefault();
-    setSubmitting(true);
-    try {
-      const response = await axiosInstance.put(`/challans/${id}`, formData, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
-
-      if (response.data.success) {
-        toast.success("Challan updated successfully");
-        setIsEditing(false);
-        fetchChallan();
-      } else {
-        throw new Error(response.data.message || "Failed to update challan");
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to update challan");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const loadItems = async (inputValue) => {
-    try {
-      const response = await axiosInstance.get("/products", {
-        params: { search: inputValue },
-      });
-      return response.data.data.map((item) => ({
-        value: item.id,
-        label: `${item.name} (${item.quantity} in stock)`,
-        buying_price: item.buying_price || 0,
-      }));
-    } catch (err) {
-      console.error("Failed to fetch items:", err);
-      toast.error(err.response?.data?.message || "Failed to fetch items");
-      return [];
-    }
-  };
-
-  const handleItemSelect = (selectedOption) => {
-    if (selectedOption) {
-      setSelectedItems((prev) => [
-        ...prev,
-        {
-          id: selectedOption.value,
-          name: selectedOption.label,
-          buying_price: selectedOption.buying_price,
-          quantity: 1,
-        },
-      ]);
-    }
-  };
-
-  const handleItemRemove = (index) => {
-    setSelectedItems((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const handleItemChange = (index, field, value) => {
-    setSelectedItems((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, [field]: value } : item))
-    );
-  };
-
-  const handleAddItems = async () => {
-    if (selectedItems.length === 0) {
-      toast.error("Please add at least one item");
+    if (!edit.Date || !edit.supplier_id || edit.delivery_price === "" || Number(edit.delivery_price) < 0) {
+      toast.error("Fill in the date, supplier and delivery charge (0 if none).");
       return;
     }
-
-    setAddingItemsLoading(true);
+    setSavingEdit(true);
     try {
-      const itemsData = {
-        item_id: selectedItems.map((item) => item.id),
-        buying: selectedItems.map((item) => item.buying_price),
-        quantity: selectedItems.map((item) => item.quantity),
-      };
-
-      const response = await axiosInstance.post(
-        `/challans/add-items/${id}`,
-        itemsData,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
-      );
-
-      if (response.data.success) {
-        toast.success("Items added successfully");
-        setSelectedItems([]);
-        setIsAddingItems(false);
-        fetchChallan(); // Refresh challan data
-      } else {
-        throw new Error(response.data.message || "Failed to add items");
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to add items");
+      await axiosInstance.put(`/challans/${id}`, edit);
+      toast.success("Challan updated");
+      setEditOpen(false);
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Couldn't save the changes");
     } finally {
-      setAddingItemsLoading(false);
+      setSavingEdit(false);
     }
   };
 
-  const handleUpdateQuantity = async (e) => {
-    e.preventDefault();
-    if (!selectedItem) return;
+  // ─── Products ──────────────────────────────────────────────────────────────
 
-    setUpdatingQuantity(true);
+  const changeQty = async (item, qty) => {
+    const q = Math.max(1, parseInt(qty, 10) || 1);
+    if (q === Number(item.quantity)) return;
+    mark(`q${item.challan_item_id}`, true);
     try {
-      const response = await axiosInstance.put(
-        `/challans/challan-item/update-quantity/${selectedItem.challan_item_id}`,
-        { quantity: parseInt(newQuantity) },
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
-      );
-
-      if (response.data.success) {
-        toast.success("Quantity updated successfully");
-        setShowQuantityModal(false);
-        fetchChallan(); // Refresh challan data
-      } else {
-        throw new Error(response.data.message || "Failed to update quantity");
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to update quantity");
+      await axiosInstance.put(`/challans/challan-item/update-quantity/${item.challan_item_id}`, { quantity: q });
+      await load();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Couldn't change the quantity");
     } finally {
-      setUpdatingQuantity(false);
+      mark(`q${item.challan_item_id}`, false);
     }
   };
 
-  const openQuantityModal = (item) => {
-    setSelectedItem(item);
-    setNewQuantity(item.quantity.toString());
-    setShowQuantityModal(true);
-  };
-
-  const handleDeleteItem = async () => {
-    if (!selectedItem) return;
-
-    setDeletingItem(true);
+  const removeItem = async (item) => {
+    if (!(await confirmDialog(`Remove ${item.item_name} from this challan? Its ${item.quantity} units come back out of stock and the total drops by ${taka(item.buying_price * item.quantity)}.`))) return;
+    mark(`d${item.challan_item_id}`, true);
     try {
-      const response = await axiosInstance.delete(
-        `/challans/challan-item/delete/${selectedItem.challan_item_id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
-      );
-
-      if (response.data.success) {
-        toast.success("Item deleted successfully");
-        setShowDeleteModal(false);
-        fetchChallan(); // Refresh challan data
-      } else {
-        throw new Error(response.data.message || "Failed to delete item");
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to delete item");
+      await axiosInstance.delete(`/challans/challan-item/delete/${item.challan_item_id}`);
+      toast.success(`${item.item_name} removed`);
+      await load();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Couldn't remove it");
     } finally {
-      setDeletingItem(false);
+      mark(`d${item.challan_item_id}`, false);
     }
   };
 
-  const openDeleteModal = (item) => {
-    setSelectedItem(item);
-    setShowDeleteModal(true);
+  const pickToAdd = async (option) => {
+    if (!option) return;
+    if (adding.some((l) => l.item_id === option.value)) return;
+    setAdding((list) => [...list, { item_id: option.value, name: option.label, stock: option.stock, price: "", quantity: 1, last: null }]);
+    const last = await lastBuyingPrice(option.value, option.label);
+    if (last) setAdding((list) => list.map((l) => (l.item_id === option.value ? { ...l, last, price: l.price === "" ? String(last.price) : l.price } : l)));
   };
 
-  const handleFileSelect = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      // Check file size (2MB = 2 * 1024 * 1024 bytes)
-      if (file.size > 2 * 1024 * 1024) {
-        toast.error("File size should be less than 2MB");
-        e.target.value = null;
-        return;
-      }
-
-      // Check file type
-      const allowedTypes = [
-        "image/jpeg",
-        "image/jpg",
-        "image/png",
-        "application/pdf",
-      ];
-      if (!allowedTypes.includes(file.type)) {
-        toast.error(
-          "Invalid file type. Please upload JPG, JPEG, PNG, or PDF file"
-        );
-        e.target.value = null;
-        return;
-      }
-
-      setSelectedFile(file);
-    }
-  };
-
-  const handleUploadInvoice = async (e) => {
-    e.preventDefault();
-    if (!selectedFile) {
-      toast.error("Please select a file");
+  const saveAdded = async () => {
+    if (adding.some((l) => l.price === "" || Number(l.price) < 0)) {
+      toast.error("Every new product needs a buying price.");
       return;
     }
-
-    setUploadingInvoice(true);
+    setSavingAdd(true);
     try {
-      const formData = new FormData();
-      formData.append("invoice", selectedFile);
-
-      const response = await axiosInstance.post(
-        `/challans/upload-invoice/${id}`,
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
-      );
-
-      if (response.data.success) {
-        toast.success("Invoice uploaded successfully");
-        setShowInvoiceModal(false);
-        setSelectedFile(null);
-        fetchChallan(); // Refresh challan data
-      } else {
-        throw new Error(response.data.message || "Failed to upload invoice");
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to upload invoice");
+      await axiosInstance.post(`/challans/add-items/${id}`, {
+        item_id: adding.map((l) => l.item_id),
+        buying: adding.map((l) => Number(l.price)),
+        quantity: adding.map((l) => l.quantity),
+      });
+      toast.success(`${adding.length} ${adding.length === 1 ? "product" : "products"} added to the challan and to stock`);
+      setAdding([]);
+      await load();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Couldn't add them");
     } finally {
-      setUploadingInvoice(false);
+      setSavingAdd(false);
     }
   };
 
-  const handleDeleteInvoice = async () => {
-    if (!selectedInvoice) return;
+  // ─── Receipts ──────────────────────────────────────────────────────────────
 
-    setDeletingInvoice(true);
+  const uploadReceipt = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!/^(image\/(jpeg|png)|application\/pdf)$/.test(file.type)) {
+      toast.error("Use a JPG, PNG or PDF.");
+      return;
+    }
+    if (file.size > MAX_RECEIPT_MB * 1024 * 1024) {
+      toast.error(`That file is over ${MAX_RECEIPT_MB} MB.`);
+      return;
+    }
+    const fd = new FormData();
+    fd.append("invoice", file);
+    setUploading(true);
     try {
-      const response = await axiosInstance.delete(
-        `/challans/invoices/${selectedInvoice.id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
-      );
-
-      if (response.data.success) {
-        toast.success("Invoice deleted successfully");
-        setShowDeleteInvoiceModal(false);
-        fetchChallan(); // Refresh challan data
-      } else {
-        throw new Error(response.data.message || "Failed to delete invoice");
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to delete invoice");
+      await axiosInstance.post(`/challans/upload-invoice/${id}`, fd, { headers: { "Content-Type": "multipart/form-data" } });
+      toast.success("Receipt added");
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Couldn't upload it");
     } finally {
-      setDeletingInvoice(false);
+      setUploading(false);
     }
   };
 
-  const openDeleteInvoiceModal = (invoice) => {
-    setSelectedInvoice(invoice);
-    setShowDeleteInvoiceModal(true);
+  const deleteReceipt = async (file) => {
+    if (!(await confirmDialog("Delete this receipt file? This can't be undone."))) return;
+    mark(`r${file.id}`, true);
+    try {
+      await axiosInstance.delete(`/challans/invoices/${file.id}`);
+      toast.success("Receipt deleted");
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Couldn't delete it");
+    } finally {
+      mark(`r${file.id}`, false);
+    }
   };
 
-  if (loading) {
-    return <Loading />;
-  }
-
-  if (!challan) {
-    return null;
-  }
+  const supplier = challan.supplier;
 
   return (
-    <div className="challan-container">
-      <Card className="modern-card">
-        <Card.Body className="p-4">
-          <div className="d-flex justify-content-between align-items-center mb-4">
-            <div>
-              <Button
-                variant="link"
-                className="p-0 mb-2 text-decoration-none"
-                onClick={() => navigate("/challans")}
-              >
-                <FaArrowLeft className="me-2" /> Back to Challans
-              </Button>
-              <h2 className="page-title mb-1">
-                {isEditing ? "Edit Challan" : "Challan Details"}
-              </h2>
-              <p className="text-muted mb-0">
-                View and manage challan information
-              </p>
-            </div>
-            {!isEditing && (
-              <Button
-                variant="primary"
-                onClick={handleEdit}
-                className="create-challan-btn"
-              >
-                <FaEdit className="me-2" /> Edit Challan
-              </Button>
-            )}
+    <div className="cd-page ch-page">
+      <button type="button" className="cd-back" onClick={() => navigate("/challans")}>
+        <FaArrowLeft aria-hidden="true" /> Challans
+      </button>
+
+      <header className="cd-head">
+        <div className="cd-head-text">
+          <h1>Challan #{challan.id}</h1>
+          <p>
+            {shortDate(challan.Date)}
+            {supplier ? ` · from ${supplier.name}` : ""}
+            {challan.user?.name ? ` · added by ${challan.user.name}` : ""}
+          </p>
+        </div>
+        <div className="cd-head-actions">
+          <Button variant="outline-secondary" onClick={openEdit}><FaPen className="me-2" aria-hidden="true" />Edit details</Button>
+        </div>
+      </header>
+
+      <dl className="cd-stats ch-stats">
+        <div>
+          <dt>Products</dt>
+          <dd>{taka(products)}</dd>
+          <span className="cd-stat-note">{units} {units === 1 ? "unit" : "units"} in {challan.items?.length || 0} {challan.items?.length === 1 ? "line" : "lines"}</span>
+        </div>
+        <div>
+          <dt>Delivery</dt>
+          <dd>{delivery ? taka(delivery) : "None"}</dd>
+        </div>
+        <div>
+          <dt>Total paid</dt>
+          <dd>{taka(challan.total)}</dd>
+        </div>
+      </dl>
+
+      <div className="cd-body">
+        <section className="cd-card" aria-labelledby="ch-items-title">
+          <div className="cd-card-head">
+            <h2 id="ch-items-title">Products <span className="ed-count">{challan.items?.length || 0}</span></h2>
           </div>
+          {challan.items?.length ? (
+            <ul className="ch-lines ch-saved">
+              <li className="ch-line ch-line-head" aria-hidden="true">
+                <span>Product</span>
+                <span>Buying price</span>
+                <span>Quantity</span>
+                <span className="text-end">Amount</span>
+                <span />
+              </li>
+              {challan.items.map((item) => {
+                const qBusy = !!busy[`q${item.challan_item_id}`];
+                return (
+                  <li key={item.challan_item_id} className="ch-line">
+                    <div className="ch-line-name">
+                      <span className="fw-semibold d-block">{item.item_name}</span>
+                    </div>
+                    <span className="ch-price">{taka(item.buying_price)}</span>
+                    <div className="co-qty" role="group" aria-label={`Quantity of ${item.item_name}`}>
+                      <button type="button" onClick={() => changeQty(item, Number(item.quantity) - 1)} disabled={qBusy || Number(item.quantity) <= 1} aria-label="One less"><FaMinus aria-hidden="true" /></button>
+                      <input
+                        key={item.quantity}
+                        type="number"
+                        inputMode="numeric"
+                        min={1}
+                        defaultValue={item.quantity}
+                        disabled={qBusy}
+                        onBlur={(e) => changeQty(item, e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                        aria-label="Quantity"
+                      />
+                      <button type="button" onClick={() => changeQty(item, Number(item.quantity) + 1)} disabled={qBusy} aria-label="One more"><FaPlus aria-hidden="true" /></button>
+                    </div>
+                    <span className="co-line-total">{taka(item.buying_price * item.quantity)}</span>
+                    <button type="button" className="co-remove" onClick={() => removeItem(item)} disabled={!!busy[`d${item.challan_item_id}`]} aria-label={`Remove ${item.item_name}`}>
+                      <FaTrash aria-hidden="true" />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="cd-empty">No products on this challan.</p>
+          )}
+          <p className="ch-note">Changing a quantity or removing a product updates stock and the challan's expense too.</p>
 
-          {isEditing ? (
-            <Form onSubmit={handleSubmit} className="mt-4">
-              <Card className="border mb-4">
-                <Card.Header className="bg-light">
-                  <h5 className="mb-0">Basic Information</h5>
-                </Card.Header>
-                <Card.Body>
-                  <Row>
-                    <Col md={6}>
-                      <Form.Group className="mb-3">
-                        <Form.Label>
-                          Date <span className="text-danger">*</span>
-                        </Form.Label>
-                        <Form.Control
-                          type="date"
-                          value={formData.Date}
-                          onChange={(e) =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              Date: e.target.value,
-                            }))
-                          }
-                          required
-                          className="form-control-lg"
-                        />
-                      </Form.Group>
-                    </Col>
-                    <Col md={6}>
-                      <Form.Group className="mb-3">
-                        <Form.Label>
-                          Delivery Price (৳){" "}
-                          <span className="text-danger">*</span>
-                        </Form.Label>
-                        <Form.Control
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={formData.delivery_price}
-                          onChange={(e) =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              delivery_price: e.target.value,
-                            }))
-                          }
-                          required
-                          className="form-control-lg"
-                        />
-                      </Form.Group>
-                    </Col>
-                  </Row>
-
-                  <Form.Group className="mb-3">
-                    <Form.Label>
-                      Supplier <span className="text-danger">*</span>
-                    </Form.Label>
-                    <Form.Select
-                      value={formData.supplier_id}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          supplier_id: e.target.value,
-                        }))
-                      }
-                      required
-                      className="form-control-lg"
-                    >
-                      <option value="">Select Supplier</option>
-                      {suppliers.map((supplier) => (
-                        <option key={supplier.id} value={supplier.id}>
-                          {supplier.name}
-                        </option>
-                      ))}
-                    </Form.Select>
-                  </Form.Group>
-
-                  <div className="alert alert-info">
-                    <strong>Total Amount:</strong> ৳
-                    {parseFloat(challan.total).toLocaleString()}
-                  </div>
-                </Card.Body>
-              </Card>
-
-              <div className="d-flex justify-content-end gap-2">
-                <Button
-                  variant="secondary"
-                  onClick={handleCancel}
-                  disabled={submitting}
-                  className="px-4"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  variant="primary"
-                  disabled={submitting}
-                  className="px-4"
-                >
-                  {submitting ? (
-                    <>
-                      <FaSpinner className="spinner me-2" /> Saving...
-                    </>
-                  ) : (
-                    "Save Changes"
-                  )}
+          <div className="ch-add">
+            <h3>Add products bought on the same receipt</h3>
+            <ProductPicker inputId="ch-add-product" onPick={pickToAdd} />
+            <ChallanLines lines={adding} onChange={setAdding} />
+            {adding.length > 0 && (
+              <div className="ch-add-actions">
+                <Button variant="link" className="ed-discard" onClick={() => setAdding([])} disabled={savingAdd}>Cancel</Button>
+                <Button onClick={saveAdded} disabled={savingAdd}>
+                  {savingAdd ? <><Spinner animation="border" size="sm" className="me-2" />Adding…</> : `Add to challan · ${taka(adding.reduce((s, l) => s + (Number(l.price) || 0) * l.quantity, 0))}`}
                 </Button>
               </div>
-            </Form>
-          ) : (
-            <div className="mt-4">
-              <Row className="g-4 mb-4">
-                <Col md={6}>
-                  <Card className="border h-100">
-                    <Card.Header className="bg-light">
-                      <h5 className="mb-0">Basic Information</h5>
-                    </Card.Header>
-                    <Card.Body>
-                      <div className="mb-4">
-                        <label className="detail-label">Challan ID</label>
-                        <div className="detail-value">#{challan.id}</div>
-                      </div>
-                      <div className="mb-4">
-                        <label className="detail-label">Date</label>
-                        <div className="detail-value">
-                          {new Date(challan.Date).toLocaleDateString()}
-                        </div>
-                      </div>
-                      <div className="mb-4">
-                        <label className="detail-label">Created By</label>
-                        <div className="detail-value">{challan.user.name}</div>
-                      </div>
-                      <div className="mb-4">
-                        <label className="detail-label">Total products Price</label>
-                        <div className="detail-value challan-amount">
-                          ৳{parseFloat(challan.totalproductprice).toLocaleString()}
-                        </div>
-                      </div>
-                      <div className="mb-4">
-                        <label className="detail-label">Delivery Price</label>
-                        <div className="detail-value challan-amount">
-                          ৳{parseFloat(challan.delivery_price).toLocaleString()}
-                        </div>
-                      </div>
-                      <div>
-                        <label className="detail-label">Total Amount</label>
-                        <div className="detail-value challan-amount">
-                          ৳{parseFloat(challan.total).toLocaleString()}
-                        </div>
-                      </div>
-                    </Card.Body>
-                  </Card>
-                </Col>
-                <Col md={6}>
-                  <Card className="border h-100">
-                    <Card.Header className="bg-light">
-                      <h5 className="mb-0">Supplier Information</h5>
-                    </Card.Header>
-                    <Card.Body>
-                      <div className="mb-4">
-                        <label className="detail-label">Name</label>
-                        <div className="detail-value">
-                          {challan.supplier.name}
-                        </div>
-                      </div>
-                      <div className="mb-4">
-                        <label className="detail-label">Phone</label>
-                        <div className="detail-value">
-                          {challan.supplier.phone}
-                        </div>
-                      </div>
-                      <div>
-                        <label className="detail-label">Address</label>
-                        <div className="detail-value">
-                          {challan.supplier.address}
-                        </div>
-                      </div>
-                    </Card.Body>
-                  </Card>
-                </Col>
-              </Row>
+            )}
+          </div>
+        </section>
 
-              <Card className="border mb-4">
-                <Card.Header className="bg-light d-flex justify-content-between align-items-center">
-                  <h5 className="mb-0">Items</h5>
-                  <Button
-                    variant="outline-primary"
-                    onClick={() => setIsAddingItems(!isAddingItems)}
-                    className="d-flex align-items-center gap-2"
-                  >
-                    {isAddingItems ? <FaTimes /> : <FaPlus />}
-                    {isAddingItems ? "Cancel" : "Add Items"}
-                  </Button>
-                </Card.Header>
-                <Card.Body>
-                  {isAddingItems && (
-                    <div className="mb-4">
-                      <Form.Group className="mb-3">
-                        <Form.Label>Add Items</Form.Label>
-                        <Select
-                          cacheOptions
-                          defaultOptions
-                          loadOptions={loadItems}
-                          onChange={handleItemSelect}
-                          placeholder="Search and select items..."
-                          noOptionsMessage={() => "No items found"}
-                          loadingMessage={() => "Loading items..."}
-                          className="form-control-lg"
-                        />
-                      </Form.Group>
+        <aside className="cd-side">
+          <section className="cd-card" aria-labelledby="ch-supplier-title">
+            <div className="cd-card-head"><h2 id="ch-supplier-title">Supplier</h2></div>
+            {supplier ? (
+              <ul className="cd-contact">
+                <li><strong>{supplier.name}</strong></li>
+                {supplier.phone && <li><FaPhoneAlt aria-hidden="true" /><a href={`tel:${supplier.phone}`}>{supplier.phone}</a></li>}
+                {supplier.address && <li><span className="text-muted">{supplier.address}</span></li>}
+              </ul>
+            ) : (
+              <p className="cd-empty">No supplier on this challan.</p>
+            )}
+          </section>
 
-                      {selectedItems.length > 0 && (
-                        <div className="mb-3">
-                          <h6>Selected Items</h6>
-                          <div className="selected-items-list">
-                            {selectedItems.map((item, index) => (
-                              <div key={index} className="selected-item-card">
-                                <div className="d-flex justify-content-between align-items-center mb-2">
-                                  <strong>{item.name}</strong>
-                                  <Button
-                                    variant="link"
-                                    className="text-danger p-0"
-                                    onClick={() => handleItemRemove(index)}
-                                  >
-                                    <FaTrash />
-                                  </Button>
-                                </div>
-                                <Row>
-                                  <Col md={6}>
-                                    <Form.Group>
-                                      <Form.Label>Buying Price</Form.Label>
-                                      <Form.Control
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        value={item.buying_price}
-                                        onChange={(e) =>
-                                          handleItemChange(
-                                            index,
-                                            "buying_price",
-                                            parseFloat(e.target.value)
-                                          )
-                                        }
-                                        required
-                                        className="form-control-lg"
-                                      />
-                                    </Form.Group>
-                                  </Col>
-                                  <Col md={6}>
-                                    <Form.Group>
-                                      <Form.Label>Quantity</Form.Label>
-                                      <Form.Control
-                                        type="number"
-                                        min="1"
-                                        value={item.quantity}
-                                        onChange={(e) =>
-                                          handleItemChange(
-                                            index,
-                                            "quantity",
-                                            parseInt(e.target.value)
-                                          )
-                                        }
-                                        required
-                                        className="form-control-lg"
-                                      />
-                                    </Form.Group>
-                                  </Col>
-                                </Row>
-                              </div>
-                            ))}
-                            <Button
-                              variant="primary"
-                              onClick={handleAddItems}
-                              disabled={addingItemsLoading}
-                              className="d-flex align-items-center gap-2 mt-3"
-                            >
-                              {addingItemsLoading ? (
-                                <>
-                                  <FaSpinner className="spinner me-2" /> Adding
-                                  Items...
-                                </>
-                              ) : (
-                                <>
-                                  <FaPlus /> Add Items to Challan
-                                </>
-                              )}
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
+          <section className="cd-card" aria-labelledby="ch-expense-title">
+            <div className="cd-card-head"><h2 id="ch-expense-title">Booked as expense</h2></div>
+            {challan.expense ? (
+              <div className="ch-expense">
+                <span className="ls-money">{taka(challan.expense.amount)}</span>
+                <p>{challan.expense.description}</p>
+                <p className="text-muted small mb-0">Also sent to the account site under Tools &amp; equipment, with the supplier's name.</p>
+              </div>
+            ) : (
+              <p className="cd-empty">This challan is from before expenses were linked to challans. Its expense was saved separately and won't follow edits here.</p>
+            )}
+          </section>
 
-                  <div className="table-container">
-                    <Table responsive hover className="modern-table">
-                      <thead>
-                        <tr>
-                          <th>Item Name</th>
-                          <th>Buying Price</th>
-                          <th>Quantity</th>
-                          <th>Total</th>
-                          <th style={{ width: "150px" }}>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {challan.items.map((item, index) => (
-                          <tr key={index}>
-                            <td>{item.item_name}</td>
-                            <td>
-                              ৳
-                              {parseFloat(
-                                item.buying_price || 0
-                              ).toLocaleString()}
-                            </td>
-                            <td>{item.quantity}</td>
-                            <td>
-                              ৳
-                              {(
-                                parseFloat(item.buying_price) *
-                                parseInt(item.quantity)
-                              ).toLocaleString()}
-                            </td>
-                            <td>
-                              <div className="d-flex gap-2">
-                                <Button
-                                  variant="outline-primary"
-                                  size="sm"
-                                  onClick={() => openQuantityModal(item)}
-                                  className="view-btn"
-                                >
-                                  <FaPencilAlt className="me-1" /> Edit
-                                </Button>
-                                <Button
-                                  variant="outline-danger"
-                                  size="sm"
-                                  onClick={() => openDeleteModal(item)}
-                                  className="delete-btn"
-                                >
-                                  <FaTrash />
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                        <tr className="table-secondary fw-bold">
-                          <td colSpan="2">
-                            <h5 className="mb-0">Total Items (Types)</h5>
-                          </td>
-                          <td>
-                            <h5 className="mb-0">{challan.items.length}</h5>
-                          </td>
-                          <td colSpan="2">
-                            <h5 className="mb-0 challan-amount">
-                              ৳
-                              {challan.items
-                                .reduce(
-                                  (sum, item) =>
-                                    sum +
-                                    parseFloat(item.buying_price || 0) *
-                                      parseInt(item.quantity),
-                                  0
-                                )
-                                .toLocaleString()}
-                            </h5>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </Table>
-                  </div>
-                </Card.Body>
-              </Card>
-
-              <Card className="border">
-                <Card.Header className="bg-light d-flex justify-content-between align-items-center">
-                  <div>
-                    <h5 className="mb-1">Invoices</h5>
-                    <p className="text-muted mb-0">
-                      {challan.invoices?.length || 0}{" "}
-                      {challan.invoices?.length === 1 ? "Invoice" : "Invoices"}{" "}
-                      attached
-                    </p>
-                  </div>
-                  <Button
-                    variant="primary"
-                    onClick={() => setShowInvoiceModal(true)}
-                    className="d-flex align-items-center gap-2 px-4"
-                  >
-                    <FaUpload /> Upload New Invoice
-                  </Button>
-                </Card.Header>
-                <Card.Body>
-                  {challan.invoices && challan.invoices.length > 0 ? (
-                    <div className="table-container">
-                      <Table responsive hover className="modern-table">
-                        <thead>
-                          <tr>
-                            <th style={{ width: "60px" }}>#</th>
-                            <th>Preview</th>
-                            <th>File Name</th>
-                            <th>Type</th>
-                            <th>Upload Date</th>
-                            <th style={{ width: "200px" }}>Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {challan.invoices.map((invoice, index) => {
-                            const fileName = invoice.path.split("/").pop();
-                            const fileType = fileName
-                              .split(".")
-                              .pop()
-                              .toUpperCase();
-                            const isPDF = fileType === "PDF";
-
-                            return (
-                              <tr key={invoice.id}>
-                                <td>{index + 1}</td>
-                                <td style={{ width: "120px" }}>
-                                  {isPDF ? (
-                                    <div className="prove-preview-table">
-                                      <FaDownload
-                                        size={24}
-                                        className="text-primary mb-1"
-                                      />
-                                      <span>PDF Document</span>
-                                    </div>
-                                  ) : (
-                                    <div className="prove-preview-table">
-                                      <img
-                                        src={invoice.path}
-                                        alt={`Invoice ${index + 1}`}
-                                        className="prove-image-table"
-                                        onClick={() =>
-                                          window.open(invoice.path, "_blank")
-                                        }
-                                      />
-                                    </div>
-                                  )}
-                                </td>
-                                <td>
-                                  <div className="d-flex flex-column">
-                                    <span className="fw-medium">
-                                      {fileName}
-                                    </span>
-                                    <small className="text-muted">
-                                      {(
-                                        parseInt(fileName.split(".")[0]) /
-                                        1024 /
-                                        1024
-                                      ).toFixed(2)}{" "}
-                                      MB
-                                    </small>
-                                  </div>
-                                </td>
-                                <td>
-                                  <span
-                                    className={`badge ${
-                                      isPDF ? "bg-danger" : "bg-primary"
-                                    }`}
-                                  >
-                                    {fileType}
-                                  </span>
-                                </td>
-                                <td>
-                                  {new Date(
-                                    fileName.split(".")[0]
-                                  ).toLocaleDateString()}
-                                </td>
-                                <td>
-                                  <div className="d-flex gap-2">
-                                    <Button
-                                      variant="outline-primary"
-                                      size="sm"
-                                      href={invoice.path}
-                                      target="_blank"
-                                      className="view-btn"
-                                    >
-                                      <FaEye className="me-1" /> View
-                                    </Button>
-                                    <Button
-                                      variant="outline-danger"
-                                      size="sm"
-                                      onClick={() =>
-                                        openDeleteInvoiceModal(invoice)
-                                      }
-                                      className="delete-btn"
-                                    >
-                                      <FaTrash />
-                                    </Button>
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </Table>
-                    </div>
-                  ) : (
-                    <div className="text-center py-5 bg-light rounded">
-                      <FaUpload size={48} className="text-muted mb-3" />
-                      <h6 className="mb-2">No Invoices Uploaded</h6>
-                      <p className="text-muted mb-3">
-                        Upload invoices to keep track of your challan documents
-                      </p>
-                      <Button
-                        variant="primary"
-                        onClick={() => setShowInvoiceModal(true)}
-                        className="d-flex align-items-center gap-2 mx-auto"
-                      >
-                        <FaUpload /> Upload Invoice
-                      </Button>
-                    </div>
-                  )}
-                </Card.Body>
-              </Card>
+          <section className="cd-card" aria-labelledby="ch-receipts-title">
+            <div className="cd-card-head">
+              <h2 id="ch-receipts-title">Receipts {challan.invoices?.length > 0 && <span className="ed-count">{challan.invoices.length}</span>}</h2>
+              <Button size="sm" variant="outline-primary" onClick={() => fileRef.current?.click()} disabled={uploading}>
+                {uploading ? <Spinner animation="border" size="sm" /> : <><FaUpload className="me-1" aria-hidden="true" />Add</>}
+              </Button>
+              <input ref={fileRef} type="file" accept="image/jpeg,image/png,application/pdf" hidden onChange={uploadReceipt} />
             </div>
-          )}
+            {challan.invoices?.length ? (
+              <ul className="ch-receipts">
+                {challan.invoices.map((f) => (
+                  <li key={f.id}>
+                    <a href={f.path} target="_blank" rel="noreferrer" title="Open full size">
+                      {isPdf(f.path) ? <span className="ch-receipt-pdf"><FaFilePdf aria-hidden="true" />PDF</span> : <img src={f.path} alt="Receipt" loading="lazy" />}
+                    </a>
+                    <button type="button" onClick={() => deleteReceipt(f)} disabled={!!busy[`r${f.id}`]} aria-label="Delete this receipt">
+                      <FaTrash aria-hidden="true" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="cd-empty">No receipt yet. Add a photo or PDF of the supplier's challan.</p>
+            )}
+          </section>
+        </aside>
+      </div>
 
-          {/* Quantity Update Modal */}
-          <Modal
-            show={showQuantityModal}
-            onHide={() => setShowQuantityModal(false)}
-            centered
-          >
-            <Modal.Header closeButton>
-              <Modal.Title>Update Item Quantity</Modal.Title>
-            </Modal.Header>
-            <Modal.Body>
-              {selectedItem && (
-                <Form onSubmit={handleUpdateQuantity}>
-                  <div className="mb-3">
-                    <strong>Item:</strong> {selectedItem.item_name}
-                  </div>
-                  <div className="mb-3">
-                    <strong>Current Quantity:</strong> {selectedItem.quantity}
-                  </div>
-                  <Form.Group>
-                    <Form.Label>New Quantity</Form.Label>
-                    <Form.Control
-                      type="number"
-                      min="1"
-                      value={newQuantity}
-                      onChange={(e) => setNewQuantity(e.target.value)}
-                      required
-                    />
-                  </Form.Group>
-                  <div className="d-flex justify-content-end gap-2 mt-3">
-                    <Button
-                      variant="secondary"
-                      onClick={() => setShowQuantityModal(false)}
-                      disabled={updatingQuantity}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="submit"
-                      variant="primary"
-                      disabled={updatingQuantity}
-                      className="d-flex align-items-center gap-2"
-                    >
-                      {updatingQuantity ? (
-                        <>
-                          <FaSpinner className="spinner-border spinner-border-sm" />{" "}
-                          Updating...
-                        </>
-                      ) : (
-                        <>
-                          <FaSave /> Update Quantity
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </Form>
-              )}
-            </Modal.Body>
-          </Modal>
-
-          {/* Delete Confirmation Modal */}
-          <Modal
-            show={showDeleteModal}
-            onHide={() => setShowDeleteModal(false)}
-            centered
-          >
-            <Modal.Header closeButton>
-              <Modal.Title>Delete Item</Modal.Title>
-            </Modal.Header>
-            <Modal.Body>
-              {selectedItem && (
-                <>
-                  <p>Are you sure you want to delete this item?</p>
-                  <div className="alert alert-warning">
-                    <strong>Item:</strong> {selectedItem.item_name}
-                    <br />
-                    <strong>Quantity:</strong> {selectedItem.quantity}
-                    <br />
-                    <strong>Total:</strong> ৳
-                    {(
-                      parseFloat(selectedItem.buying_price) *
-                      parseInt(selectedItem.quantity)
-                    ).toLocaleString()}
-                  </div>
-                  <p className="text-danger">This action cannot be undone.</p>
-                </>
-              )}
-            </Modal.Body>
-            <Modal.Footer>
-              <Button
-                variant="secondary"
-                onClick={() => setShowDeleteModal(false)}
-                disabled={deletingItem}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="danger"
-                onClick={handleDeleteItem}
-                disabled={deletingItem}
-                className="d-flex align-items-center gap-2"
-              >
-                {deletingItem ? (
-                  <>
-                    <FaSpinner className="spinner-border spinner-border-sm" />{" "}
-                    Deleting...
-                  </>
-                ) : (
-                  <>
-                    <FaTrash /> Delete Item
-                  </>
-                )}
-              </Button>
-            </Modal.Footer>
-          </Modal>
-
-          {/* Invoice Upload Modal */}
-          <Modal
-            show={showInvoiceModal}
-            onHide={() => {
-              setShowInvoiceModal(false);
-              setSelectedFile(null);
-            }}
-            centered
-          >
-            <Modal.Header closeButton>
-              <Modal.Title>Upload Invoice</Modal.Title>
-            </Modal.Header>
-            <Modal.Body>
-              <Form onSubmit={handleUploadInvoice}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Select Invoice File</Form.Label>
-                  <Form.Control
-                    type="file"
-                    accept=".jpg,.jpeg,.png,.pdf"
-                    onChange={handleFileSelect}
-                    required
-                  />
-                  <Form.Text className="text-muted">
-                    Supported formats: JPG, JPEG, PNG, PDF. Max file size: 2MB
-                  </Form.Text>
-                </Form.Group>
-
-                {selectedFile && (
-                  <div className="alert alert-info">
-                    <strong>Selected file:</strong> {selectedFile.name}
-                    <br />
-                    <strong>Size:</strong>{" "}
-                    {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                    <br />
-                    <strong>Type:</strong> {selectedFile.type}
-                  </div>
-                )}
-
-                <div className="d-flex justify-content-end gap-2 mt-3">
-                  <Button
-                    variant="secondary"
-                    onClick={() => {
-                      setShowInvoiceModal(false);
-                      setSelectedFile(null);
-                    }}
-                    disabled={uploadingInvoice}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    disabled={uploadingInvoice || !selectedFile}
-                    className="d-flex align-items-center gap-2"
-                  >
-                    {uploadingInvoice ? (
-                      <>
-                        <FaSpinner className="spinner-border spinner-border-sm" />{" "}
-                        Uploading...
-                      </>
-                    ) : (
-                      <>
-                        <FaUpload /> Upload Invoice
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </Form>
-            </Modal.Body>
-          </Modal>
-
-          {/* Delete Invoice Confirmation Modal */}
-          <Modal
-            show={showDeleteInvoiceModal}
-            onHide={() => setShowDeleteInvoiceModal(false)}
-            centered
-          >
-            <Modal.Header closeButton>
-              <Modal.Title>Delete Invoice</Modal.Title>
-            </Modal.Header>
-            <Modal.Body>
-              {selectedInvoice && (
-                <>
-                  <p>Are you sure you want to delete this invoice?</p>
-                  <div className="alert alert-warning">
-                    <strong>File:</strong>{" "}
-                    {selectedInvoice.path.split("/").pop()}
-                  </div>
-                  <p className="text-danger">This action cannot be undone.</p>
-                </>
-              )}
-            </Modal.Body>
-            <Modal.Footer>
-              <Button
-                variant="secondary"
-                onClick={() => setShowDeleteInvoiceModal(false)}
-                disabled={deletingInvoice}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="danger"
-                onClick={handleDeleteInvoice}
-                disabled={deletingInvoice}
-                className="d-flex align-items-center gap-2"
-              >
-                {deletingInvoice ? (
-                  <>
-                    <FaSpinner className="spinner-border spinner-border-sm" />{" "}
-                    Deleting...
-                  </>
-                ) : (
-                  <>
-                    <FaTrash /> Delete Invoice
-                  </>
-                )}
-              </Button>
-            </Modal.Footer>
-          </Modal>
-        </Card.Body>
-      </Card>
+      <Modal show={editOpen} onHide={() => !savingEdit && setEditOpen(false)} centered>
+        <Form onSubmit={saveEdit}>
+          <Modal.Header closeButton>
+            <Modal.Title as="h2" className="h5 mb-0">Edit challan details</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <Form.Group className="mb-3" controlId="ch-edit-supplier">
+              <Form.Label>Bought from</Form.Label>
+              <Form.Select value={edit.supplier_id} onChange={(e) => setEdit((x) => ({ ...x, supplier_id: e.target.value }))} required>
+                <option value="">Choose a supplier</option>
+                {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </Form.Select>
+            </Form.Group>
+            <Form.Group className="mb-3" controlId="ch-edit-date">
+              <Form.Label>Purchase date</Form.Label>
+              <Form.Control type="date" value={edit.Date} onChange={(e) => setEdit((x) => ({ ...x, Date: e.target.value }))} required />
+            </Form.Group>
+            <Form.Group controlId="ch-edit-delivery">
+              <Form.Label>Delivery charge</Form.Label>
+              <div className="ed-money">
+                <span aria-hidden="true">৳</span>
+                <Form.Control type="number" inputMode="decimal" min={0} value={edit.delivery_price} onChange={(e) => setEdit((x) => ({ ...x, delivery_price: e.target.value }))} required />
+              </div>
+              <Form.Text>The total and the expense change with it.</Form.Text>
+            </Form.Group>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="outline-secondary" onClick={() => setEditOpen(false)} disabled={savingEdit}>Cancel</Button>
+            <Button type="submit" disabled={savingEdit}>{savingEdit ? "Saving…" : "Save changes"}</Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
     </div>
   );
 };

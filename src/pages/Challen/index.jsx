@@ -1,235 +1,150 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { FaPlus, FaSpinner, FaEye, FaTrash } from 'react-icons/fa';
-import { toast } from 'react-hot-toast';
-import axiosInstance from '../../config/axios';
-import { Card, Button } from 'react-bootstrap';
-import Loading from '../../components/Loading';
-import ChallanFilters from '../../components/Challan/ChallanList/ChallanFilters';
-import ChallanPagination from '../../components/Challan/ChallanList/ChallanPagination';
-import CommonTable from '../../components/Common/CommonTable';
-import './Challan.css';
-import usePageTitle from '../../hooks/usePageTitle';
+import React, { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { FaPlus, FaChevronRight, FaTimes } from "react-icons/fa";
+import { toast } from "react-hot-toast";
+import { Button } from "react-bootstrap";
+import axiosInstance from "../../config/axios";
+import usePageTitle from "../../hooks/usePageTitle";
+import CommonTable from "../../components/Common/CommonTable";
+import { ListHeader, ListCard, ListToolbar, SearchBox, ResultCount, Pager } from "../../components/List/List";
+import { taka, shortDate } from "../../components/List/format";
+import "../../components/List/List.css";
 
-import confirmDialog from "../../utils/confirmDialog";
-const Challan = () => {
-  usePageTitle('Manage Challans');
-  const [challans, setChallans] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [pageLoading, setPageLoading] = useState(true);
-  const [tableLoading, setTableLoading] = useState(false);
-  const [pagination, setPagination] = useState({
-    currentPage: 1,
-    perPage: 10,
-    totalPages: 1,
-    totalRows: 0,
-    hasMorePages: false
-  });
-  const [searchParams, setSearchParams] = useState({
-    search: '',
-    limit: 10,
-  });
-  const [searchTimeout, setSearchTimeout] = useState(null);
-  const [isSearching, setIsSearching] = useState(false);
+const Challans = () => {
+  usePageTitle("Challans");
   const navigate = useNavigate();
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [query, setQuery] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
+  const [pagination, setPagination] = useState({ total_rows: 0, total_pages: 1 });
 
+  // Wait for a pause in typing before searching.
   useEffect(() => {
-    const loadInitialData = async () => {
-      try {
-        await fetchChallans();
-      } finally {
-        setPageLoading(false);
-      }
-    };
-    
-    loadInitialData();
-  }, []);
+    const t = setTimeout(() => {
+      setQuery(search.trim());
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [search]);
 
-  useEffect(() => {
-    if (searchTimeout) {
-      clearTimeout(searchTimeout);
-    }
-
-    const timeoutId = setTimeout(() => {
-      setIsSearching(true);
-      fetchChallans(1);
-    }, 500);
-
-    setSearchTimeout(timeoutId);
-
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-    };
-  }, [searchParams.search, searchParams.limit]);
-
-  const fetchChallans = async (page = pagination.currentPage) => {
+  const load = useCallback(async () => {
     setLoading(true);
-    setTableLoading(true);
     try {
-      const params = {
-        page,
-        limit: searchParams.limit,
-        ...(searchParams.search && { search: searchParams.search })
-      };
-
-      const response = await axiosInstance.get('/challans', { params });
-      const result = response.data;
-
-      if (!result.success) {
-        throw new Error(result.message || 'Failed to fetch challans');
-      }
-      
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      setChallans(result.data);
-      setPagination({
-        currentPage: result.pagination.current_page,
-        perPage: result.pagination.per_page,
-        totalPages: result.pagination.total_pages,
-        totalRows: result.pagination.total_rows,
-        hasMorePages: result.pagination.has_more_pages
+      const res = await axiosInstance.get("/challans", {
+        params: { page, limit, ...(query && { search: query }), ...(from && { start_date: from }), ...(to && { end_date: to }) },
       });
+      setRows(res.data?.data || []);
+      setPagination(res.data?.pagination || { total_rows: 0, total_pages: 1 });
     } catch (err) {
-      console.error('Error fetching challans:', err);
-      toast.error(err.response?.data?.message || 'Failed to fetch challans');
+      toast.error(err.response?.data?.message || "Couldn't load challans");
+      setRows([]);
     } finally {
       setLoading(false);
-      setTableLoading(false);
-      setIsSearching(false);
     }
-  };
+  }, [page, limit, query, from, to]);
 
-  const handleFilterChange = (e) => {
-    const { name, value } = e.target;
-    setSearchParams(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
+  useEffect(() => {
+    load();
+  }, [load]);
 
-  const handleDeleteChallan = async (id) => {
-    if (await confirmDialog('Are you sure you want to delete this challan?')) {
-      try {
-        setTableLoading(true);
-        const response = await axiosInstance.delete(`/challans/${id}`);
-        
-        if (!response.data.success) {
-          throw new Error(response.data.message || 'Failed to delete challan');
-        }
-
-        await new Promise(resolve => setTimeout(resolve, 300));
-        
-        toast.success('Challan deleted successfully');
-        
-        if (challans.length === 1 && pagination.currentPage > 1) {
-          fetchChallans(pagination.currentPage - 1);
-        } else {
-          fetchChallans(pagination.currentPage);
-        }
-      } catch (err) {
-        console.error('Error deleting challan:', err);
-        toast.error(err.response?.data?.message || 'Failed to delete challan');
-      } finally {
-        setTableLoading(false);
-      }
-    }
-  };
-
-  const handlePageChange = (page) => {
-    fetchChallans(page);
-  };
+  const filtered = !!(query || from || to);
 
   const headers = [
-    { key: 'id', label: 'ID' },
-    { key: 'Date', label: 'Date' },
-    { key: 'supplier.name', label: 'Supplier' },
-    { key: 'total', label: 'Total Amount', render: (row) => `৳${parseFloat(row.total).toLocaleString()}` },
+    {
+      key: "id",
+      label: "Challan",
+      render: (row) => (
+        <>
+          <span className="ls-cell-main">#{row.id}</span>
+          <span className="ls-cell-sub">{shortDate(row.Date)}</span>
+        </>
+      ),
+    },
+    {
+      key: "supplier",
+      label: "Supplier",
+      render: (row) =>
+        row.supplier ? (
+          <>
+            <span className="d-block">{row.supplier.name}</span>
+            {row.supplier.phone && <span className="ls-cell-sub">{row.supplier.phone}</span>}
+          </>
+        ) : (
+          <span className="text-muted">No supplier</span>
+        ),
+    },
+    {
+      key: "items_count",
+      label: "Products",
+      nowrap: true,
+      render: (row) => (row.items_count != null ? `${row.items_count} ${Number(row.items_count) === 1 ? "line" : "lines"}` : "—"),
+    },
+    {
+      key: "total",
+      label: "Total",
+      align: "end",
+      nowrap: true,
+      render: (row) => (
+        <>
+          <span className="ls-money d-block">{taka(row.total)}</span>
+          {Number(row.delivery_price) > 0 && <span className="ls-cell-sub">incl. {taka(row.delivery_price)} delivery</span>}
+        </>
+      ),
+    },
   ];
 
-  const renderActions = (challan) => (
-    <div className="d-flex gap-2">
-      <Button 
-        variant="outline-primary" 
-        size="sm"
-        onClick={() => navigate(`/challans/${challan.id}`)}
-        title="View"
-        disabled={loading}
-        className="view-btn"
-      >
-        <FaEye />
-      </Button>
-      <Button 
-        variant="outline-danger" 
-        size="sm"
-        onClick={() => handleDeleteChallan(challan.id)}
-        title="Delete"
-        disabled={loading}
-        className="delete-btn"
-      >
-        {loading ? <FaSpinner className="spinner-border spinner-border-sm" /> : <FaTrash />}
-      </Button>
-    </div>
-  );
-
-  if (pageLoading) {
-    return <Loading />;
-  }
+  const addNew = () => navigate("/challans/add");
 
   return (
-    <div className="challan-container">
-      <Card className="modern-card">
-        <Card.Body className="p-4">
-          <div className="d-flex justify-content-between align-items-center mb-4">
-            <div>
-              <h2 className="page-title mb-1">Challans</h2>
-              {loading && tableLoading ? (
-                <div className="d-flex align-items-center">
-                  <FaSpinner className="spinner-border spinner-border-sm me-2" />
-                  <p className="page-subtitle mb-0">Loading challans...</p>
-                </div>
-              ) : (
-                <p className="page-subtitle mb-0">
-                  Showing {challans.length} of {pagination.totalRows} challans
-                </p>
-              )}
-            </div>
-            <Button 
-              variant="primary" 
-              onClick={() => navigate('/challans/add')}
-              disabled={loading}
-              className="create-challan-btn"
-            >
-              <FaPlus className="me-2" /> Create Challan
-            </Button>
+    <div className="challans-page">
+      <ListHeader
+        title="Challans"
+        subtitle="Stock bought from suppliers. Saving a challan adds the products to stock and books the cost as an expense."
+        actions={<Button onClick={addNew}><FaPlus className="me-2" aria-hidden="true" />New challan</Button>}
+      />
+
+      <ListCard>
+        <ListToolbar end={<ResultCount page={page} perPage={limit} total={pagination.total_rows || 0} noun="challans" />}>
+          <SearchBox value={search} onChange={setSearch} placeholder="Supplier, phone or challan number" busy={loading && !!query} />
+          <div className="ls-dates" role="group" aria-label="Challan date">
+            <span>From</span>
+            <input type="date" value={from} max={to || undefined} onChange={(e) => { setFrom(e.target.value); setPage(1); }} aria-label="From date" />
+            <span>to</span>
+            <input type="date" value={to} min={from || undefined} onChange={(e) => { setTo(e.target.value); setPage(1); }} aria-label="To date" />
+            {(from || to) && (
+              <button type="button" onClick={() => { setFrom(""); setTo(""); setPage(1); }} aria-label="Clear dates"><FaTimes /></button>
+            )}
           </div>
+        </ListToolbar>
 
-          <ChallanFilters
-            searchParams={searchParams}
-            handleFilterChange={handleFilterChange}
-            loading={loading}
-            isSearching={isSearching}
-            setSearchParams={setSearchParams}
-          />
+        <CommonTable
+          headers={headers}
+          data={rows}
+          tableLoading={loading}
+          loading={loading}
+          renderActions={() => <FaChevronRight className="text-muted" aria-hidden="true" />}
+          onRowClick={(row) => navigate(`/challans/${row.id}`)}
+          rowLabel={(row) => `Open challan #${row.id}${row.supplier ? ` from ${row.supplier.name}` : ""}`}
+          emptyTitle={filtered ? "No challans match" : "No challans yet"}
+          emptyText={filtered ? "Try another supplier or clear the dates." : "Record stock you buy from suppliers to keep stock and costs right."}
+          emptyAction={!filtered && <Button size="sm" onClick={addNew}><FaPlus className="me-1" aria-hidden="true" /> New challan</Button>}
+        />
 
-          <CommonTable
-            headers={headers}
-            data={challans}
-            tableLoading={tableLoading}
-            loading={loading}
-            renderActions={renderActions}
-          />
-
-          <ChallanPagination
-            pagination={pagination}
-            tableLoading={tableLoading}
-            handlePageChange={handlePageChange}
-          />
-        </Card.Body>
-      </Card>
+        <Pager
+          page={page}
+          lastPage={pagination.total_pages || 1}
+          onPage={setPage}
+          perPage={limit}
+          onPerPage={(n) => { setLimit(n); setPage(1); }}
+        />
+      </ListCard>
     </div>
   );
 };
 
-export default Challan;
+export default Challans;
