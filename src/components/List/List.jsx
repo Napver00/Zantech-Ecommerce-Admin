@@ -68,8 +68,12 @@ export const FilterTabs = ({ tabs, value, onChange, label = 'Filter' }) => (
 );
 
 /** "Showing 1–10 of 48 orders" */
+// "1 course", "1 category" from the plural noun the page passes in.
+const singular = (noun) => (noun.endsWith('ies') ? `${noun.slice(0, -3)}y` : noun.endsWith('s') ? noun.slice(0, -1) : noun);
+
 export const ResultCount = ({ page = 1, perPage, total, noun = 'results' }) => {
   if (!total) return <span className="ls-count">No {noun}</span>;
+  if (total === 1) return <span className="ls-count">1 {singular(noun)}</span>;
   const from = (page - 1) * perPage + 1;
   const to = Math.min(total, page * perPage);
   return (

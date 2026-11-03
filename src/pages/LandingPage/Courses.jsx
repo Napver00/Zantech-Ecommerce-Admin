@@ -1,317 +1,224 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { FaPlus, FaEdit, FaTrash, FaSearch, FaSpinner, FaTimes } from "react-icons/fa";
+import React, { useCallback, useEffect, useState } from "react";
+import { FaPlus, FaTrash } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
+import { Button, Form } from "react-bootstrap";
 import axiosInstance from "../../config/axios";
-import { Card, Form, InputGroup, Button, Row, Col, Badge, Pagination } from "react-bootstrap";
 import CommonTable from "../../components/Common/CommonTable";
-import usePageTitle from "../../hooks/usePageTitle";
-
+import { ListCard, ListToolbar, SearchBox, ResultCount, Pager, Pill } from "../../components/List/List";
+import { taka, shortDate } from "../../components/List/format";
 import confirmDialog from "../../utils/confirmDialog";
-const STATUS_VARIANT = { published: "success", draft: "secondary" };
-
-const fmtDate = (d) => (d ? new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "");
 
 const Courses = ({ kind = "course" }) => {
   const isBootcamp = kind === "bootcamp";
   const noun = isBootcamp ? "bootcamp" : "course";
-  usePageTitle(isBootcamp ? "Bootcamps" : "Courses");
   const navigate = useNavigate();
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [tableLoading, setTableLoading] = useState(false);
   const [search, setSearch] = useState("");
-  const [isSearching, setIsSearching] = useState(false);
+  const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
-  const [pagination, setPagination] = useState({
-    total_rows: 0,
-    current_page: 1,
-    per_page: 10,
-    total_pages: 1,
-    has_more_pages: false,
-  });
+  const [pagination, setPagination] = useState({ total_rows: 0, total_pages: 1 });
+  const [busy, setBusy] = useState({});
 
-  const fetchCourses = useCallback(async (title = "", pageNum = 1) => {
-    setTableLoading(true);
+  // Wait for a pause in typing before searching.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setQuery(search.trim());
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const load = useCallback(async () => {
+    setLoading(true);
     try {
-      const params = { page: pageNum, limit, kind };
-      if (title) params.title = title;
+      const params = { page, limit, kind, ...(query && { title: query }) };
       const res = await axiosInstance.get("/courses", { params });
-      if (!res.data.success) throw new Error(res.data.message);
-      const raw = Array.isArray(res.data.data) ? res.data.data : res.data.data ? [res.data.data] : [];
+      const raw = Array.isArray(res.data?.data) ? res.data.data : res.data?.data ? [res.data.data] : [];
       setCourses(raw);
-      setPagination(
-        res.data.pagination || {
-          total_rows: raw.length,
-          current_page: pageNum,
-          per_page: limit,
-          total_pages: 1,
-          has_more_pages: false,
-        }
-      );
+      setPagination(res.data?.pagination || { total_rows: raw.length, total_pages: 1 });
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to fetch courses");
+      toast.error(err.response?.data?.message || `Couldn't load ${noun}s`);
       setCourses([]);
     } finally {
       setLoading(false);
-      setTableLoading(false);
-      setIsSearching(false);
     }
-  }, [limit, kind]);
+  }, [page, limit, kind, query, noun]);
 
-  useEffect(() => { fetchCourses(search, page); }, [page, limit]);
-
-  // Debounced search
   useEffect(() => {
-    setIsSearching(true);
-    const id = setTimeout(() => {
-      setPage(1);
-      fetchCourses(search, 1);
-    }, 500);
-    return () => clearTimeout(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search]);
+    load();
+  }, [load]);
 
-  const handlePageChange = (p) => {
-    if (p < 1 || (pagination && p > pagination.total_pages)) return;
-    setPage(p);
-  };
+  const open = (c) => navigate(`/landing/courses/${c.slug}`);
+  const addNew = () => navigate(`/landing/courses/add${isBootcamp ? "?kind=bootcamp" : ""}`);
 
-  const handleLimitChange = (e) => {
-    setLimit(parseInt(e.target.value));
-    setPage(1);
-  };
-
-  const handleDelete = async (id) => {
-    if (!await confirmDialog("Delete this course? This will also remove all its curriculum, schedules, mentors and images.")) return;
+  const togglePublished = async (c) => {
+    const next = c.status === "published" ? "draft" : "published";
+    setBusy((b) => ({ ...b, [c.id]: true }));
+    setCourses((list) => list.map((x) => (x.id === c.id ? { ...x, status: next } : x)));
     try {
-      setTableLoading(true);
-      await axiosInstance.delete(`/courses/${id}`);
-      toast.success("Course deleted");
-      fetchCourses(search, page);
+      await axiosInstance.patch(`/courses/status/${c.id}`);
+      toast.success(next === "published" ? `${c.title} is on the website` : `${c.title} is now a draft`);
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to delete course");
+      setCourses((list) => list.map((x) => (x.id === c.id ? { ...x, status: c.status } : x)));
+      toast.error(err.response?.data?.message || "Couldn't change that. Try again.");
     } finally {
-      setTableLoading(false);
+      setBusy((b) => ({ ...b, [c.id]: false }));
     }
   };
 
-  const handleToggleStatus = async (id, currentStatus) => {
+  const remove = async (c) => {
+    if (!(await confirmDialog(`Delete “${c.title}”? Its curriculum, schedules, mentors and photos go too.`))) return;
     try {
-      setTableLoading(true);
-      await axiosInstance.patch(`/courses/status/${id}`);
-      toast.success(`Status changed to ${currentStatus === "draft" ? "published" : "draft"}`);
-      fetchCourses(search, page);
+      await axiosInstance.delete(`/courses/${c.id}`);
+      toast.success(`${isBootcamp ? "Bootcamp" : "Course"} deleted`);
+      if (courses.length === 1 && page > 1) setPage(page - 1);
+      else load();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to update status");
-    } finally {
-      setTableLoading(false);
+      toast.error(err.response?.data?.message || "Couldn't delete it");
     }
   };
+
+  const today = new Date(new Date().toDateString());
 
   const headers = [
     {
-      key: "thumbnail",
-      label: "Thumb",
-      render: (row) =>
-        row.thumbnail ? (
-          <img
-            src={row.thumbnail}
-            alt={row.title}
-            style={{ width: 48, height: 36, objectFit: "cover", borderRadius: 4 }}
-          />
-        ) : (
-          <div
-            style={{ width: 48, height: 36, background: "#e9ecef", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center" }}
-          >
-            <span style={{ fontSize: 10, color: "#adb5bd" }}>No img</span>
-          </div>
-        ),
-    },
-    { key: "id", label: "ID" },
-    { key: "title", label: "Title" },
-    { key: "category", label: "Category", render: (row) => row.category || "—" },
-    ...(isBootcamp ? [
-      {
-        key: "start_date",
-        label: "Dates",
-        render: (row) => (
-          <span className="small">
-            {row.start_date ? `${fmtDate(row.start_date)}${row.end_date && row.end_date !== row.start_date ? ` – ${fmtDate(row.end_date)}` : ""}` : "—"}
-            {row.end_date && new Date(row.end_date) < new Date(new Date().toDateString()) && <Badge bg="secondary" className="ms-1">Ended</Badge>}
-          </span>
-        ),
-      },
-      {
-        key: "seats",
-        label: "Seats",
-        render: (row) => (
-          <span className={row.seats && row.seats_taken >= row.seats ? "text-danger fw-bold" : ""}>
-            {row.seats_taken ?? 0}{row.seats ? ` / ${row.seats}` : " registered"}
-          </span>
-        ),
-      },
-    ] : []),
-    {
-      key: "payment_type",
-      label: "Type",
+      key: "title",
+      label: isBootcamp ? "Bootcamp" : "Course",
       render: (row) => (
-        <Badge bg={row.payment_type === "monthly" ? "info" : "secondary"}>
-          {row.payment_type === "monthly" ? "Monthly" : "One Time"}
-        </Badge>
+        <div className="ls-with-thumb">
+          {row.thumbnail ? <img src={row.thumbnail} alt="" className="ls-thumb" loading="lazy" /> : <span className="ls-thumb is-empty">No photo</span>}
+          <span className="min-w-0">
+            <span className="ls-cell-main text-truncate d-block" style={{ maxWidth: 320 }} title={row.title}>{row.title}</span>
+            <span className="ls-cell-sub">
+              {[row.category, row.payment_type === "monthly" ? "Monthly" : "One-time payment"].filter(Boolean).join(" · ")}
+            </span>
+          </span>
+        </div>
       ),
     },
+    ...(isBootcamp
+      ? [
+          {
+            key: "start_date",
+            label: "When",
+            render: (row) => {
+              if (!row.start_date) return <span className="ls-cell-sub">No date set</span>;
+              const ended = row.end_date && new Date(row.end_date) < today;
+              return (
+                <>
+                  <span className="d-block">
+                    {shortDate(row.start_date)}
+                    {row.end_date && row.end_date !== row.start_date ? ` – ${shortDate(row.end_date)}` : ""}
+                  </span>
+                  {ended && <Pill tone="muted">Ended</Pill>}
+                </>
+              );
+            },
+          },
+          {
+            key: "seats",
+            label: "Seats",
+            nowrap: true,
+            render: (row) => {
+              const taken = Number(row.seats_taken) || 0;
+              if (!row.seats) return <span>{taken} registered</span>;
+              const full = taken >= Number(row.seats);
+              return full ? <Pill tone="bad">Full · {taken}/{row.seats}</Pill> : <span>{taken} of {row.seats}</span>;
+            },
+          },
+        ]
+      : []),
     {
       key: "price",
       label: "Price",
+      align: "end",
+      nowrap: true,
       render: (row) => {
         const real = row.discount_price ?? row.price;
-        const showStrike = row.price != null && row.discount_price != null && Number(row.discount_price) < Number(row.price);
+        const struck = row.price != null && row.discount_price != null && Number(row.discount_price) < Number(row.price);
+        const monthly = row.payment_type === "monthly";
         return (
-          <div className="small">
-            {row.payment_type === "monthly" && row.monthly_fee != null && (
-              <div className="text-success fw-bold">৳{Number(row.monthly_fee).toLocaleString()}/mo</div>
-            )}
-            {real != null ? (
-              <div>
-                {showStrike && <span className="text-decoration-line-through text-muted me-1">৳{Number(row.price).toLocaleString()}</span>}
-                <span className={row.payment_type === "monthly" ? "" : "text-success fw-bold"}>৳{Number(real).toLocaleString()}</span>
-                {row.payment_type === "monthly" && row.duration_months ? <span className="text-muted"> / {row.duration_months} mo</span> : null}
-              </div>
-            ) : "—"}
+          <>
+            <span className="ls-money d-block">
+              {monthly && row.monthly_fee != null ? `${taka(row.monthly_fee)}/mo` : real != null ? taka(real) : "—"}
+            </span>
+            {monthly && row.duration_months ? (
+              <span className="ls-cell-sub">{row.duration_months} months</span>
+            ) : struck ? (
+              <span className="ls-cell-sub"><s>{taka(row.price)}</s></span>
+            ) : null}
             {Number(row.admission_fee) > 0 && (
-              <div className="text-muted">+ ৳{Number(row.admission_fee).toLocaleString()} {row.admission_fee_label || "admission"}</div>
+              <span className="ls-cell-sub d-block">+ {taka(row.admission_fee)} {row.admission_fee_label || "admission"}</span>
             )}
-          </div>
+          </>
         );
       },
     },
-    { key: "serial_number", label: "Serial", render: (row) => row.serial_number ?? "—" },
     {
       key: "status",
-      label: "Status",
+      label: "On website",
       render: (row) => (
-        <Button
-          variant={STATUS_VARIANT[row.status] || "secondary"}
-          size="sm"
-          onClick={() => handleToggleStatus(row.id, row.status)}
-          disabled={tableLoading}
-          style={{ minWidth: 80 }}
-        >
-          {row.status === "published" ? "Published" : "Draft"}
-        </Button>
+        <Form.Check
+          type="switch"
+          id={`${kind}-published-${row.id}`}
+          checked={row.status === "published"}
+          disabled={!!busy[row.id]}
+          onChange={() => togglePublished(row)}
+          label={<span className="small text-muted">{row.status === "published" ? "Published" : "Draft"}</span>}
+          aria-label={`Publish ${row.title}`}
+        />
       ),
-    },
-    {
-      key: "created_at",
-      label: "Created",
-      render: (row) => new Date(row.created_at).toLocaleDateString(),
     },
   ];
 
-  const renderActions = (course) => (
-    <div className="d-flex gap-2">
-      <Button
-        variant="outline-primary"
-        size="sm"
-        onClick={() => navigate(`/landing/courses/${course.slug}`)}
-        disabled={tableLoading}
-        title="Edit"
-      >
-        <FaEdit />
-      </Button>
-      <Button
-        variant="outline-danger"
-        size="sm"
-        onClick={() => handleDelete(course.id)}
-        disabled={tableLoading}
-        title="Delete"
-      >
-        <FaTrash />
-      </Button>
-    </div>
+  const renderActions = (row) => (
+    <Button variant="outline-danger" size="sm" onClick={() => remove(row)} title="Delete" aria-label={`Delete ${row.title}`}>
+      <FaTrash />
+    </Button>
   );
 
   return (
-    <div className="courses-container">
-      <Card className="modern-card border-0">
-        <Card.Body className="p-4">
-          <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
-            <div>
-              <h4 className="mb-1 fw-bold text-primary">{isBootcamp ? "Bootcamps" : "Courses"}</h4>
-              <p className="text-muted small mb-0">
-                {loading ? "Loading..." : `${pagination.total_rows} ${noun}${pagination.total_rows !== 1 ? "s" : ""} found`}
-              </p>
-            </div>
-            <Button variant="primary" onClick={() => navigate(`/landing/courses/add${isBootcamp ? "?kind=bootcamp" : ""}`)}>
-              <FaPlus className="me-2" /> {isBootcamp ? "Add Bootcamp" : "Add Course"}
+    <ListCard>
+      <ListToolbar
+        end={
+          <>
+            <ResultCount page={page} perPage={limit} total={pagination.total_rows} noun={`${noun}s`} />
+            <Button size="sm" onClick={addNew}>
+              <FaPlus className="me-1" aria-hidden="true" />New {noun}
             </Button>
-          </div>
+          </>
+        }
+      >
+        <SearchBox value={search} onChange={setSearch} placeholder={`Search ${noun}s by title`} busy={loading && !!search} />
+      </ListToolbar>
 
-          <Row className="mb-4">
-            <Col md={4}>
-              <InputGroup>
-                <InputGroup.Text>
-                  {isSearching ? <FaSpinner className="fa-spin" /> : <FaSearch />}
-                </InputGroup.Text>
-                <Form.Control
-                  placeholder="Search by title..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  disabled={loading}
-                />
-                {search && (
-                  <Button variant="outline-secondary" onClick={() => setSearch("")}>
-                    <FaTimes />
-                  </Button>
-                )}
-              </InputGroup>
-            </Col>
-            <Col md={2}>
-              <Form.Select value={limit} onChange={handleLimitChange} className="limit-select">
-                <option value="5">5 per page</option>
-                <option value="10">10 per page</option>
-                <option value="20">20 per page</option>
-                <option value="50">50 per page</option>
-              </Form.Select>
-            </Col>
-          </Row>
+      <CommonTable
+        headers={headers}
+        data={courses}
+        tableLoading={loading}
+        loading={loading}
+        renderActions={renderActions}
+        onRowClick={open}
+        rowLabel={(row) => `Edit ${row.title}`}
+        emptyTitle={query ? `No ${noun}s match` : `No ${noun}s yet`}
+        emptyText={query ? `Nothing matches “${query}”.` : isBootcamp ? "Add a bootcamp with its dates and seats to take registrations." : "Add a course to list it on the website."}
+        emptyAction={!query && <Button size="sm" onClick={addNew}><FaPlus className="me-1" aria-hidden="true" /> New {noun}</Button>}
+      />
 
-          <CommonTable
-            headers={headers}
-            data={courses}
-            tableLoading={tableLoading}
-            loading={loading}
-            renderActions={renderActions}
-          />
-
-          {pagination.total_pages > 1 && (
-            <div className="pagination-container mt-4">
-              <Pagination className="modern-pagination">
-                <Pagination.Prev
-                  onClick={() => handlePageChange(pagination.current_page - 1)}
-                  disabled={pagination.current_page === 1}
-                />
-                {[...Array(pagination.total_pages)].map((_, index) => (
-                  <Pagination.Item
-                    key={index + 1}
-                    active={index + 1 === pagination.current_page}
-                    onClick={() => handlePageChange(index + 1)}
-                  >
-                    {index + 1}
-                  </Pagination.Item>
-                ))}
-                <Pagination.Next
-                  onClick={() => handlePageChange(pagination.current_page + 1)}
-                  disabled={!pagination.has_more_pages}
-                />
-              </Pagination>
-            </div>
-          )}
-        </Card.Body>
-      </Card>
-    </div>
+      <Pager
+        page={page}
+        lastPage={pagination.total_pages || 1}
+        onPage={setPage}
+        perPage={limit}
+        onPerPage={(n) => {
+          setLimit(n);
+          setPage(1);
+        }}
+      />
+    </ListCard>
   );
 };
 

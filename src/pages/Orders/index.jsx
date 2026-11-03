@@ -9,16 +9,11 @@ import CommonTable from "../../components/Common/CommonTable";
 import { ListHeader, ListCard, ListToolbar, SearchBox, FilterTabs, ResultCount, Pager, Pill } from "../../components/List/List";
 import { taka, timeAgo, fullDate } from "../../components/List/format";
 import "./Orders.css";
+import { ORDER_STATUSES, orderStatusOf } from "../../components/List/orderStatus";
 
 // Status codes from the API, in the order they're shown as tabs.
-const STATUSES = [
-  { value: "0", key: "processing", label: "Processing", tone: "warn" },
-  { value: "2", key: "on_hold", label: "On hold", tone: "muted" },
-  { value: "1", key: "completed", label: "Completed", tone: "good" },
-  { value: "3", key: "cancelled", label: "Cancelled", tone: "bad" },
-  { value: "4", key: "refunded", label: "Refunded", tone: "info" },
-];
-const statusOf = (code) => STATUSES.find((s) => s.value === String(code)) || STATUSES[0];
+const STATUSES = ORDER_STATUSES;
+const statusOf = orderStatusOf;
 
 const Orders = () => {
   usePageTitle("Orders");

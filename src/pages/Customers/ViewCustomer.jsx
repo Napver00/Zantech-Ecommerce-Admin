@@ -1,290 +1,279 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { FaArrowLeft, FaPlus, FaEdit } from "react-icons/fa";
+import { FaArrowLeft, FaPlus, FaPen, FaPhoneAlt, FaEnvelope, FaMapMarkerAlt, FaChevronRight } from "react-icons/fa";
 import { toast } from "react-hot-toast";
+import { Button } from "react-bootstrap";
 import axiosInstance from "../../config/axios";
-import { Card, Button, Row, Col, Table } from "react-bootstrap";
 import Loading from "../../components/Loading";
 import AddShippingAddressModal from "../../components/Customers/AddShippingAddressModal";
 import EditShippingAddressModal from "../../components/Customers/EditShippingAddressModal";
-import "./Customers.css";
-import usePageTitle from '../../hooks/usePageTitle';
+import CommonTable from "../../components/Common/CommonTable";
+import { FilterTabs, Pager, Pill } from "../../components/List/List";
+import { taka, shortDate, timeAgo, fullDate } from "../../components/List/format";
+import { ORDER_STATUSES, orderStatusOf } from "../../components/List/orderStatus";
+import "../../components/List/List.css";
+import "../../components/Editor/Editor.css";
+import "./CustomerDetail.css";
+import usePageTitle from "../../hooks/usePageTitle";
+
+const ORDERS_PER_PAGE = 10;
 
 const ViewCustomer = () => {
-  usePageTitle('View Customer Details');
   const { id } = useParams();
   const navigate = useNavigate();
   const [customer, setCustomer] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showAddAddressModal, setShowAddAddressModal] = useState(false);
-  const [showEditAddressModal, setShowEditAddressModal] = useState(false);
-  const [selectedAddress, setSelectedAddress] = useState(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [editing, setEditing] = useState(null);
+
+  const [orders, setOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(true);
+  const [orderStatus, setOrderStatus] = useState("");
+  const [orderPage, setOrderPage] = useState(1);
+  const [orderPages, setOrderPages] = useState(1);
+  const [orderCounts, setOrderCounts] = useState(null);
+
+  usePageTitle(customer?.user?.name || "Customer");
 
   useEffect(() => {
-    fetchCustomerDetails();
-  }, [id]);
-
-  const fetchCustomerDetails = async () => {
-    try {
-      const response = await axiosInstance.get(`/clints/all-info/${id}`);
-      if (response.data.success) {
-        setCustomer(response.data.data[0]);
-      } else {
-        throw new Error(
-          response.data.message || "Failed to fetch customer details"
-        );
+    (async () => {
+      try {
+        const res = await axiosInstance.get(`/clints/all-info/${id}`);
+        if (!res.data.success) throw new Error(res.data.message);
+        setCustomer(res.data.data[0]);
+      } catch (err) {
+        toast.error(err.response?.data?.message || "Couldn't load this customer");
+        navigate("/customers");
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      toast.error(
-        error.response?.data?.message || "Failed to fetch customer details"
-      );
-      navigate("/customers");
+    })();
+  }, [id, navigate]);
+
+  const loadOrders = useCallback(async () => {
+    setOrdersLoading(true);
+    try {
+      const res = await axiosInstance.get("/orders", {
+        params: { user_id: id, page: orderPage, limit: ORDERS_PER_PAGE, ...(orderStatus !== "" && { status: orderStatus }) },
+      });
+      setOrders(res.data?.data || []);
+      setOrderPages(res.data?.pagination?.total_pages || res.data?.pagination?.last_page || 1);
+      if (res.data?.status_summary) setOrderCounts(res.data.status_summary);
+    } catch {
+      setOrders([]);
     } finally {
-      setLoading(false);
+      setOrdersLoading(false);
     }
-  };
+  }, [id, orderPage, orderStatus]);
 
-  const handleAddressAdded = (newAddress) => {
-    setCustomer((prevCustomer) => ({
-      ...prevCustomer,
-      shipping_addresses: [...prevCustomer.shipping_addresses, newAddress],
-    }));
-  };
+  useEffect(() => {
+    loadOrders();
+  }, [loadOrders]);
 
-  const handleAddressUpdated = (updatedAddress) => {
-    setCustomer((prevCustomer) => ({
-      ...prevCustomer,
-      shipping_addresses: prevCustomer.shipping_addresses.map((address) =>
-        address.id === updatedAddress.id ? updatedAddress : address
+  if (loading) return <Loading />;
+  if (!customer) return null;
+
+  const { user, shipping_addresses: addresses = [], order_summary: orderSummary = {}, payment_summary: paymentSummary = {} } = customer;
+  const due = Number(paymentSummary.due_amount) || 0;
+  const totalOrders = orderCounts
+    ? ORDER_STATUSES.reduce((n, s) => n + (Number(orderCounts[s.key]) || 0), 0)
+    : Number(orderSummary.total_orders) || 0;
+  const initials = (user.name || "?").split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+
+  const tabs = [
+    { value: "", label: "All", count: orderCounts ? totalOrders : null },
+    ...ORDER_STATUSES.filter((s) => !orderCounts || Number(orderCounts[s.key]) > 0).map((s) => ({
+      value: s.value,
+      label: s.label,
+      count: orderCounts ? orderCounts[s.key] : null,
+    })),
+  ];
+
+  const headers = [
+    {
+      key: "invoice_code",
+      label: "Order",
+      render: (row) => (
+        <>
+          <span className="ls-cell-main">{row.invoice_code}</span>
+          <span className="ls-cell-sub" title={fullDate(row.order_placed_date_time)}>{timeAgo(row.order_placed_date_time)}</span>
+        </>
       ),
-    }));
-  };
-
-  const handleEditClick = (address) => {
-    setSelectedAddress(address);
-    setShowEditAddressModal(true);
-  };
-
-  if (loading) {
-    return <Loading />;
-  }
-
-  if (!customer) {
-    return (
-      <div className="customers-container">
-        <div className="alert alert-danger">Customer not found</div>
-      </div>
-    );
-  }
-
-  const { user, shipping_addresses, order_summary, payment_summary } = customer;
+    },
+    {
+      key: "status",
+      label: "Status",
+      render: (row) => {
+        const s = orderStatusOf(row.status);
+        return <Pill tone={s.tone}>{s.label}</Pill>;
+      },
+    },
+    {
+      key: "total_amount",
+      label: "Total",
+      align: "end",
+      nowrap: true,
+      render: (row) => (
+        <>
+          <span className="ls-money d-block">{taka(row.total_amount)}</span>
+          {Number(row.due_amount) > 0 ? (
+            <span className="ls-cell-sub text-danger">{taka(row.due_amount)} due</span>
+          ) : (
+            <span className="ls-cell-sub">Paid</span>
+          )}
+        </>
+      ),
+    },
+  ];
 
   return (
-    <div className="customers-container">
-      <Card className="modern-card">
-        <Card.Body className="p-4">
-          <div className="d-flex justify-content-between align-items-center mb-4">
-            <div>
-              <Button
-                variant="link"
-                className="p-0 mb-2 text-decoration-none"
-                onClick={() => navigate("/customers")}
-              >
-                <FaArrowLeft className="me-2" /> Back to Customers
-              </Button>
-              <h2 className="page-title mb-1">Customer Details</h2>
-              <p className="text-muted mb-0">
-                View and manage customer information
-              </p>
-            </div>
+    <div className="cd-page">
+      <button type="button" className="ed-back cd-back" onClick={() => navigate("/customers")}>
+        <FaArrowLeft aria-hidden="true" /> Customers
+      </button>
+
+      <header className="cd-head">
+        <span className="cd-avatar" aria-hidden="true">{initials}</span>
+        <div className="cd-head-text">
+          <h1>{user.name}</h1>
+          <p>Customer #{user.id} · joined {shortDate(user.created_at)}</p>
+        </div>
+        <div className="cd-head-actions">
+          {user.phone && (
+            <a className="btn btn-outline-secondary" href={`tel:${user.phone}`}>
+              <FaPhoneAlt className="me-2" aria-hidden="true" />Call
+            </a>
+          )}
+          <Button onClick={() => navigate(`/orders/create?customer=${user.id}`)}>
+            <FaPlus className="me-2" aria-hidden="true" />New order
+          </Button>
+        </div>
+      </header>
+
+      <dl className="cd-stats">
+        <div>
+          <dt>Orders</dt>
+          <dd>{totalOrders.toLocaleString()}</dd>
+        </div>
+        <div>
+          <dt>Spent</dt>
+          <dd>{taka(orderSummary.total_spend)}</dd>
+          <span className="cd-stat-note">Completed orders</span>
+        </div>
+        <div className={due > 0 ? "is-due" : ""}>
+          <dt>Owes</dt>
+          <dd>{due > 0 ? taka(due) : "Nothing"}</dd>
+          {due > 0 && <span className="cd-stat-note">Across unpaid orders</span>}
+        </div>
+      </dl>
+
+      <div className="cd-body">
+        <section className="cd-card cd-orders" aria-labelledby="cd-orders-title">
+          <div className="cd-card-head">
+            <h2 id="cd-orders-title">Orders</h2>
           </div>
-
-          <div className="mt-4">
-            <Card className="border mb-4">
-              <Card.Header className="bg-light">
-                <h5 className="mb-0">Basic Information</h5>
-              </Card.Header>
-              <Card.Body>
-                <Row>
-                  <Col md={6}>
-                    <div className="mb-4">
-                      <label className="detail-label">ID</label>
-                      <div className="detail-value">#{user.id}</div>
-                    </div>
-                  </Col>
-                  <Col md={6}>
-                    <div className="mb-4">
-                      <label className="detail-label">Member Since</label>
-                      <div className="detail-value">
-                        {new Date(user.created_at).toLocaleDateString()}
-                      </div>
-                    </div>
-                  </Col>
-                </Row>
-                <Row>
-                  <Col md={6}>
-                    <div className="mb-4">
-                      <label className="detail-label">Name</label>
-                      <div className="detail-value">{user.name}</div>
-                    </div>
-                  </Col>
-                  <Col md={6}>
-                    <div className="mb-4">
-                      <label className="detail-label">Email</label>
-                      <div className="detail-value">{user.email}</div>
-                    </div>
-                  </Col>
-                </Row>
-                <Row>
-                  <Col md={6}>
-                    <div className="mb-4">
-                      <label className="detail-label">Phone</label>
-                      <div className="detail-value">{user.phone}</div>
-                    </div>
-                  </Col>
-                  <Col md={6}>
-                    <div className="mb-4">
-                      <label className="detail-label">Address</label>
-                      <div className="detail-value">
-                        {user.address || "N/A"}
-                      </div>
-                    </div>
-                  </Col>
-                </Row>
-              </Card.Body>
-            </Card>
-
-            <Card className="border mb-4">
-              <Card.Header className="bg-light">
-                <h5 className="mb-0">Order Summary</h5>
-              </Card.Header>
-              <Card.Body>
-                <Row>
-                  <Col md={4}>
-                    <div className="mb-4">
-                      <label className="detail-label">Total Orders</label>
-                      <div className="detail-value">
-                        {order_summary.total_orders}
-                      </div>
-                    </div>
-                  </Col>
-                  <Col md={4}>
-                    <div className="mb-4">
-                      <label className="detail-label">Total Spend</label>
-                      <div className="detail-value expense-amount">
-                        ৳{order_summary.total_spend.toLocaleString()}
-                      </div>
-                    </div>
-                  </Col>
-                  <Col md={4}>
-                    <div className="mb-4">
-                      <label className="detail-label">Due Amount</label>
-                      <div
-                        className={`detail-value ${
-                          payment_summary.due_amount > 0
-                            ? "text-danger"
-                            : "text-success"
-                        }`}
-                      >
-                        ৳{payment_summary.due_amount.toLocaleString()}
-                      </div>
-                    </div>
-                  </Col>
-                </Row>
-              </Card.Body>
-            </Card>
-
-            <Card className="border">
-              <Card.Header className="bg-light d-flex justify-content-between align-items-center">
-                <h5 className="mb-0">Shipping Addresses</h5>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => setShowAddAddressModal(true)}
-                >
-                  <FaPlus className="me-2" /> Add New Address
+          {(totalOrders > 0 || orderStatus !== "") && (
+            <FilterTabs
+              label="Filter this customer's orders"
+              value={orderStatus}
+              onChange={(v) => {
+                setOrderStatus(v);
+                setOrderPage(1);
+              }}
+              tabs={tabs}
+            />
+          )}
+          <CommonTable
+            headers={headers}
+            data={orders}
+            tableLoading={ordersLoading}
+            loading={ordersLoading}
+            renderActions={() => <FaChevronRight className="text-muted" aria-hidden="true" />}
+            onRowClick={(row) => navigate(`/orders/${row.order_id}`)}
+            rowLabel={(row) => `Open order ${row.invoice_code}`}
+            emptyTitle={orderStatus !== "" ? "No orders with this status" : "No orders yet"}
+            emptyText={orderStatus !== "" ? "Pick another tab to see the rest." : "Orders placed on the store or from the admin show up here."}
+            emptyAction={
+              orderStatus === "" && (
+                <Button size="sm" onClick={() => navigate(`/orders/create?customer=${user.id}`)}>
+                  <FaPlus className="me-1" aria-hidden="true" /> New order
                 </Button>
-              </Card.Header>
-              <Card.Body>
-                {shipping_addresses.length > 0 ? (
-                  <div className="row g-3">
-                    {shipping_addresses.map((address, index) => (
-                      <div key={index} className="col-md-6">
-                        <Card className="address-card h-100">
-                          <Card.Body className="p-4">
-                            <div className="address-header mb-3 d-flex justify-content-between align-items-center">
-                              <h6 className="mb-0 text-primary">
-                                Address #{index + 1}
-                              </h6>
-                              <Button
-                                variant="outline-primary"
-                                size="sm"
-                                onClick={() => handleEditClick(address)}
-                              >
-                                <FaEdit />
-                              </Button>
-                            </div>
-                            <div className="address-details">
-                              <div className="mb-3">
-                                <label className="detail-label">
-                                  Street Address
-                                </label>
-                                <div className="detail-value">
-                                  {address.address}
-                                </div>
-                              </div>
-                              <div className="row g-3">
-                                <div className="col-6">
-                                  <div className="mb-3">
-                                    <label className="detail-label">City</label>
-                                    <div className="detail-value">
-                                      {address.city}
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="row g-3">
-                                <div className="col-6">
-                                  <div className="mb-3">
-                                    <label className="detail-label">
-                                      Postal Code
-                                    </label>
-                                    <div className="detail-value">
-                                      {address.zip}
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </Card.Body>
-                        </Card>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-muted p-3 bg-light rounded">
-                    No shipping addresses found
-                  </div>
-                )}
-              </Card.Body>
-            </Card>
-          </div>
-        </Card.Body>
-      </Card>
+              )
+            }
+          />
+          <Pager page={orderPage} lastPage={orderPages} onPage={setOrderPage} />
+        </section>
+
+        <aside className="cd-side">
+          <section className="cd-card" aria-labelledby="cd-contact-title">
+            <div className="cd-card-head">
+              <h2 id="cd-contact-title">Contact</h2>
+            </div>
+            <ul className="cd-contact">
+              <li>
+                <FaPhoneAlt aria-hidden="true" />
+                {user.phone ? <a href={`tel:${user.phone}`}>{user.phone}</a> : <span className="text-muted">No phone</span>}
+              </li>
+              <li>
+                <FaEnvelope aria-hidden="true" />
+                {user.email ? <a href={`mailto:${user.email}`}>{user.email}</a> : <span className="text-muted">No email</span>}
+              </li>
+              {user.address && (
+                <li>
+                  <FaMapMarkerAlt aria-hidden="true" />
+                  <span>{user.address}</span>
+                </li>
+              )}
+            </ul>
+          </section>
+
+          <section className="cd-card" aria-labelledby="cd-addr-title">
+            <div className="cd-card-head">
+              <h2 id="cd-addr-title">
+                Delivery addresses {addresses.length > 0 && <span className="ed-count">{addresses.length}</span>}
+              </h2>
+              <Button size="sm" variant="outline-primary" onClick={() => setShowAdd(true)}>
+                <FaPlus className="me-1" aria-hidden="true" />Add
+              </Button>
+            </div>
+            {addresses.length ? (
+              <ul className="cd-addresses">
+                {addresses.map((a) => (
+                  <li key={a.id}>
+                    <div>
+                      <strong className="d-block">{[a.f_name, a.l_name].filter(Boolean).join(" ") || user.name}</strong>
+                      <span className="d-block">{a.address}</span>
+                      <span className="d-block text-muted">{[a.city, a.zip].filter(Boolean).join(" ")}</span>
+                      {a.phone && <span className="d-block text-muted">{a.phone}</span>}
+                    </div>
+                    <button type="button" className="cd-icon-btn" onClick={() => setEditing(a)} aria-label="Edit this address" title="Edit">
+                      <FaPen aria-hidden="true" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="cd-empty">No saved address. Add one so orders from the admin can be delivered.</p>
+            )}
+          </section>
+        </aside>
+      </div>
 
       <AddShippingAddressModal
-        show={showAddAddressModal}
-        onHide={() => setShowAddAddressModal(false)}
+        show={showAdd}
+        onHide={() => setShowAdd(false)}
         userId={user.id}
-        onAdd={handleAddressAdded}
+        onAdd={(a) => setCustomer((c) => ({ ...c, shipping_addresses: [...(c.shipping_addresses || []), a] }))}
       />
-
-      {selectedAddress && (
+      {editing && (
         <EditShippingAddressModal
-          show={showEditAddressModal}
-          onHide={() => setShowEditAddressModal(false)}
-          address={selectedAddress}
-          onUpdate={handleAddressUpdated}
+          show
+          onHide={() => setEditing(null)}
+          address={editing}
+          onUpdate={(a) => {
+            setCustomer((c) => ({ ...c, shipping_addresses: c.shipping_addresses.map((x) => (x.id === a.id ? a : x)) }));
+            setEditing(null);
+          }}
         />
       )}
     </div>

@@ -1,461 +1,160 @@
-import React, { useState, useEffect } from "react";
-import {
-  Form,
-  Button,
-  Row,
-  Col,
-  Card,
-  Spinner,
-  ListGroup,
-  InputGroup,
-} from "react-bootstrap";
+import React, { useEffect, useState } from "react";
+import { Form } from "react-bootstrap";
 import { toast } from "react-hot-toast";
+import { FaFacebook, FaGlobe, FaInstagram, FaLinkedin, FaTiktok, FaYoutube } from "react-icons/fa";
 import axiosInstance from "../../config/axios";
-import {
-  FaBuilding,
-  FaBullhorn,
-  FaEnvelope,
-  FaFacebook,
-  FaGlobe,
-  FaInfoCircle,
-  FaInstagram,
-  FaLinkedin,
-  FaLocationArrow,
-  FaPhone,
-  FaTiktok,
-  FaYoutube,
-} from "react-icons/fa";
-import usePageTitle from "../../hooks/usePageTitle";
+import confirmDialog from "../../utils/confirmDialog";
+import { EditorSection, Field, SaveBar, useUnsavedChanges, showFirstError } from "../../components/Editor/Editor";
+import "../../components/Editor/Editor.css";
 
-const SocialIcon = ({ platform }) => {
-  switch (platform.toLowerCase()) {
-    case "facebook":
-      return <FaFacebook />;
-    case "linkedin":
-      return <FaLinkedin />;
-    case "instagram":
-      return <FaInstagram />;
-    case "youtube":
-      return <FaYoutube />;
-    case "tiktok":
-      return <FaTiktok />;
-    default:
-      return <FaGlobe />;
-  }
-};
+const FORM_ID = "company-form";
+const FIELDS = [
+  "name", "email", "phone", "location",
+  "hero_title", "hero_subtitle", "hero_description",
+  "about_title", "about_description1", "about_description2",
+  "footer_text",
+];
+
+const SOCIAL_ICONS = { facebook: FaFacebook, linkedin: FaLinkedin, instagram: FaInstagram, youtube: FaYoutube, tiktok: FaTiktok };
+
+const pick = (data) => Object.fromEntries(FIELDS.map((k) => [k, data?.[k] ?? ""]));
 
 const CompanyInfo = () => {
-  usePageTitle("Company Information");
-  const [companyInfo, setCompanyInfo] = useState(null);
+  const [company, setCompany] = useState(null);
+  const [form, setForm] = useState(pick(null));
   const [loading, setLoading] = useState(true);
-  const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({});
+  const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState({});
+  const { dirty, markSaved } = useUnsavedChanges(form, !loading);
 
   useEffect(() => {
-    fetchCompanyInfo();
+    axiosInstance
+      .get("/company")
+      .then((res) => {
+        setCompany(res.data?.data);
+        setForm(pick(res.data?.data));
+      })
+      .catch(() => toast.error("Couldn't load the company details"))
+      .finally(() => setLoading(false));
   }, []);
 
-  const fetchCompanyInfo = async () => {
-    try {
-      setLoading(true);
-      const response = await axiosInstance.get("/company");
-      if (response.data.success) {
-        setCompanyInfo(response.data.data);
-        setFormData(response.data.data);
-      } else {
-        toast.error("Failed to fetch company info.");
-      }
-    } catch (error) {
-      toast.error("An error occurred while fetching company info.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleInputChange = (e) => {
+  const set = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setForm((f) => ({ ...f, [name]: value }));
+    if (errors[name]) setErrors((x) => { const n = { ...x }; delete n[name]; return n; });
   };
 
-  const handleUpdate = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    const found = {};
+    if (!form.name.trim()) found.name = "Enter the company name.";
+    if (form.email && !/^\S+@\S+\.\S+$/.test(form.email.trim())) found.email = "That doesn't look like an email address.";
+    setErrors(found);
+    if (Object.keys(found).length) {
+      showFirstError(found, ["name", "email"]);
+      return;
+    }
+
+    setSaving(true);
     try {
-      const response = await axiosInstance.put("/company/1", formData);
-      if (response.data.success) {
-        toast.success("Company info updated successfully!");
-        setIsEditing(false);
-        fetchCompanyInfo();
-      } else {
-        toast.error("Failed to update company info.");
+      await axiosInstance.put(`/company/${company?.id || 1}`, form);
+      markSaved();
+      toast.success("Website details saved");
+    } catch (err) {
+      const apiErrors = err.response?.data?.errors;
+      if (apiErrors && typeof apiErrors === "object") {
+        const mapped = Object.fromEntries(Object.entries(apiErrors).map(([k, v]) => [k, Array.isArray(v) ? v[0] : String(v)]));
+        setErrors(mapped);
+        showFirstError(mapped, FIELDS);
       }
-    } catch (error) {
-      toast.error("An error occurred while updating company info.");
+      toast.error(err.response?.data?.message || "Couldn't save. Try again.");
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
-  if (loading && !companyInfo) {
+  const discard = async () => {
+    if (!(await confirmDialog("Discard your unsaved changes?"))) return;
+    setForm(pick(company));
+    setErrors({});
+  };
+
+  if (loading) {
     return (
-      <div
-        className="d-flex justify-content-center align-items-center"
-        style={{ height: "400px" }}
-      >
-        <div className="text-center">
-          <Spinner animation="border" variant="primary" className="mb-2" />
-          <p className="text-muted">Loading company details...</p>
-        </div>
-      </div>
+      <div className="ed-section p-4 text-muted" aria-busy="true">Loading company details…</div>
     );
   }
 
+  const text = (name, label, { rows, help, placeholder, required, type } = {}) => (
+    <Field name={name} label={label} help={help} error={errors[name]} required={required} labelFor={`company-${name}`}>
+      <Form.Control
+        id={`company-${name}`}
+        name={name}
+        type={type}
+        as={rows ? "textarea" : undefined}
+        rows={rows}
+        value={form[name]}
+        onChange={set}
+        placeholder={placeholder}
+      />
+    </Field>
+  );
+
   return (
-    <div className="tab-content-container">
-      <Card className="modern-card border-0">
-        <Card.Header className="d-flex flex-wrap justify-content-between align-items-center gap-2 bg-white border-bottom-0 pb-0 pt-4 px-4">
-          <div>
-            <h4 className="mb-1 text-primary fw-bold">
-              {isEditing
-                ? "Edit Company Profile"
-                : companyInfo?.name || "Company Information"}
-            </h4>
-            <p className="text-muted small mb-0">
-              Manage your company's public details and contact info
-            </p>
+    <>
+      <form id={FORM_ID} onSubmit={handleSubmit} noValidate>
+        <EditorSection id="hero" title="Top of the homepage" help="The first thing visitors read on zantechbd.com.">
+          {text("hero_title", "Headline", { placeholder: "e.g. Robotics and IoT for every student" })}
+          {text("hero_subtitle", "Subheading")}
+          {text("hero_description", "Intro paragraph", { rows: 3 })}
+        </EditorSection>
+
+        <EditorSection id="about" title="About section">
+          {text("about_title", "Heading")}
+          <div className="ed-grid">
+            {text("about_description1", "First paragraph", { rows: 5 })}
+            {text("about_description2", "Second paragraph", { rows: 5 })}
           </div>
-          {!isEditing && (
-            <Button
-              variant="primary"
-              className="px-4 shadow-sm"
-              onClick={() => setIsEditing(true)}
-            >
-              <FaBullhorn className="me-2" /> Edit Details
-            </Button>
-          )}
-        </Card.Header>
-        <Card.Body className="p-4">
-          {isEditing ? (
-            <Form onSubmit={handleUpdate}>
-              <Row>
-                <Col lg={6} className="mb-4">
-                  <div className="p-3 bg-light rounded-3 h-100">
-                    <div className="section-title">
-                      <FaBullhorn /> Hero Section
-                    </div>
-                    <Form.Group className="mb-3">
-                      <Form.Label className="small text-muted fw-bold">
-                        HERO TITLE
-                      </Form.Label>
-                      <Form.Control
-                        type="text"
-                        name="hero_title"
-                        value={formData.hero_title}
-                        onChange={handleInputChange}
-                        placeholder="e.g. Innovating for the Future"
-                      />
-                    </Form.Group>
-                    <Form.Group className="mb-3">
-                      <Form.Label className="small text-muted fw-bold">
-                        HERO SUBTITLE
-                      </Form.Label>
-                      <Form.Control
-                        type="text"
-                        name="hero_subtitle"
-                        value={formData.hero_subtitle}
-                        onChange={handleInputChange}
-                        placeholder="Brief catchy tagline"
-                      />
-                    </Form.Group>
-                    <Form.Group className="mb-3">
-                      <Form.Label className="small text-muted fw-bold">
-                        HERO DESCRIPTION
-                      </Form.Label>
-                      <Form.Control
-                        as="textarea"
-                        rows={4}
-                        name="hero_description"
-                        value={formData.hero_description}
-                        onChange={handleInputChange}
-                        style={{ resize: "none" }}
-                      />
-                    </Form.Group>
-                  </div>
-                </Col>
+        </EditorSection>
 
-                <Col lg={6} className="mb-4">
-                  <div className="p-3 bg-light rounded-3 h-100">
-                    <div className="section-title">
-                      <FaInfoCircle /> About Section
-                    </div>
-                    <Form.Group className="mb-3">
-                      <Form.Label className="small text-muted fw-bold">
-                        ABOUT TITLE
-                      </Form.Label>
-                      <Form.Control
-                        type="text"
-                        name="about_title"
-                        value={formData.about_title}
-                        onChange={handleInputChange}
-                      />
-                    </Form.Group>
-                    <Form.Group className="mb-3">
-                      <Form.Label className="small text-muted fw-bold">
-                        PRIMARY DESCRIPTION
-                      </Form.Label>
-                      <Form.Control
-                        as="textarea"
-                        rows={3}
-                        name="about_description1"
-                        value={formData.about_description1}
-                        onChange={handleInputChange}
-                        style={{ resize: "none" }}
-                      />
-                    </Form.Group>
-                    <Form.Group className="mb-3">
-                      <Form.Label className="small text-muted fw-bold">
-                        SECONDARY DESCRIPTION
-                      </Form.Label>
-                      <Form.Control
-                        as="textarea"
-                        rows={3}
-                        name="about_description2"
-                        value={formData.about_description2}
-                        onChange={handleInputChange}
-                        style={{ resize: "none" }}
-                      />
-                    </Form.Group>
-                  </div>
-                </Col>
+        <EditorSection id="contact" title="Contact details" help="Shown in the contact section and footer.">
+          <div className="ed-grid">
+            {text("name", "Company name", { required: true })}
+            {text("email", "Email", { type: "email" })}
+            {text("phone", "Phone", { type: "tel" })}
+            {text("location", "Address")}
+          </div>
+          {text("footer_text", "Footer line", { help: "The small line at the very bottom, e.g. copyright." })}
+        </EditorSection>
 
-                <Col lg={12} className="mb-4">
-                  <div className="p-3 bg-light rounded-3">
-                    <div className="section-title">
-                      <FaBuilding /> Company Details & Contact
-                    </div>
-                    <Row>
-                      <Col md={6}>
-                        <Form.Group className="mb-3">
-                          <Form.Label className="small text-muted fw-bold">
-                            COMPANY NAME
-                          </Form.Label>
-                          <Form.Control
-                            type="text"
-                            name="name"
-                            value={formData.name}
-                            onChange={handleInputChange}
-                          />
-                        </Form.Group>
-                        <Form.Group className="mb-3">
-                          <Form.Label className="small text-muted fw-bold">
-                            EMAIL ADDRESS
-                          </Form.Label>
-                          <Form.Control
-                            type="email"
-                            name="email"
-                            value={formData.email}
-                            onChange={handleInputChange}
-                          />
-                        </Form.Group>
-                      </Col>
-                      <Col md={6}>
-                        <Form.Group className="mb-3">
-                          <Form.Label className="small text-muted fw-bold">
-                            PHONE NUMBER
-                          </Form.Label>
-                          <Form.Control
-                            type="text"
-                            name="phone"
-                            value={formData.phone}
-                            onChange={handleInputChange}
-                          />
-                        </Form.Group>
-                        <Form.Group className="mb-3">
-                          <Form.Label className="small text-muted fw-bold">
-                            LOCATION
-                          </Form.Label>
-                          <Form.Control
-                            type="text"
-                            name="location"
-                            value={formData.location}
-                            onChange={handleInputChange}
-                          />
-                        </Form.Group>
-                      </Col>
-                      <Col md={12}>
-                        <Form.Group className="mb-0">
-                          <Form.Label className="small text-muted fw-bold">
-                            FOOTER TEXT
-                          </Form.Label>
-                          <Form.Control
-                            as="textarea"
-                            rows={2}
-                            name="footer_text"
-                            value={formData.footer_text}
-                            onChange={handleInputChange}
-                          />
-                        </Form.Group>
-                      </Col>
-                    </Row>
-                  </div>
-                </Col>
-              </Row>
+        {company?.social_links?.length > 0 && (
+          <EditorSection id="social" title="Social media" help="These links are set up on the server and can't be changed here yet.">
+            <ul className="lp-socials">
+              {company.social_links.map((l) => {
+                const Icon = SOCIAL_ICONS[String(l.platform).toLowerCase()] || FaGlobe;
+                return (
+                  <li key={l.id}>
+                    <a href={l.url} target="_blank" rel="noreferrer">
+                      <Icon aria-hidden="true" />{l.platform}
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+          </EditorSection>
+        )}
+      </form>
 
-              <div className="d-flex justify-content-end gap-2 mt-3 pt-3 border-top">
-                <Button
-                  variant="light"
-                  className="px-4"
-                  onClick={() => setIsEditing(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="primary"
-                  type="submit"
-                  disabled={loading}
-                  className="px-5 shadow-sm"
-                >
-                  {loading ? (
-                    <Spinner as="span" animation="border" size="sm" />
-                  ) : (
-                    "Save Changes"
-                  )}
-                </Button>
-              </div>
-            </Form>
-          ) : (
-            companyInfo && (
-              <>
-                <Row className="g-4">
-                  <Col lg={7}>
-                    <section className="mb-5">
-                      <div className="section-title">
-                        <FaBullhorn /> Hero Information
-                      </div>
-                      <div className="ps-2 border-start border-3 border-primary ms-1">
-                        <h5 className="fw-bold mb-2">
-                          {companyInfo.hero_title}
-                        </h5>
-                        <h6 className="text-primary mb-3">
-                          {companyInfo.hero_subtitle}
-                        </h6>
-                        <p className="text-secondary">
-                          {companyInfo.hero_description}
-                        </p>
-                      </div>
-                    </section>
-
-                    <section className="mb-4">
-                      <div className="section-title">
-                        <FaInfoCircle /> About Us
-                      </div>
-                      <div className="bg-light p-4 rounded-3">
-                        <h6 className="fw-bold mb-3">
-                          {companyInfo.about_title}
-                        </h6>
-                        <p className="text-secondary mb-3">
-                          {companyInfo.about_description1}
-                        </p>
-                        <p className="text-secondary mb-0">
-                          {companyInfo.about_description2}
-                        </p>
-                      </div>
-                    </section>
-                  </Col>
-
-                  <Col lg={5}>
-                    <section className="mb-4">
-                      <div className="section-title">
-                        <FaBuilding /> Contact Details
-                      </div>
-                      <Card className="border-0 shadow-sm bg-light">
-                        <Card.Body>
-                          <div className="d-flex align-items-center mb-3">
-                            <div className="bg-white p-2 rounded-circle shadow-sm me-3 text-primary">
-                              <FaEnvelope />
-                            </div>
-                            <div>
-                              <small className="text-muted d-block">
-                                Email
-                              </small>
-                              <span className="fw-medium">
-                                {companyInfo.email}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="d-flex align-items-center mb-3">
-                            <div className="bg-white p-2 rounded-circle shadow-sm me-3 text-primary">
-                              <FaPhone />
-                            </div>
-                            <div>
-                              <small className="text-muted d-block">
-                                Phone
-                              </small>
-                              <span className="fw-medium">
-                                {companyInfo.phone}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="d-flex align-items-center">
-                            <div className="bg-white p-2 rounded-circle shadow-sm me-3 text-primary">
-                              <FaLocationArrow />
-                            </div>
-                            <div>
-                              <small className="text-muted d-block">
-                                Location
-                              </small>
-                              <span className="fw-medium">
-                                {companyInfo.location}
-                              </span>
-                            </div>
-                          </div>
-                        </Card.Body>
-                      </Card>
-                    </section>
-
-                    <section className="mb-4">
-                      <div className="section-title">
-                        <FaGlobe /> Social Media
-                      </div>
-                      <ListGroup variant="flush" className="bg-transparent">
-                        {companyInfo.social_links.map((link) => (
-                          <ListGroup.Item
-                            key={link.id}
-                            className="social-list-item d-flex align-items-center bg-transparent px-2 py-2 mb-2 rounded border-0"
-                          >
-                            <div className="text-primary fs-5 me-3">
-                              <SocialIcon platform={link.platform} />
-                            </div>
-                            <a
-                              href={link.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-decoration-none text-dark fw-medium stretched-link"
-                            >
-                              {link.platform}
-                            </a>
-                            <FaGlobe className="ms-auto text-muted opacity-25" />
-                          </ListGroup.Item>
-                        ))}
-                      </ListGroup>
-                    </section>
-                  </Col>
-                </Row>
-
-                <hr className="my-4 opacity-10" />
-
-                <section>
-                  <div className="d-flex align-items-center text-muted">
-                    <small className="fw-bold me-2">FOOTER TEXT:</small>
-                    <small>{companyInfo.footer_text}</small>
-                  </div>
-                </section>
-              </>
-            )
-          )}
-        </Card.Body>
-      </Card>
-    </div>
+      <SaveBar
+        formId={FORM_ID}
+        dirty={dirty}
+        saving={saving}
+        errorCount={Object.keys(errors).length}
+        onShowErrors={() => showFirstError(errors, FIELDS)}
+        onDiscard={discard}
+        cleanText="Website details are up to date"
+      />
+    </>
   );
 };
 

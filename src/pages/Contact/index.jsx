@@ -1,256 +1,191 @@
-import React, { useState, useEffect } from "react";
-import { FaTrash, FaSearch, FaSpinner, FaTimes, FaEye } from "react-icons/fa";
+import React, { useEffect, useMemo, useState } from "react";
+import { FaTrash, FaEnvelope, FaCopy } from "react-icons/fa";
 import { toast } from "react-hot-toast";
+import { Button, Offcanvas } from "react-bootstrap";
 import axiosInstance from "../../config/axios";
-import { Card, Form, InputGroup, Button, Row, Col, Modal } from "react-bootstrap";
-import Loading from "../../components/Loading";
-import "./Contact.css";
-import usePageTitle from '../../hooks/usePageTitle';
+import usePageTitle from "../../hooks/usePageTitle";
 import CommonTable from "../../components/Common/CommonTable";
-
+import { ListHeader, ListCard, ListToolbar, SearchBox, ResultCount, Pager } from "../../components/List/List";
+import { timeAgo, fullDate } from "../../components/List/format";
 import confirmDialog from "../../utils/confirmDialog";
+import "../../components/List/List.css";
+import "./Contact.css";
+
+const PER_PAGE_DEFAULT = 20;
+
+// The website's form sends first and last name, email, a short subject (project_type) and the message.
+const fullName = (c) => [c.f_name, c.l_name].filter(Boolean).join(" ") || c.email || "Someone";
+
 const Contact = () => {
-  usePageTitle('Manage Contacts');
+  usePageTitle("Contacts");
   const [contacts, setContacts] = useState([]);
-  const [filteredContacts, setFilteredContacts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchParams, setSearchParams] = useState({
-    search: "",
-  });
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchTimeout, setSearchTimeout] = useState(null);
-  const [showMessageModal, setShowMessageModal] = useState(false);
-  const [selectedMessage, setSelectedMessage] = useState(null);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(PER_PAGE_DEFAULT);
+  const [open, setOpen] = useState(null);
 
   useEffect(() => {
-    fetchContacts();
+    axiosInstance
+      .get("/contact")
+      .then((res) => setContacts(res.data?.data || []))
+      .catch((err) => toast.error(err.response?.data?.message || "Couldn't load messages"))
+      .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => {
-    if (searchTimeout) {
-      clearTimeout(searchTimeout);
-    }
+  // All messages come in one go, so search and paging happen here.
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return contacts;
+    return contacts.filter((c) =>
+      [fullName(c), c.email, c.project_type, c.message].some((v) => String(v || "").toLowerCase().includes(q))
+    );
+  }, [contacts, search]);
 
-    const timeoutId = setTimeout(() => {
-      if (searchParams.search !== "") {
-        handleSearch(searchParams.search);
-      } else {
-        setFilteredContacts(contacts);
-      }
-    }, 300);
+  const lastPage = Math.max(1, Math.ceil(filtered.length / perPage));
+  const current = Math.min(page, lastPage);
+  const rows = filtered.slice((current - 1) * perPage, current * perPage);
 
-    setSearchTimeout(timeoutId);
-
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-    };
-  }, [searchParams.search, contacts]);
-
-  const fetchContacts = async () => {
+  const remove = async (c) => {
+    if (!(await confirmDialog(`Delete the message from ${fullName(c)}? This can't be undone.`))) return;
     try {
-      const response = await axiosInstance.get("/contact");
-      setContacts(response.data.data);
-      setFilteredContacts(response.data.data);
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to fetch contacts");
-    } finally {
-      setLoading(false);
-      setIsSearching(false);
+      await axiosInstance.delete(`/contact/${c.id}`);
+      setContacts((list) => list.filter((x) => x.id !== c.id));
+      if (open?.id === c.id) setOpen(null);
+      toast.success("Message deleted");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Couldn't delete the message");
     }
   };
 
-  const handleSearch = (searchTerm) => {
-    const searchLower = searchTerm.toLowerCase();
-    const filtered = contacts.filter((contact) => {
-      return (
-        contact.name.toLowerCase().includes(searchLower) ||
-        contact.email.toLowerCase().includes(searchLower) ||
-        contact.phone.toLowerCase().includes(searchLower)
-      );
-    });
-    setFilteredContacts(filtered);
-  };
-
-  const handleSearchChange = (e) => {
-    setSearchParams((prev) => ({ ...prev, search: e.target.value }));
-  };
-
-  const handleDeleteContact = async (id) => {
-    if (await confirmDialog("Are you sure you want to delete this contact?")) {
-      try {
-        await axiosInstance.delete(`/contact/${id}`);
-        const updatedContacts = contacts.filter((contact) => contact.id !== id);
-        setContacts(updatedContacts);
-        setFilteredContacts(updatedContacts);
-        toast.success("Contact deleted successfully");
-      } catch (error) {
-        toast.error(error.response?.data?.message || "Failed to delete contact");
-      }
+  const copy = async (text) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("Copied");
+    } catch {
+      toast.error("Couldn't copy. Select the text instead.");
     }
-  };
-
-  const handleViewMessage = (message, contact) => {
-    setSelectedMessage({ message, contact });
-    setShowMessageModal(true);
-  };
-
-  const handleCloseMessageModal = () => {
-    setShowMessageModal(false);
-    setSelectedMessage(null);
-  };
-
-  const truncateMessage = (message, maxLength = 50) => {
-    if (message.length <= maxLength) return message;
-    return message.substring(0, maxLength) + "...";
   };
 
   const headers = [
-    { key: 'id', label: 'ID', render: (row) => `#${row.id}` },
-    { key: 'name', label: 'Name' },
-    { key: 'email', label: 'Email' },
-    { key: 'phone', label: 'Phone' },
     {
-      key: 'message',
-      label: 'Message',
+      key: "name",
+      label: "From",
       render: (row) => (
-        <div className="d-flex align-items-center gap-2">
-          <span className="message-preview">
-            {truncateMessage(row.message)}
-          </span>
-          <Button
-            variant="outline-primary"
-            size="sm"
-            onClick={() => handleViewMessage(row.message, row)}
-            title="View Message"
-            className="view-message-btn"
-          >
-            <FaEye />
-          </Button>
-        </div>
+        <>
+          <span className="ls-cell-main">{fullName(row)}</span>
+          <span className="ls-cell-sub text-truncate d-block" style={{ maxWidth: 240 }}>{row.email}</span>
+        </>
       ),
     },
-    { key: 'created_at', label: 'Created At', render: (row) => new Date(row.created_at).toLocaleDateString() },
+    {
+      key: "message",
+      label: "Message",
+      render: (row) => (
+        <>
+          {row.project_type && <span className="ct-subject">{row.project_type}</span>}
+          <span className="ct-preview">{row.message}</span>
+        </>
+      ),
+    },
+    {
+      key: "created_at",
+      label: "Received",
+      nowrap: true,
+      render: (row) => <span className="ls-cell-sub" title={fullDate(row.created_at)}>{timeAgo(row.created_at)}</span>,
+    },
   ];
 
-  const renderActions = (contact) => (
-    <div className="d-flex gap-2">
-      <Button
-        variant="outline-danger"
-        size="sm"
-        onClick={() => handleDeleteContact(contact.id)}
-        title="Delete"
-        className="delete-btn"
-      >
-        <FaTrash />
-      </Button>
-    </div>
+  const renderActions = (c) => (
+    <Button variant="outline-danger" size="sm" onClick={() => remove(c)} title="Delete" aria-label={`Delete the message from ${fullName(c)}`}>
+      <FaTrash />
+    </Button>
   );
 
-  if (loading && !contacts.length) {
-    return <Loading />;
-  }
+  const replySubject = open?.project_type ? `Re: ${open.project_type}` : "Re: your message to ZAN Tech";
+  const replyBody = `Hi ${open?.f_name || ""},\n\n`;
 
   return (
-    <div className="orders-container">
-      <Card className="modern-card">
-        <Card.Body className="p-4">
-          <div className="d-flex justify-content-between align-items-center mb-4">
-            <div>
-              <h2 className="page-title mb-1">Contacts</h2>
-              <p className="text-muted mb-0">Manage your contact messages and inquiries</p>
-            </div>
-          </div>
+    <div className="contacts-page">
+      <ListHeader title="Contacts" subtitle="Messages from the contact form on zantechbd.com. Open one to read it in full and reply." />
 
-          <div className="filters-section mb-4">
-            <Row className="g-3">
-              <Col md={4}>
-                <div className="search-box">
-                  <InputGroup>
-                    <InputGroup.Text className="search-icon">
-                      {isSearching ? <FaSpinner className="spinner" /> : <FaSearch />}
-                    </InputGroup.Text>
-                    <Form.Control
-                      type="text"
-                      placeholder="Search by name, email or phone..."
-                      value={searchParams.search}
-                      onChange={handleSearchChange}
-                      className="search-input"
-                    />
-                    {searchParams.search && (
-                      <Button
-                        variant="link"
-                        className="clear-search"
-                        onClick={() => {
-                          setSearchParams((prev) => ({ ...prev, search: "" }));
-                          setFilteredContacts(contacts);
-                        }}
-                      >
-                        <FaTimes />
-                      </Button>
-                    )}
-                  </InputGroup>
-                </div>
-              </Col>
-            </Row>
-          </div>
-          
-          <CommonTable
-            headers={headers}
-            data={filteredContacts}
-            tableLoading={loading}
-            loading={loading}
-            renderActions={renderActions}
+      <ListCard>
+        <ListToolbar end={<ResultCount page={current} perPage={perPage} total={filtered.length} noun="messages" />}>
+          <SearchBox
+            value={search}
+            onChange={(v) => {
+              setSearch(v);
+              setPage(1);
+            }}
+            placeholder="Search names, emails, subjects or text"
           />
+        </ListToolbar>
 
-        </Card.Body>
-      </Card>
+        <CommonTable
+          headers={headers}
+          data={rows}
+          tableLoading={loading}
+          loading={loading}
+          renderActions={renderActions}
+          onRowClick={setOpen}
+          rowLabel={(row) => `Read the message from ${fullName(row)}`}
+          emptyTitle={search ? "No messages match" : "No messages yet"}
+          emptyText={search ? `Nothing matches “${search}”.` : "When someone uses the contact form, their message lands here."}
+        />
 
-      <Modal
-        show={showMessageModal}
-        onHide={handleCloseMessageModal}
-        centered
-        className="message-modal"
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>
-            Message from {selectedMessage?.contact?.name}
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <div className="message-details">
-            <div className="contact-info mb-3">
-              <p className="mb-1">
-                <strong>From:</strong> {selectedMessage?.contact?.name}
-              </p>
-              <p className="mb-1">
-                <strong>Email:</strong> {selectedMessage?.contact?.email}
-              </p>
-              <p className="mb-1">
-                <strong>Phone:</strong> {selectedMessage?.contact?.phone}
-              </p>
-              <p className="mb-1">
-                <strong>Date:</strong>{" "}
-                {selectedMessage?.contact?.created_at
-                  ? new Date(selectedMessage.contact.created_at).toLocaleString()
-                  : ""}
-              </p>
-            </div>
-            <div className="message-content">
-              <h6 className="mb-2">Message:</h6>
-              <div className="message-text p-3 bg-light rounded">
-                {selectedMessage?.message}
-              </div>
-            </div>
-          </div>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={handleCloseMessageModal}>
-            Close
-          </Button>
-        </Modal.Footer>
-      </Modal>
+        <Pager
+          page={current}
+          lastPage={lastPage}
+          onPage={setPage}
+          perPage={perPage}
+          onPerPage={(n) => {
+            setPerPage(n);
+            setPage(1);
+          }}
+        />
+      </ListCard>
+
+      <Offcanvas show={!!open} onHide={() => setOpen(null)} placement="end" className="ct-panel">
+        {open && (
+          <>
+            <Offcanvas.Header closeButton>
+              <Offcanvas.Title as="h2" className="h5 mb-0">{fullName(open)}</Offcanvas.Title>
+            </Offcanvas.Header>
+            <Offcanvas.Body>
+              {open.project_type && <p className="ct-subject is-large">{open.project_type}</p>}
+              <p className="ct-when">Sent {fullDate(open.created_at)}</p>
+
+              {open.email && (
+                <div className="ct-actions">
+                  <a className="btn btn-primary" href={`mailto:${open.email}?subject=${encodeURIComponent(replySubject)}&body=${encodeURIComponent(replyBody)}`}>
+                    <FaEnvelope className="me-2" aria-hidden="true" />Reply by email
+                  </a>
+                </div>
+              )}
+
+              <div className="ct-message">{open.message}</div>
+
+              {open.email && (
+                <dl className="ct-details">
+                  <div>
+                    <dt>Email</dt>
+                    <dd>
+                      <span>{open.email}</span>
+                      <button type="button" onClick={() => copy(open.email)} aria-label="Copy email" title="Copy">
+                        <FaCopy aria-hidden="true" />
+                      </button>
+                    </dd>
+                  </div>
+                </dl>
+              )}
+
+              <Button variant="link" className="ct-delete" onClick={() => remove(open)}>
+                <FaTrash className="me-2" aria-hidden="true" />Delete message
+              </Button>
+            </Offcanvas.Body>
+          </>
+        )}
+      </Offcanvas>
     </div>
   );
 };

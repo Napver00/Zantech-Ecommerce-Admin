@@ -1,7 +1,8 @@
 import React from "react";
 import { useSearchParams } from "react-router-dom";
-import { Tabs, Tab } from "react-bootstrap";
-import { FaProjectDiagram, FaGraduationCap, FaBuilding, FaCampground } from "react-icons/fa";
+import { FaProjectDiagram, FaGraduationCap, FaBuilding, FaCampground, FaExternalLinkAlt } from "react-icons/fa";
+import { ListHeader } from "../../components/List/List";
+import "../../components/List/List.css";
 import "./Landing.css";
 import usePageTitle from "../../hooks/usePageTitle";
 
@@ -9,72 +10,54 @@ import Projects from "./Projects";
 import Courses from "./Courses";
 import CompanyInfo from "./CompanyInfo";
 
-const LandingPage = () => {
-  usePageTitle("Landing Page");
-  const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get("tab") || "projects";
+const SECTIONS = [
+  { key: "projects", label: "Projects", hint: "Portfolio", icon: FaProjectDiagram },
+  { key: "courses", label: "Courses", hint: "Long-running classes", icon: FaGraduationCap },
+  { key: "bootcamps", label: "Bootcamps", hint: "Short, dated events", icon: FaCampground },
+  { key: "company-info", label: "Company info", hint: "Homepage text and contact", icon: FaBuilding },
+];
 
-  const handleSelect = (key) => {
-    setSearchParams({ tab: key });
-  };
+const LandingPage = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const active = SECTIONS.some((s) => s.key === searchParams.get("tab")) ? searchParams.get("tab") : "projects";
+  usePageTitle(`${SECTIONS.find((s) => s.key === active).label} · Website`);
 
   return (
-    <div className="landing-container">
-      <div className="landing-header">
-        <h2 className="mb-1">Landing Page Management</h2>
-        <p className="lead fs-6 mb-0">
-          Manage your website's public facing content, projects, and courses
-          from one place.
-        </p>
-      </div>
+    <div className="lp-page">
+      <ListHeader
+        title="Website"
+        subtitle="What visitors see on zantechbd.com. Changes here show on the site straight away."
+        actions={
+          <a className="btn btn-outline-secondary" href="https://zantechbd.com" target="_blank" rel="noreferrer">
+            <FaExternalLinkAlt className="me-2" aria-hidden="true" />Open website
+          </a>
+        }
+      />
 
-      <Tabs
-        activeKey={activeTab}
-        onSelect={handleSelect}
-        id="landing-page-tabs"
-        className="landing-tabs mb-4 border-0"
-      >
-        <Tab
-          eventKey="projects"
-          title={
-            <span className="landing-tab-title">
-              <FaProjectDiagram className="me-2" /> Projects
+      <nav className="lp-sections" aria-label="Website sections">
+        {SECTIONS.map(({ key, label, hint, icon: Icon }) => (
+          <button
+            key={key}
+            type="button"
+            className={`lp-section ${active === key ? "is-active" : ""}`}
+            aria-current={active === key ? "page" : undefined}
+            // Switching sections unmounts the current one, so unsaved company details get the same "Leave?" check as a link.
+            data-leaves-page={active === key ? undefined : ""}
+            onClick={() => setSearchParams({ tab: key })}
+          >
+            <Icon aria-hidden="true" />
+            <span>
+              <strong>{label}</strong>
+              <small>{hint}</small>
             </span>
-          }
-        >
-          <Projects />
-        </Tab>
-        <Tab
-          eventKey="courses"
-          title={
-            <span className="landing-tab-title">
-              <FaGraduationCap className="me-2" /> Courses
-            </span>
-          }
-        >
-          <Courses />
-        </Tab>
-        <Tab
-          eventKey="bootcamps"
-          title={
-            <span className="landing-tab-title">
-              <FaCampground className="me-2" /> Bootcamps
-            </span>
-          }
-        >
-          <Courses kind="bootcamp" />
-        </Tab>
-        <Tab
-          eventKey="company-info"
-          title={
-            <span className="landing-tab-title">
-              <FaBuilding className="me-2" /> Company Info
-            </span>
-          }
-        >
-          <CompanyInfo />
-        </Tab>
-      </Tabs>
+          </button>
+        ))}
+      </nav>
+
+      {active === "projects" && <Projects />}
+      {active === "courses" && <Courses key="course" />}
+      {active === "bootcamps" && <Courses key="bootcamp" kind="bootcamp" />}
+      {active === "company-info" && <CompanyInfo />}
     </div>
   );
 };

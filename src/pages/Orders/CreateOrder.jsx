@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Form } from "react-bootstrap";
 import { FaMinus, FaPlus, FaTrash, FaCheck } from "react-icons/fa";
 import AsyncSelect from "react-select/async";
@@ -56,6 +56,7 @@ const OptionRow = ({ label, sub, image }) => (
 const CreateOrder = () => {
   usePageTitle("New order");
   const navigate = useNavigate();
+  const [params] = useSearchParams();
 
   const [mode, setMode] = useState("account"); // account | guest
   const [customer, setCustomer] = useState(null); // react-select option
@@ -126,6 +127,20 @@ const CreateOrder = () => {
     setErrors((e) => ({ ...e, customer: null, shipping: null }));
     if (option) loadAddresses(option.value);
   };
+
+  // Opened from a customer's page: start with that customer picked.
+  const presetCustomer = params.get("customer");
+  useEffect(() => {
+    if (!presetCustomer) return;
+    axiosInstance
+      .get(`/clints/all-info/${presetCustomer}`)
+      .then((r) => {
+        const u = r.data?.data?.[0]?.user;
+        if (u) pickCustomer({ value: u.id, label: u.name, sub: [u.phone, u.email].filter(Boolean).join(" · ") });
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [presetCustomer]);
 
   const setGuestField = (key, value) => {
     setGuest((g) => ({ ...g, [key]: value }));
