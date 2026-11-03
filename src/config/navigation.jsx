@@ -136,6 +136,13 @@ export const NAV_SECTIONS = [
     title: "Finance & Stock",
     items: [
       { path: "/transitions", icon: MdSwapHoriz, label: "Transactions", keywords: "transitions payments money in out" },
+      {
+        path: "/custom-invoices",
+        icon: MdReceiptLong,
+        label: "Custom invoices",
+        match: ["/custom-invoices/"],
+        keywords: "r&d research project invoice bill quotation equipment software service",
+      },
       { path: "/expenses", icon: MdAttachMoney, label: "Expenses", match: ["/expenses/"], keywords: "costs spending" },
       { path: "/suppliers", icon: MdBusiness, label: "Suppliers", keywords: "vendors" },
       { path: "/challans", icon: MdLocalShipping, label: "Challans", match: ["/challans/"], keywords: "purchase delivery stock in" },
@@ -172,7 +179,7 @@ export const NAV_SECTIONS = [
 /** Shortcuts for creating things — shown in the command palette and dashboard. */
 export const QUICK_CREATE = [
   { path: "/orders/create", label: "New order", icon: MdShoppingCart, keywords: "create sale" },
-  { path: "/orders/custom-invoice", label: "Custom invoice", icon: MdReceiptLong, keywords: "create bill" },
+  { path: "/custom-invoices/new", label: "Custom invoice", icon: MdReceiptLong, keywords: "create bill r&d project" },
   { path: "/products/add", label: "Add product", icon: MdInventory, keywords: "create item" },
   { path: "/course-invoices/add", label: "New course invoice", icon: MdRequestQuote, keywords: "create fee receipt" },
   { path: "/landing/courses/add", label: "Add course", icon: MdSchool, keywords: "create class" },

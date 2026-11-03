@@ -1,526 +1,216 @@
-import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { Card, Button, Row, Col, Form, Table } from "react-bootstrap";
-import { FaArrowLeft, FaEye, FaDownload, FaEdit, FaSpinner, FaUpload, FaTimes } from "react-icons/fa";
+import React, { useCallback, useEffect, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { Button, Form } from "react-bootstrap";
+import { FaTrash, FaFilePdf, FaExternalLinkAlt, FaLock } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 import axiosInstance from "../../config/axios";
 import Loading from "../../components/Loading";
-import "./Expenses.css";
-import usePageTitle from '../../hooks/usePageTitle';
-
 import confirmDialog from "../../utils/confirmDialog";
+import usePageTitle from "../../hooks/usePageTitle";
+import { EditorPage, EditorSection, Field, SaveBar, useUnsavedChanges } from "../../components/Editor/Editor";
+import { Pill } from "../../components/List/List";
+import { taka, shortDate, timeAgo } from "../../components/List/format";
+import { ReceiptPicker } from "./index";
+import "../../components/Editor/Editor.css";
+import "../../components/List/List.css";
+import "./Expenses.css";
+
+const toForm = (e) => ({
+  date: String(e.date || "").slice(0, 10),
+  title: e.title || "",
+  amount: e.amount != null ? String(Number(e.amount)) : "",
+  description: e.description || "",
+});
+const isImage = (p) => /image/i.test(p.type || "") || /\.(jpe?g|png|gif|webp)(\?|$)/i.test(p.url || "");
+
 const ViewExpense = () => {
-  usePageTitle('View Expense Details');
   const { id } = useParams();
   const navigate = useNavigate();
   const [expense, setExpense] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({
-    date: "",
-    title: "",
-    amount: "",
-    description: "",
-    proves: []
-  });
-  const [selectedFiles, setSelectedFiles] = useState([]);
-  const [existingProves, setExistingProves] = useState([]);
-  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState(null);
+  const [files, setFiles] = useState([]);
+  const [errors, setErrors] = useState({});
+  const [saving, setSaving] = useState(false);
+  const [saveCount, setSaveCount] = useState(0);
+  const [notFound, setNotFound] = useState(false);
+  usePageTitle(expense ? expense.title : "Expense");
 
-  useEffect(() => {
-    fetchExpense();
+  const load = useCallback(async () => {
+    try {
+      const res = await axiosInstance.get(`/expenses/${id}`);
+      const e = res.data?.data;
+      setExpense(e);
+      setForm(toForm(e));
+    } catch (err) {
+      if (err.response?.status === 404) setNotFound(true);
+      else toast.error("Couldn't load this expense");
+    }
   }, [id]);
 
-  const fetchExpense = async () => {
-    setLoading(true);
-    try {
-      const response = await axiosInstance.get(`/expenses/${id}`);
-      if (response.data.success) {
-        setExpense(response.data.data);
-        setFormData({
-          date: response.data.data.date,
-          title: response.data.data.title,
-          amount: response.data.data.amount,
-          description: response.data.data.description || "",
-          proves: []
-        });
-        setExistingProves(response.data.data.proves || []);
-        setSelectedFiles([]);
-      } else {
-        throw new Error(response.data.message || "Failed to fetch expense");
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to fetch expense");
-      navigate("/expenses");
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => { load(); }, [load]);
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
+  const locked = !!expense?.challan_id;
+  const { dirty, markSaved } = useUnsavedChanges({ form, files: files.map((f) => f.name) }, !!form);
+  useEffect(() => { if (saveCount) markSaved(); }, [saveCount]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleFileChange = (e) => {
-    const files = Array.from(e.target.files);
-    const validFiles = files.filter(file => {
-      if (file.size > 3 * 1024 * 1024) {
-        toast.error(`${file.name} is too large. Max size is 3MB`);
-        return false;
-      }
-      if (!['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'].includes(file.type)) {
-        toast.error(`${file.name} has invalid file type. Please upload JPG, PNG, or PDF files`);
-        return false;
-      }
-      return true;
-    });
-    setSelectedFiles(prev => [...prev, ...validFiles]);
-  };
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
-  const removeFile = (index) => {
-    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const removeExistingProve = async (proveId) => {
-    if (await confirmDialog("Are you sure you want to remove this document?")) {
-      try {
-        // Make API call to delete the prove
-        const response = await axiosInstance.delete(`/expenses/prove/${proveId}`);
-
-        if (response.data.success) {
-          toast.success("Document removed successfully");
-          // Update state to remove the prove from the list
-          setExistingProves(prev => prev.filter(p => p.id !== proveId));
-        } else {
-          throw new Error(response.data.message || "Failed to remove document");
-        }
-      } catch (error) {
-        toast.error(error.response?.data?.message || "Failed to remove document");
-      }
-    }
-  };
-
-  const handleSubmit = async (e) => {
+  const save = async (e) => {
     e.preventDefault();
-    setSubmitting(true);
+    const found = {};
+    if (!form.title.trim()) found.title = "What was it for?";
+    if (!locked) {
+      if (!(Number(form.amount) > 0)) found.amount = "Enter the amount spent.";
+      if (!form.date) found.date = "Enter the date.";
+    }
+    setErrors(found);
+    if (Object.keys(found).length) return;
+
+    const fd = new FormData();
+    fd.append("_method", "PUT");
+    fd.append("title", form.title.trim());
+    fd.append("description", form.description.trim());
+    if (!locked) {
+      fd.append("date", form.date);
+      fd.append("amount", form.amount);
+    }
+    files.forEach((f) => fd.append("proves[]", f));
+    setSaving(true);
     try {
-      const formDataToSend = new FormData();
-      formDataToSend.append('_method', 'PUT');
-      formDataToSend.append('date', formData.date);
-      formDataToSend.append('title', formData.title);
-      formDataToSend.append('amount', formData.amount);
-      formDataToSend.append('description', formData.description);
-
-      selectedFiles.forEach((file) => {
-        formDataToSend.append(`proves[]`, file);
-      });
-
-      existingProves.forEach((prove) => {
-        formDataToSend.append('existing_proves[]', prove.id);
-      });
-
-      const response = await axiosInstance.post(`/expenses/${id}`, formDataToSend, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      });
-
-      if (response.data.success) {
-        toast.success("Expense updated successfully");
-        setIsEditing(false);
-        fetchExpense();
-      } else {
-        throw new Error(response.data.message || "Failed to update expense");
-      }
-    } catch (error) {
-      const errorMessage = error.response?.data?.message || "Failed to update expense";
-      toast.error(errorMessage);
-      if (error.response?.data?.errors) {
-        Object.values(error.response.data.errors).forEach(err => { console.error(err); toast.error(err[0]); });
-      }
+      await axiosInstance.post(`/expenses/${id}`, fd, { headers: { "Content-Type": "multipart/form-data" } });
+      setFiles([]);
+      await load();
+      setSaveCount((c) => c + 1);
+      toast.success("Expense saved");
+    } catch (err) {
+      const apiErrors = err.response?.data?.errors;
+      toast.error(apiErrors && typeof apiErrors === "object" ? Object.values(apiErrors).flat()[0] : err.response?.data?.message || "Couldn't save");
     } finally {
-      setSubmitting(false);
+      setSaving(false);
     }
   };
 
-  const handleCancelEdit = () => {
-    setIsEditing(false);
-    if (expense) {
-      setFormData({
-        date: expense.date,
-        title: expense.title,
-        amount: expense.amount,
-        description: expense.description || "",
-        proves: []
-      });
-      setExistingProves(expense.proves || []);
-      setSelectedFiles([]);
+  const removeReceipt = async (p, n) => {
+    const ok = await confirmDialog({ title: `Remove receipt ${n}?`, message: "The file is deleted from this expense.", confirmLabel: "Remove receipt", tone: "danger" });
+    if (!ok) return;
+    try {
+      await axiosInstance.delete(`/expenses/prove/${p.id}`);
+      setExpense((x) => ({ ...x, proves: x.proves.filter((q) => q.id !== p.id) }));
+      toast.success("Receipt removed");
+    } catch {
+      toast.error("Couldn't remove the receipt");
     }
   };
 
-  if (loading) {
-    return <Loading />;
-  }
+  const remove = async () => {
+    const ok = await confirmDialog({
+      title: `Delete "${expense.title}"?`,
+      message: `${taka(expense.amount)} on ${shortDate(expense.date)} is removed here and from the account site.`,
+      confirmLabel: "Delete expense",
+      tone: "danger",
+    });
+    if (!ok) return;
+    try {
+      await axiosInstance.delete(`/expenses/${id}`);
+      toast.success("Expense deleted");
+      navigate("/expenses");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Couldn't delete the expense");
+    }
+  };
 
-  if (!expense) {
-    return null;
+  if (notFound) {
+    return (
+      <div className="py-5 text-center">
+        <h1 className="h5">This expense doesn't exist</h1>
+        <p className="text-muted">It may have been deleted.</p>
+        <Button onClick={() => navigate("/expenses")}>Back to expenses</Button>
+      </div>
+    );
   }
+  if (!expense || !form) return <Loading />;
+
+  const proves = expense.proves || [];
 
   return (
-    <div className="expenses-container">
-      <Card className="modern-card">
-        <Card.Body className="p-4">
-          <div className="d-flex justify-content-between align-items-center mb-4">
+    <EditorPage
+      back={{ label: "Expenses", onClick: () => navigate("/expenses") }}
+      title={expense.title}
+      meta={
+        <>
+          <span className="ex-head-amount">{taka(expense.amount)}</span>
+          <span>{shortDate(expense.date)}</span>
+          {locked ? <Pill tone="info">Stock bought</Pill> : <Pill tone="muted">Expense</Pill>}
+        </>
+      }
+      actions={!locked && <Button variant="outline-danger" onClick={remove}><FaTrash className="me-2" aria-hidden="true" />Delete</Button>}
+      nav={
+        <div className="ex-side">
+          <dl>
+            <div><dt>Added by</dt><dd>{expense.user_name || "—"}</dd></div>
+            {expense.created_at && <div><dt>Added</dt><dd>{timeAgo(expense.created_at)}</dd></div>}
+            {expense.updated_at && expense.updated_at !== expense.created_at && <div><dt>Last changed</dt><dd>{timeAgo(expense.updated_at)}</dd></div>}
+            <div><dt>Account site</dt><dd>Sent as an expense; changes follow automatically.</dd></div>
+          </dl>
+        </div>
+      }
+      footer={<SaveBar formId="expense-form" dirty={dirty} saving={saving} onDiscard={() => { setForm(toForm(expense)); setFiles([]); setErrors({}); }} />}
+    >
+      <Form id="expense-form" onSubmit={save} noValidate>
+        {locked && (
+          <div className="ex-locked" role="note">
+            <FaLock aria-hidden="true" />
             <div>
-              <Button
-                variant="link"
-                className="p-0 mb-2 text-decoration-none"
-                onClick={() => navigate('/expenses')}
-              >
-                <FaArrowLeft className="me-2" /> Back to Expenses
-              </Button>
-              <h2 className="page-title mb-1">{isEditing ? "Edit Expense" : "Expense Details"}</h2>
-              <p className="text-muted mb-0">View and manage expense information</p>
+              <strong>This came from challan #{expense.challan_id}{expense.supplier_name ? ` (${expense.supplier_name})` : ""}.</strong>{" "}
+              Its amount and date follow the challan, so change them there. You can still rename it and add details or receipts.
+              <div><Link to={`/challans/${expense.challan_id}`}>Open challan #{expense.challan_id} <FaExternalLinkAlt aria-hidden="true" /></Link></div>
             </div>
-            {!isEditing && (
-              <Button
-                variant="primary"
-                onClick={() => setIsEditing(true)}
-                className="create-expense-btn"
-              >
-                <FaEdit className="me-2" /> Edit Expense
-              </Button>
-            )}
           </div>
+        )}
 
-          {isEditing ? (
-            <Form onSubmit={handleSubmit} className="mt-4">
-              <Card className="border mb-4">
-                <Card.Header className="bg-light">
-                  <h5 className="mb-0">Basic Information</h5>
-                </Card.Header>
-                <Card.Body>
-                  <Row>
-                    <Col md={6}>
-                      <Form.Group className="mb-3">
-                        <Form.Label>Date <span className="text-danger">*</span></Form.Label>
-                        <Form.Control
-                          type="date"
-                          name="date"
-                          value={formData.date}
-                          onChange={handleInputChange}
-                          required
-                          className="form-control-lg"
-                        />
-                      </Form.Group>
-                    </Col>
-                    <Col md={6}>
-                      <Form.Group className="mb-3">
-                        <Form.Label>Amount (৳) <span className="text-danger">*</span></Form.Label>
-                        <Form.Control
-                          type="number"
-                          name="amount"
-                          min="0"
-                          step="0.01"
-                          value={formData.amount}
-                          onChange={handleInputChange}
-                          required
-                          className="form-control-lg"
-                        />
-                      </Form.Group>
-                    </Col>
-                  </Row>
-
-                  <Form.Group className="mb-3">
-                    <Form.Label>Title <span className="text-danger">*</span></Form.Label>
-                    <Form.Control
-                      type="text"
-                      name="title"
-                      value={formData.title}
-                      onChange={handleInputChange}
-                      required
-                      className="form-control-lg"
-                    />
-                  </Form.Group>
-
-                  <Form.Group className="mb-3">
-                    <Form.Label>Description</Form.Label>
-                    <Form.Control
-                      as="textarea"
-                      name="description"
-                      rows={4}
-                      value={formData.description}
-                      onChange={handleInputChange}
-                      className="form-control-lg"
-                    />
-                  </Form.Group>
-                </Card.Body>
-              </Card>
-
-              <Card className="border mb-4">
-                <Card.Header className="bg-light">
-                  <h5 className="mb-0">Proof Documents</h5>
-                </Card.Header>
-                <Card.Body>
-                  <div className="file-upload-container mb-4">
-                    <input
-                      type="file"
-                      id="prove-files"
-                      accept=".jpg,.jpeg,.png,.pdf"
-                      onChange={handleFileChange}
-                      multiple
-                      className="d-none"
-                    />
-                    <label htmlFor="prove-files" className="file-upload-label">
-                      <FaUpload className="me-2" /> Choose Files
-                    </label>
-                    <div className="file-upload-text mt-2">
-                      {selectedFiles.length > 0
-                        ? `${selectedFiles.length} file(s) selected`
-                        : "No new files chosen"}
-                    </div>
-                    <Form.Text className="text-muted">
-                      Max file size: 3MB per file. Allowed formats: JPG, PNG, PDF
-                    </Form.Text>
-                  </div>
-
-                  {selectedFiles.length > 0 && (
-                    <div className="selected-files mb-4">
-                      <h6 className="mb-3">New Files</h6>
-                      <div className="selected-files-list">
-                        {selectedFiles.map((file, index) => (
-                          <div key={index} className="selected-file-item">
-                            <span className="file-name">{file.name}</span>
-                            <Button
-                              variant="outline-danger"
-                              size="sm"
-                              onClick={() => removeFile(index)}
-                              className="remove-file-btn"
-                            >
-                              <FaTimes />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {existingProves.length > 0 && (
-                    <div className="existing-proves">
-                      <h6 className="mb-3">Existing Documents</h6>
-                      <div className="table-container">
-                        <Table responsive hover className="modern-table">
-                          <thead>
-                            <tr>
-                              <th style={{ width: '100px' }}>Preview</th>
-                              <th>File Name</th>
-                              <th style={{ width: '150px' }}>Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {existingProves.map((prove) => (
-                              <tr key={prove.id}>
-                                <td className="text-center">
-                                  <div className="prove-preview-table">
-                                    {prove.url.match(/\.(jpg|jpeg|png)$/i) ? (
-                                      <img 
-                                        src={prove.url} 
-                                        alt="Proof" 
-                                        className="prove-image-table"
-                                        onClick={() => window.open(prove.url, '_blank')}
-                                      />
-                                    ) : (
-                                      <div className="prove-file-table">
-                                        <FaDownload size={24} />
-                                        <span>PDF Document</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                </td>
-                                <td className="align-middle">
-                                  {prove.url.split('/').pop()}
-                                </td>
-                                <td className="align-middle">
-                                  <div className="d-flex gap-2 justify-content-center">
-                                    <Button
-                                      variant="outline-primary"
-                                      size="sm"
-                                      href={prove.url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="view-btn"
-                                    >
-                                      <FaEye className="me-1" /> View
-                                    </Button>
-                                    <Button
-                                      variant="outline-danger"
-                                      size="sm"
-                                      onClick={() => removeExistingProve(prove.id)}
-                                      className="delete-btn"
-                                    >
-                                      <FaTimes />
-                                    </Button>
-                                  </div>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </Table>
-                      </div>
-                    </div>
-                  )}
-                </Card.Body>
-              </Card>
-
-              <div className="d-flex justify-content-end gap-2">
-                <Button 
-                  variant="secondary" 
-                  onClick={handleCancelEdit}
-                  className="px-4"
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  variant="primary" 
-                  type="submit" 
-                  disabled={submitting}
-                  className="px-4"
-                >
-                  {submitting ? (
-                    <>
-                      <FaSpinner className="spinner me-2" /> Updating...
-                    </>
-                  ) : (
-                    "Update Expense"
-                  )}
-                </Button>
+        <EditorSection id="ex-details" title="Details">
+          <Field name="title" label="What was it for?" required error={errors.title} labelFor="ex-title">
+            <Form.Control id="ex-title" value={form.title} onChange={set("title")} isInvalid={!!errors.title} />
+          </Field>
+          <div className="ex-grid-2">
+            <Field name="amount" label="Amount" required={!locked} error={errors.amount} labelFor="ex-amount" help={locked ? "Set by the challan." : undefined}>
+              <div className="ed-money">
+                <span aria-hidden="true">৳</span>
+                <Form.Control id="ex-amount" type="number" inputMode="decimal" min={0} step="any" value={form.amount} onChange={set("amount")} disabled={locked} isInvalid={!!errors.amount} />
               </div>
-            </Form>
-          ) : (
-            <div className="mt-4">
-              <Card className="border mb-4">
-                <Card.Header className="bg-light">
-                  <h5 className="mb-0">Basic Information</h5>
-                </Card.Header>
-                <Card.Body>
-                  <Row>
-                    <Col md={6}>
-                      <div className="mb-4">
-                        <label className="detail-label">ID</label>
-                        <div className="detail-value">#{expense.id}</div>
-                      </div>
-                    </Col>
-                    <Col md={6}>
-                      <div className="mb-4">
-                        <label className="detail-label">Date</label>
-                        <div className="detail-value">
-                          {new Date(expense.date).toLocaleDateString()}
-                        </div>
-                      </div>
-                    </Col>
-                  </Row>
+            </Field>
+            <Field name="date" label="Date" required={!locked} error={errors.date} labelFor="ex-date" help={locked ? "Set by the challan." : undefined}>
+              <Form.Control id="ex-date" type="date" value={form.date} onChange={set("date")} disabled={locked} isInvalid={!!errors.date} />
+            </Field>
+          </div>
+          <Field name="description" label="Details" labelFor="ex-desc" help="Who was paid, for which month, anything worth remembering.">
+            <Form.Control id="ex-desc" as="textarea" rows={4} value={form.description} onChange={set("description")} />
+          </Field>
+        </EditorSection>
 
-                  <Row>
-                    <Col md={6}>
-                      <div className="mb-4">
-                        <label className="detail-label">Title</label>
-                        <div className="detail-value">{expense.title}</div>
-                      </div>
-                    </Col>
-                    <Col md={6}>
-                      <div className="mb-4">
-                        <label className="detail-label">Amount</label>
-                        <div className="detail-value expense-amount">
-                          ৳{parseFloat(expense.amount).toLocaleString()}
-                        </div>
-                      </div>
-                    </Col>
-                  </Row>
-
-                  <div className="mb-4">
-                    <label className="detail-label">Description</label>
-                    <div className="detail-value">
-                      {expense.description || "No description provided"}
-                    </div>
+        <EditorSection id="ex-receipts" title="Receipts" count={proves.length} help="Bills, memos or payment screenshots for this expense.">
+          {proves.length > 0 ? (
+            <ul className="ex-receipt-grid">
+              {proves.map((p, i) => (
+                <li key={p.id}>
+                  <a href={p.url} target="_blank" rel="noreferrer" className="ex-receipt-thumb" aria-label={`Open receipt ${i + 1}`}>
+                    {isImage(p) ? <img src={p.url} alt="" loading="lazy" /> : <span className="ex-receipt-pdf"><FaFilePdf aria-hidden="true" />PDF</span>}
+                  </a>
+                  <div className="ex-receipt-foot">
+                    <span>Receipt {i + 1}</span>
+                    <button type="button" onClick={() => removeReceipt(p, i + 1)} aria-label={`Remove receipt ${i + 1}`}><FaTrash aria-hidden="true" /></button>
                   </div>
-                </Card.Body>
-              </Card>
-
-              {expense.proves && expense.proves.length > 0 && (
-                <Card className="border">
-                  <Card.Header className="bg-light">
-                    <h5 className="mb-0">Proof Documents</h5>
-                  </Card.Header>
-                  <Card.Body>
-                    <div className="table-container">
-                      <Table responsive hover className="modern-table">
-                        <thead>
-                          <tr>
-                            <th style={{ width: '100px' }}>Preview</th>
-                            <th>File Name</th>
-                            <th style={{ width: '150px' }}>Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {expense.proves.map((prove) => (
-                            <tr key={prove.id}>
-                              <td className="text-center">
-                                <div className="prove-preview-table">
-                                  {prove.url.match(/\.(jpg|jpeg|png)$/i) ? (
-                                    <img 
-                                      src={prove.url} 
-                                      alt="Proof" 
-                                      className="prove-image-table"
-                                      onClick={() => window.open(prove.url, '_blank')}
-                                    />
-                                  ) : (
-                                    <div className="prove-file-table">
-                                      <FaDownload size={24} />
-                                      <span>PDF Document</span>
-                                    </div>
-                                  )}
-                                </div>
-                              </td>
-                              <td className="align-middle">
-                                {prove.url.split('/').pop()}
-                              </td>
-                              <td className="align-middle">
-                                <div className="d-flex gap-2 justify-content-center">
-                                  <Button
-                                    variant="outline-primary"
-                                    size="sm"
-                                    href={prove.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="view-btn"
-                                  >
-                                    <FaEye className="me-1" /> View
-                                  </Button>
-                                  <Button
-                                    variant="outline-secondary"
-                                    size="sm"
-                                    href={prove.url}
-                                    download
-                                    className="download-btn"
-                                  >
-                                    <FaDownload className="me-1" /> Download
-                                  </Button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </Table>
-                    </div>
-                  </Card.Body>
-                </Card>
-              )}
-            </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-muted mb-3">No receipts yet.</p>
           )}
-        </Card.Body>
-      </Card>
-    </div>
+          <ReceiptPicker id="ex-more-files" files={files} onChange={setFiles} />
+          {files.length > 0 && <p className="small text-muted mt-2 mb-0">New receipts upload when you save.</p>}
+        </EditorSection>
+      </Form>
+    </EditorPage>
   );
 };
 

@@ -1,0 +1,62 @@
+/* Custom invoices: editor lines and the payments panel. */
+
+.ci-dates { gap: 0 0.75rem; }
+
+.cv-lines { list-style: none; margin: 0.75rem 0 0; padding: 0; display: grid; gap: 0.6rem; }
+.cv-line {
+  display: grid; grid-template-columns: 28px minmax(0, 1fr) 40px; gap: 0.6rem; align-items: start;
+  padding: 0.8rem; border: 1px solid var(--zt-border); border-radius: var(--zt-radius); background: var(--zt-surface);
+}
+.cv-line-no {
+  width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; margin-top: 8px;
+  background: var(--zt-subtle); color: var(--zt-muted); font-size: 0.78rem; font-weight: 700;
+}
+.cv-line-main { min-width: 0; }
+.cv-line-top { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 0.5rem; }
+.cv-type { min-height: 40px; }
+.cv-add-desc { margin-top: 0.4rem; border: 0; background: none; padding: 0; color: var(--zt-primary); font-size: 0.8rem; font-weight: 600; }
+.cv-add-desc svg { width: 0.7rem; margin-right: 0.25rem; }
+.cv-line-nums { display: grid; grid-template-columns: 100px 160px minmax(0, 1fr); gap: 0.5rem; align-items: end; margin-top: 0.5rem; }
+.cv-line-nums label { margin: 0; display: grid; gap: 0.2rem; }
+.cv-line-nums label > span { font-size: 0.72rem; font-weight: 600; color: var(--zt-muted); }
+.cv-line-amount { text-align: right; font-weight: 700; color: var(--zt-ink); font-variant-numeric: tabular-nums; padding-bottom: 0.55rem; }
+.cv-line .co-remove { margin-top: 2px; }
+
+@media (max-width: 575.98px) {
+  .cv-line { grid-template-columns: minmax(0, 1fr) 40px; }
+  .cv-line-no { display: none; }
+  .cv-line-top { grid-template-columns: minmax(0, 1fr); }
+  .cv-line-nums { grid-template-columns: 80px minmax(0, 1fr); }
+  .cv-line-amount { grid-column: 1 / -1; padding-bottom: 0; }
+}
+
+/* Details page */
+.cv-status-due { color: #856404; }
+.cv-lines-view { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.cv-lines-view th { font-size: 0.75rem; font-weight: 600; color: var(--zt-muted); text-align: left; padding: 0 0.5rem 0.4rem; border-bottom: 1px solid var(--zt-border); }
+.cv-lines-view td { padding: 0.65rem 0.5rem; border-bottom: 1px solid var(--zt-border); vertical-align: top; }
+.cv-lines-view .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.cv-lines-view .cv-desc { display: block; font-size: 0.8rem; color: var(--zt-muted); white-space: pre-line; }
+.cv-type-tag { display: inline-block; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--zt-muted); }
+.cv-table-wrap { padding: 0 1.1rem 0.5rem; overflow-x: auto; }
+.cv-totals { margin: 0.75rem 1.1rem 1rem auto; max-width: 320px; display: grid; gap: 0.3rem; font-size: 0.9rem; }
+.cv-totals > div { display: flex; justify-content: space-between; gap: 1rem; }
+.cv-totals dt { font-weight: 500; color: var(--zt-muted); }
+.cv-totals dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.cv-totals .is-total { border-top: 1px solid var(--zt-border); padding-top: 0.4rem; }
+.cv-totals .is-total dt, .cv-totals .is-total dd { color: var(--zt-ink); font-weight: 700; font-size: 1.05rem; }
+.cv-text { padding: 0 1.1rem 1rem; font-size: 0.875rem; white-space: pre-line; }
+.cv-text strong { display: block; font-size: 0.78rem; color: var(--zt-muted); margin-bottom: 0.15rem; }
+
+.cv-payments { list-style: none; margin: 0; padding: 0 1.1rem 0.75rem; }
+.cv-payments li { display: flex; gap: 0.5rem; align-items: flex-start; justify-content: space-between; padding: 0.55rem 0; border-bottom: 1px solid var(--zt-border); font-size: 0.85rem; }
+.cv-payments .ls-money { font-size: 0.95rem; }
+.cv-progress { margin: 0 1.1rem 0.9rem; height: 8px; border-radius: 999px; background: var(--zt-subtle); overflow: hidden; }
+.cv-progress span { display: block; height: 100%; background: #1d8a4e; border-radius: inherit; }
+.cv-quick { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.4rem; }
+.cv-quick button { border: 1px solid var(--zt-border); background: var(--zt-surface); border-radius: 999px; padding: 0.2rem 0.65rem; font-size: 0.78rem; font-weight: 600; }
+.cv-quick button:hover { border-color: var(--zt-primary); color: var(--zt-primary); }
+
+/* % sits after the number */
+.ed-money.is-suffix > span { left: auto; right: 0.85rem; }
+.ed-money.is-suffix > .form-control { padding-left: 0.75rem; padding-right: 2rem; }

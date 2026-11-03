@@ -158,7 +158,7 @@ const Orders = () => {
         subtitle="Store orders, newest first. Open one to change its status, items or payment."
         actions={
           <>
-            <Button variant="outline-secondary" onClick={() => navigate("/orders/custom-invoice")}>
+            <Button variant="outline-secondary" onClick={() => navigate("/custom-invoices/new")}>
               <FaFileInvoice className="me-2" aria-hidden="true" />Custom invoice
             </Button>
             <Button onClick={() => navigate("/orders/create")}>

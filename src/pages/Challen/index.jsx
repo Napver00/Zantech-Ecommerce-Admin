@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { FaPlus, FaChevronRight, FaTimes } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 import { Button } from "react-bootstrap";
@@ -15,8 +15,9 @@ const Challans = () => {
   const navigate = useNavigate();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [query, setQuery] = useState("");
+  const [params] = useSearchParams();
+  const [search, setSearch] = useState(() => params.get("search") || "");
+  const [query, setQuery] = useState(() => (params.get("search") || "").trim());
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [page, setPage] = useState(1);

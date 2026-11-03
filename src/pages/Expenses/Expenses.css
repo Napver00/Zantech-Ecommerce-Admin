@@ -1,481 +1,190 @@
-.expenses-container {
-  padding: 1.5rem;
-  background-color: var(--zt-subtle);
-  min-height: calc(100vh - 60px);
+/* Expenses list and Expense details */
+
+.ex-stats {
+  margin-bottom: 1rem;
 }
 
-.modern-card {
-  border: none;
-  border-radius: 12px;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
-  background: #ffffff;
-}
-
-.page-title {
-  font-size: 1.75rem;
-  font-weight: 600;
-  color: var(--zt-ink);
-}
-
-.create-expense-btn {
-  padding: 0.5rem 1.25rem;
-  border-radius: 8px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  background: var(--zt-primary);
-  border: none;
-}
-
-.create-expense-btn:hover {
-  background: var(--zt-primary-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(8, 145, 178, 0.15);
-}
-
-.filters-section {
-  background: var(--zt-subtle);
-  padding: 1.25rem;
-  border-radius: 10px;
-  margin-bottom: 1.5rem;
-}
-
-.search-box .input-group {
-  background: #fff;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
-}
-
-.search-box .input-group-text {
-  background: #fff;
-  border: 1px solid var(--zt-border);
-  border-right: none;
-  color: var(--zt-muted);
-}
-
-.search-input {
-  border: 1px solid var(--zt-border);
-  border-left: none;
-  padding: 0.6rem 1rem;
-}
-
-.search-input:focus {
-  box-shadow: none;
-  border-color: var(--zt-border);
-}
-
-.clear-search {
-  color: var(--zt-muted);
-  padding: 0.6rem 1rem;
-}
-
-.clear-search:hover {
-  color: var(--zt-red);
-}
-
-.date-filter-box .input-group {
-  background: #fff;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
-}
-
-.date-picker-input {
-  border: 1px solid var(--zt-border);
-  padding: 0.6rem 1rem;
-}
-
-.limit-select {
-  border: 1px solid var(--zt-border);
-  border-radius: 8px;
-  padding: 0.6rem 1rem;
-  background: #fff;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
-}
-
-.clear-dates-btn {
-  border-radius: 8px;
-  padding: 0.6rem 1rem;
-  transition: all 0.2s ease;
-}
-
-.clear-dates-btn:hover {
-  background: var(--zt-border);
-}
-
-.table-container {
-  background: #fff;
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
-}
-
-.modern-table {
-  margin-bottom: 0;
-}
-
-.modern-table thead th {
-  background: var(--zt-subtle);
-  border-bottom: 2px solid var(--zt-border);
-  color: #334155;
-  font-weight: 600;
-  padding: 1rem;
-  font-size: 0.9rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.modern-table tbody td {
-  padding: 1rem;
-  vertical-align: middle;
-  border-bottom: 1px solid var(--zt-border);
-  color: #334155;
-  font-size: 0.95rem;
-}
-
-.modern-table tbody tr:hover {
-  background-color: var(--zt-subtle);
-}
-
-.view-btn {
-  padding: 0.4rem 0.75rem;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  transition: all 0.2s ease;
-  border-color: var(--zt-primary);
-  color: var(--zt-primary);
-}
-
-.view-btn:hover {
-  background: var(--zt-primary);
-  color: #fff;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(8, 145, 178, 0.15);
-}
-
-.delete-btn {
-  padding: 0.4rem 0.75rem;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  transition: all 0.2s ease;
-  border-color: var(--zt-red);
-  color: var(--zt-red);
-}
-
-.delete-btn:hover {
-  background: var(--zt-red);
-  color: #fff;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(237, 38, 38, 0.15);
-}
-
-.pagination-container {
-  display: flex;
-  justify-content: center;
-  padding: 1rem 0;
-}
-
-.modern-pagination {
-  gap: 0.25rem;
-}
-
-.modern-pagination .page-item .page-link {
-  border: none;
-  padding: 0.5rem 0.75rem;
-  margin: 0 0.125rem;
-  border-radius: 6px;
-  color: #334155;
-  transition: all 0.2s ease;
-}
-
-.modern-pagination .page-item.active .page-link {
-  background: var(--zt-primary);
-  color: #fff;
-}
-
-.modern-pagination .page-item:not(.active) .page-link:hover {
-  background: var(--zt-subtle);
-  color: var(--zt-primary);
-}
-
-.modern-pagination .page-item.disabled .page-link {
-  color: #adb5bd;
-  background: transparent;
-}
-
-/* Loading spinner animation */
-.spinner {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-/* Date Range Picker Styles */
-.date-range-popper {
-  z-index: 9999 !important;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  border: 1px solid var(--zt-border);
-}
-
-.date-range-popper .react-datepicker {
-  font-family: inherit;
-  border: none;
-  border-radius: 12px;
-}
-
-.date-range-popper .react-datepicker__header {
-  background: var(--zt-subtle);
-  border-bottom: 1px solid var(--zt-border);
-  border-top-left-radius: 12px;
-  border-top-right-radius: 12px;
-  padding-top: 1rem;
-}
-
-.date-range-popper .react-datepicker__month-container {
-  float: left;
-  border-radius: 12px;
-}
-
-.date-range-popper .react-datepicker__day {
-  border-radius: 6px;
-  margin: 0.2rem;
-  width: 2rem;
-  line-height: 2rem;
-  color: #334155;
-}
-
-.date-range-popper .react-datepicker__day:hover {
-  background-color: var(--zt-border);
-}
-
-.date-range-popper .react-datepicker__day--selected,
-.date-range-popper .react-datepicker__day--in-range {
-  background-color: var(--zt-primary) !important;
-  color: #fff !important;
-}
-
-.date-range-popper .react-datepicker__day--keyboard-selected {
-  background-color: rgba(8, 145, 178, 0.1);
-  color: var(--zt-primary);
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .expenses-container {
-    padding: 1rem;
-  }
-
-  .filters-section {
-    padding: 1rem;
-  }
-
-  .modern-table thead {
-    display: none;
-  }
-
-  .modern-table tbody tr {
-    display: block;
-    margin-bottom: 1rem;
-    border: 1px solid var(--zt-border);
-    border-radius: 8px;
-  }
-
-  .modern-table tbody td {
-    display: block;
-    text-align: right;
-    padding: 0.75rem 1rem;
-    border-bottom: 1px solid var(--zt-border);
-  }
-
-  .modern-table tbody td:last-child {
-    border-bottom: none;
-  }
-
-  .modern-table tbody td::before {
-    content: attr(data-label);
-    float: left;
-    font-weight: 600;
-    color: #334155;
-  }
-}
-
-/* View Expense Page Styles */
-.detail-label {
-  display: block;
-  font-size: 0.875rem;
-  color: var(--zt-muted);
-  margin-bottom: 0.5rem;
-}
-
-.detail-value {
-  font-size: 1rem;
-  color: var(--zt-ink);
-  font-weight: 500;
-}
-
-.expense-amount {
-  color: var(--zt-primary);
-  font-weight: 600;
-}
-
-.file-upload-container {
-  background: var(--zt-subtle);
-  border: 2px dashed var(--zt-border);
-  border-radius: 8px;
-  padding: 1.5rem;
-  text-align: center;
-  transition: all 0.2s ease;
-}
-
-.file-upload-container:hover {
-  border-color: var(--zt-primary);
-  background: #f0f4ff;
-}
-
-.file-upload-label {
+.ex-attach {
   display: inline-flex;
   align-items: center;
-  padding: 0.75rem 1.5rem;
-  background: var(--zt-primary);
-  color: #fff;
+  gap: 0.35rem;
+  color: var(--zt-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Receipt picker */
+.ex-receipts-pick {
+  display: block;
+}
+
+.ex-file-list {
+  list-style: none;
+  margin: 0.6rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.ex-file-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  background: var(--zt-subtle);
+  border: 1px solid var(--zt-border);
   border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.2s ease;
-}
-
-.file-upload-label:hover {
-  background: var(--zt-primary-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(8, 145, 178, 0.15);
-}
-
-.file-upload-text {
-  color: var(--zt-muted);
   font-size: 0.875rem;
-  margin-top: 0.5rem;
+  min-width: 0;
 }
 
-.selected-files-list {
+.ex-file-list li > span {
+  flex: 1;
+  min-width: 0;
+}
+
+.ex-file-list button {
+  border: 0;
+  background: none;
+  color: var(--zt-muted);
+  padding: 0.15rem 0.3rem;
+  border-radius: 4px;
+}
+
+.ex-file-list button:hover,
+.ex-file-list button:focus-visible {
+  color: var(--zt-red);
+}
+
+/* Details page */
+.ex-head-amount {
+  font-weight: 700;
+  color: var(--zt-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.ex-locked {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.85rem 1rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--zt-border);
+  border-left: 3px solid var(--zt-primary);
+  border-radius: 8px;
+  background: var(--zt-subtle);
+  font-size: 0.9rem;
+}
+
+.ex-locked > svg {
+  margin-top: 0.2rem;
+  color: var(--zt-primary);
+  flex-shrink: 0;
+}
+
+.ex-locked a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+  font-weight: 600;
+}
+
+.ex-locked a svg {
+  font-size: 0.7rem;
+}
+
+.ex-side dl {
+  margin: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.ex-side dt {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--zt-muted);
+}
+
+.ex-side dd {
+  margin: 0;
+  color: var(--zt-ink);
+}
+
+.ex-receipt-grid {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.75rem;
+}
+
+.ex-receipt-grid li {
+  border: 1px solid var(--zt-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.ex-receipt-thumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 4 / 3;
+  background: var(--zt-subtle);
+}
+
+.ex-receipt-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ex-receipt-pdf {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--zt-red);
+  font-weight: 600;
+  font-size: 0.8rem;
 }
 
-.selected-file-item {
+.ex-receipt-pdf svg {
+  font-size: 1.8rem;
+}
+
+.ex-receipt-foot {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: var(--zt-subtle);
-  padding: 0.75rem 1rem;
-  border-radius: 6px;
-  border: 1px solid var(--zt-border);
+  padding: 0.35rem 0.5rem;
+  font-size: 0.8rem;
+  color: var(--zt-muted);
 }
 
-.file-name {
-  font-size: 0.875rem;
-  color: #334155;
-  word-break: break-all;
-}
-
-.remove-file-btn {
-  padding: 0.25rem 0.5rem;
+.ex-receipt-foot button {
+  border: 0;
+  background: none;
+  color: var(--zt-muted);
+  padding: 0.2rem 0.35rem;
   border-radius: 4px;
-  transition: all 0.2s ease;
 }
 
-.remove-file-btn:hover {
-  background: var(--zt-red);
-  color: #fff;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(237, 38, 38, 0.15);
-}
-
-.prove-preview-table {
-  width: 100%;
-  height: 100px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  cursor: pointer;
+.ex-receipt-foot button:hover,
+.ex-receipt-foot button:focus-visible {
+  color: var(--zt-red);
   background: var(--zt-subtle);
-  border-radius: 6px;
-  transition: all 0.2s ease;
 }
 
-.prove-preview-table:hover {
-  background: var(--zt-border);
+.ex-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 1rem;
 }
 
-.prove-image-table {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-  transition: transform 0.2s;
-}
-
-.prove-image-table:hover {
-  transform: scale(1.1);
-}
-
-.prove-file-table {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: var(--zt-muted);
-  font-size: 0.875rem;
-  gap: 0.5rem;
-}
-
-.download-btn {
-  padding: 0.4rem 0.75rem;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  transition: all 0.2s ease;
-  border-color: var(--zt-muted);
-  color: var(--zt-muted);
-}
-
-.download-btn:hover {
-  background: var(--zt-muted);
-  color: #fff;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(108, 117, 125, 0.15);
-}
-
-/* Responsive adjustments for View Expense page */
-@media (max-width: 768px) {
-  .expenses-container {
-    padding: 1rem;
+@media (max-width: 575.98px) {
+  .ex-grid-2 {
+    grid-template-columns: 1fr;
   }
-
-  .modern-card {
-    margin: 0 -1rem;
-    border-radius: 0;
-  }
-
-  .card-body {
-    padding: 1rem;
-  }
-
-  .selected-file-item {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
-  }
-
-  .remove-file-btn {
-    align-self: flex-end;
-  }
-
-  .prove-preview-table {
-    height: 80px;
-  }
-} 
+}

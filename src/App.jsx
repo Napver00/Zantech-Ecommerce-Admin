@@ -28,7 +28,9 @@ import Activity from "./pages/Activity";
 import Orders from "./pages/Orders";
 import ViewOrder from "./pages/Orders/ViewOrder";
 import CreateOrder from "./pages/Orders/CreateOrder";
-import CustomInvoice from "./pages/Orders/CustomInvoice";
+import CustomInvoices from "./pages/CustomInvoices";
+import CustomInvoiceEditor from "./pages/CustomInvoices/CustomInvoiceEditor";
+import ViewCustomInvoice from "./pages/CustomInvoices/ViewCustomInvoice";
 import HeroImages from "./pages/HeroImages";
 import Contact from "./pages/Contact";
 import { OrderProvider } from "./context/OrderContext";
@@ -169,10 +171,12 @@ const App = () => {
                           path="/orders/create"
                           element={<CreateOrder />}
                         />
-                        <Route
-                          path="/orders/custom-invoice"
-                          element={<CustomInvoice />}
-                        />
+                        {/* Custom invoices are saved now; the old address opens a new one */}
+                        <Route path="/orders/custom-invoice" element={<Navigate to="/custom-invoices/new" replace />} />
+                        <Route path="/custom-invoices" element={<CustomInvoices />} />
+                        <Route path="/custom-invoices/new" element={<CustomInvoiceEditor />} />
+                        <Route path="/custom-invoices/:id" element={<ViewCustomInvoice />} />
+                        <Route path="/custom-invoices/:id/edit" element={<CustomInvoiceEditor />} />
                         <Route path="/orders/:id" element={<ViewOrder />} />
                         <Route path="/settings/hero" element={<HeroImages />} />
                         <Route path="/reports" element={<Reports />} />

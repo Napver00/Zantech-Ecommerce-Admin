@@ -65,6 +65,7 @@ const PATH_AREAS = [
   ["/settings/documents", "admin"],
   ["/settings/hero", "store"],
   ["/inventory", "inventory"],
+  ["/custom-invoices", "store"],
   ["/orders", "store"],
   ["/products", "store"],
   ["/categories", "store"],
