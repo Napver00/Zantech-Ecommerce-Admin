@@ -5,7 +5,8 @@ import { toast } from "react-hot-toast";
 import { FaPlus, FaTrash, FaPen } from "react-icons/fa";
 import axiosInstance from "../../config/axios";
 import confirmDialog from "../../utils/confirmDialog";
-import { ListCard, ListToolbar, ResultCount, Pager } from "../../components/List/List";
+import { ListCard, ListToolbar, ResultCount, Pager, FilterTabs } from "../../components/List/List";
+import { PROJECT_CATEGORIES, CATEGORY_LABEL } from "./projectCategories";
 
 const Projects = () => {
   const navigate = useNavigate();
@@ -15,11 +16,12 @@ const Projects = () => {
   const [limit, setLimit] = useState(12);
   const [pagination, setPagination] = useState({ total_rows: 0, total_pages: 1 });
   const [busy, setBusy] = useState({});
+  const [category, setCategory] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await axiosInstance.get("/projects", { params: { page, limit } });
+      const res = await axiosInstance.get("/projects", { params: { page, limit, ...(category && { category }) } });
       const list = res.data?.data || [];
       setProjects(list);
       setPagination(res.data?.pagination || { total_rows: list.length, total_pages: 1 });
@@ -28,7 +30,7 @@ const Projects = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, limit]);
+  }, [page, limit, category]);
 
   useEffect(() => {
     load();
@@ -71,6 +73,12 @@ const Projects = () => {
 
   return (
     <ListCard>
+      <FilterTabs
+        label="Whose project"
+        value={category}
+        onChange={(v) => { setCategory(v); setPage(1); }}
+        tabs={[{ value: "", label: "All" }, ...PROJECT_CATEGORIES.map((c) => ({ value: c.value, label: c.tab }))]}
+      />
       <ListToolbar end={newButton}>
         <ResultCount page={page} perPage={limit} total={pagination.total_rows} noun="projects" />
       </ListToolbar>
@@ -89,7 +97,7 @@ const Projects = () => {
         </div>
       ) : !projects.length ? (
         <div className="empty-state">
-          <p className="empty-state-title">No projects yet</p>
+          <p className="empty-state-title">{category ? `Nothing in ${PROJECT_CATEGORIES.find((c) => c.value === category)?.tab} yet` : "No projects yet"}</p>
           <p className="empty-state-text">Add work you've done to show it in the portfolio on the website.</p>
           {newButton}
         </div>
@@ -103,6 +111,7 @@ const Projects = () => {
                   {p.image_url ? <img src={p.image_url} alt="" loading="lazy" /> : <span className="lp-noimg">No cover image</span>}
                 </button>
                 <div className="lp-card-body">
+                  <span className={`lp-kind is-${p.category || "rnd"}`}>{CATEGORY_LABEL[p.category] || CATEGORY_LABEL.rnd}</span>
                   <button type="button" className="lp-card-title" onClick={() => open(p)}>{p.title}</button>
                   {p.description && <p className="lp-card-desc">{p.description}</p>}
                   {p.technologies?.length > 0 && (

@@ -11,6 +11,7 @@ import {
   useUnsavedChanges, showFirstError, editorHtml,
 } from "../../components/Editor/Editor";
 import "../../components/Editor/Editor.css";
+import { PROJECT_CATEGORIES } from "./projectCategories";
 
 // One form for adding a portfolio project and editing an existing one.
 
@@ -24,6 +25,7 @@ const formFromProject = (p) => ({
   longdescription: p?.longdescription || "",
   technologies: (p?.technologies || []).map((t) => t.name).join(", "),
   status: p?.status || "active",
+  category: p?.category || "rnd",
   image: null,
   imagePreview: null,
   imageUrl: p?.image_url || null,
@@ -105,6 +107,7 @@ const ProjectEditor = ({ project = null }) => {
     fd.append("description", current.description.trim());
     fd.append("longdescription", current.longdescription || "");
     if (current.image) fd.append("image", current.image);
+    fd.append("category", current.category);
     if (isEdit) fd.append("status", current.status);
     else techs.forEach((t) => fd.append("technologies[]", t));
 
@@ -168,6 +171,7 @@ const ProjectEditor = ({ project = null }) => {
         isEdit ? (
           <>
             <span className={`ed-status ${live ? "is-live" : "is-off"}`}>{live ? "On the website" : "Hidden"}</span>
+            <span>{PROJECT_CATEGORIES.find((c) => c.value === saved.category)?.label || "ZAN Tech R&D"}</span>
             <span>{techCount} {techCount === 1 ? "technology" : "technologies"}</span>
           </>
         ) : (
@@ -197,6 +201,9 @@ const ProjectEditor = ({ project = null }) => {
     >
       <form id={FORM_ID} onSubmit={handleSubmit} noValidate>
         <EditorSection id="basics" title="Project card" help="What visitors see in the portfolio grid.">
+          <Field name="category" label="Whose project is it?">
+            <ChoiceGroup name="category" value={form.category} onChange={(v) => set("category", v)} options={PROJECT_CATEGORIES} columns={2} />
+          </Field>
           <Field name="title" label="Name" required error={errors.title} labelFor="project-title">
             <Form.Control id="project-title" name="title" value={form.title} onChange={onInput}
               placeholder="e.g. Smart irrigation controller" />

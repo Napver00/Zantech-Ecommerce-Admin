@@ -49,6 +49,13 @@
   font-weight: 700; color: var(--zt-ink); font-size: 0.95rem; line-height: 1.3;
 }
 .lp-card-title:hover { color: var(--zt-primary); }
+/* Whose project: ZAN Tech R&D or a student project */
+.lp-kind {
+  display: inline-block; margin-bottom: 0.3rem; font-size: 0.7rem; font-weight: 600;
+  padding: 0.1rem 0.5rem; border-radius: 4px;
+}
+.lp-kind.is-rnd { background: #e0f2fe; color: #075985; }
+.lp-kind.is-student { background: #fef3c7; color: #92400e; }
 .lp-card-desc {
   margin: 0.3rem 0 0.6rem; font-size: 0.825rem; color: var(--zt-muted);
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
