@@ -10,7 +10,7 @@ import Loading from "../../components/Loading";
 import usePageTitle from "../../hooks/usePageTitle";
 import CertificatePreview from "../../components/Certificates/CertificatePreview";
 import CertificateEmailModal from "../../components/Certificates/CertificateEmailModal";
-import { PROGRAM_TYPES, TEMPLATES, certificateFilename, createCertificatePdf, printCertificate } from "../../utils/certificate";
+import { PROGRAM_TYPES, TEMPLATES, certificateFilename, createCertificatePdf, printCertificate, roleInline } from "../../utils/certificate";
 import { downloadBlob, shareInvoiceOnWhatsApp } from "../../utils/invoicePdf";
 import "./Certificates.css";
 
@@ -142,7 +142,7 @@ const ViewCertificate = () => {
                   )}
                 </dd>
                 <dt>Issued</dt><dd>{fmt(cert.issue_date)}</dd>
-                <dt>Signed by</dt><dd>{(cert.signers || []).map((s) => `${s.name} (${s.designation})`).join(", ")}</dd>
+                <dt>Signed by</dt><dd>{(cert.signers || []).map((s) => `${s.name} (${roleInline(s.designation)})`).join("; ")}</dd>
                 <dt>Emailed</dt><dd>{cert.emailed_at ? `${fmt(cert.emailed_at, true)}${cert.email_count > 1 ? ` · ${cert.email_count} times` : ""}` : "Not yet"}</dd>
                 <dt>Created</dt><dd>{fmt(cert.created_at, true)}{cert.creator?.name ? ` by ${cert.creator.name}` : ""}</dd>
               </dl>

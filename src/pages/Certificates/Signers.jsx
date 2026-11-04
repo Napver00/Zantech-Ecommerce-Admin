@@ -6,7 +6,7 @@ import { FaArrowLeft, FaEdit, FaPlus, FaSignature, FaTrash, FaUpload } from "rea
 import axiosInstance from "../../config/axios";
 import Loading from "../../components/Loading";
 import usePageTitle from "../../hooks/usePageTitle";
-import { signatureFromFile, sigLayout } from "../../utils/certificate";
+import { signatureFromFile, sigLayout, splitRole, joinRole } from "../../utils/certificate";
 import CertificatePreview from "../../components/Certificates/CertificatePreview";
 import SignatureControls from "../../components/Certificates/SignatureControls";
 import "./Certificates.css";
@@ -105,7 +105,7 @@ const Signers = () => {
                 <div className="cert-signer-card">
                   <div className="cert-sig-thumb lg">{s.signature ? <img src={s.signature} alt="" /> : <span>No signature</span>}</div>
                   <div className="fw-bold mt-2">{s.name}</div>
-                  <div className="text-muted small">{s.designation}</div>
+                  <div className="text-muted small" style={{ whiteSpace: "pre-line" }}>{s.designation}</div>
                   {s.is_default && <Badge bg="primary" className="mt-2">Default</Badge>}
                   <div className="d-flex gap-2 mt-3">
                     <Button size="sm" variant="outline-primary" onClick={() => open(s)}><FaEdit className="me-1" />Edit</Button>
@@ -127,10 +127,21 @@ const Signers = () => {
               <Form.Label>Name</Form.Label>
               <Form.Control required maxLength={120} value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. Nakibul Islam" />
             </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Role printed under the name</Form.Label>
-              <Form.Control required maxLength={120} value={form.designation} onChange={(e) => setForm((f) => ({ ...f, designation: e.target.value }))} placeholder="e.g. Organizer, Chief Instructor" />
-            </Form.Group>
+            <Row className="g-3 mb-3">
+              <Col sm={6}>
+                <Form.Group controlId="signer-role">
+                  <Form.Label>Role</Form.Label>
+                  <Form.Control required maxLength={70} value={splitRole(form.designation)[0]} onChange={(e) => setForm((f) => ({ ...f, designation: joinRole(e.target.value, splitRole(f.designation)[1]) }))} placeholder="e.g. Co-Founder" />
+                </Form.Group>
+              </Col>
+              <Col sm={6}>
+                <Form.Group controlId="signer-org">
+                  <Form.Label>Organization <span className="text-muted fw-normal">(optional)</span></Form.Label>
+                  <Form.Control maxLength={45} value={splitRole(form.designation)[1]} onChange={(e) => setForm((f) => ({ ...f, designation: joinRole(splitRole(f.designation)[0], e.target.value) }))} placeholder="e.g. ZAN Tech" />
+                </Form.Group>
+              </Col>
+              <Col xs={12}><Form.Text muted className="mt-0">Printed under the name, the organization on its own line.</Form.Text></Col>
+            </Row>
             <Form.Group className="mb-3">
               <Form.Label>Signature (optional)</Form.Label>
               <div className="cert-sig-thumb lg mb-2">{form.signature ? <img src={form.signature} alt="" /> : <span>No signature</span>}</div>

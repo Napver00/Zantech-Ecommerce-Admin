@@ -11,6 +11,9 @@ import usePageTitle from "../../hooks/usePageTitle";
 import CertificatePreview from "../../components/Certificates/CertificatePreview";
 import {
   PROGRAM_TYPES, TEMPLATES, certificateFilename, createCertificatePdf, createCombinedPdf, suggestDescription, sigLayout,
+  splitRole,
+  joinRole,
+  roleInline,
 } from "../../utils/certificate";
 import SignatureControls from "../../components/Certificates/SignatureControls";
 import { downloadBlob, emailInvoicePdf } from "../../utils/invoicePdf";
@@ -201,7 +204,7 @@ const CertificateForm = () => {
     if (!form.description.trim()) return "Write the certificate text.";
     const signers = form.signers.filter((s) => s.name?.trim());
     if (!signers.length) return "Add at least one signer.";
-    if (signers.some((s) => !s.designation?.trim())) return "Each signer needs a role (e.g. Organizer).";
+    if (signers.some((s) => !splitRole(s.designation)[0].trim())) return "Each signer needs a role (e.g. Organizer).";
     if (mode === "single" || isEdit) {
       if (!single.recipient_name.trim()) return "Enter the recipient's name.";
     } else if (!bulkRecipients.length) return "Add at least one recipient.";
@@ -440,11 +443,12 @@ const CertificateForm = () => {
                       <div className="flex-grow-1 d-grid gap-2">
                         <Form.Select size="sm" value="" onChange={(e) => applySaved(i, e.target.value)}>
                           <option value="">Pick a saved signer…</option>
-                          {savedSigners.map((x) => <option key={x.id} value={x.id}>{x.name} · {x.designation}</option>)}
+                          {savedSigners.map((x) => <option key={x.id} value={x.id}>{x.name} · {roleInline(x.designation)}</option>)}
                         </Form.Select>
                         <Row className="g-2">
-                          <Col sm={6}><Form.Control size="sm" placeholder="Name" value={s.name} onChange={(e) => updateSigner(i, { name: e.target.value })} maxLength={120} /></Col>
-                          <Col sm={6}><Form.Control size="sm" placeholder="Role, e.g. Instructor" value={s.designation} onChange={(e) => updateSigner(i, { designation: e.target.value })} maxLength={120} /></Col>
+                          <Col sm={4}><Form.Control size="sm" placeholder="Name" aria-label={`Signer ${i + 1} name`} value={s.name} onChange={(e) => updateSigner(i, { name: e.target.value })} maxLength={120} /></Col>
+                          <Col sm={4}><Form.Control size="sm" placeholder="Role, e.g. Instructor" aria-label={`Signer ${i + 1} role`} value={splitRole(s.designation)[0]} onChange={(e) => updateSigner(i, { designation: joinRole(e.target.value, splitRole(s.designation)[1]) })} maxLength={70} /></Col>
+                          <Col sm={4}><Form.Control size="sm" placeholder="Organization (optional)" aria-label={`Signer ${i + 1} organization`} value={splitRole(s.designation)[1]} onChange={(e) => updateSigner(i, { designation: joinRole(splitRole(s.designation)[0], e.target.value) })} maxLength={45} /></Col>
                         </Row>
                         {s.signature && (
                           <SignatureControls value={sigLayout(s)} onChange={(layout) => updateSigner(i, layout)} idPrefix={`cert-sig-${i}`} />

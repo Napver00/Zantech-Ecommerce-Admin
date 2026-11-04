@@ -90,6 +90,18 @@ const descSize = (d) => (d.length <= 260 ? 20 : d.length <= 380 ? 18 : d.length 
 const SIGNER_CENTRES = { 1: [900], 2: [591, 900], 3: [470, 705, 940] };
 
 // A signature's normal box; sig_size scales it (percent) and sig_x / sig_y move it (certificate pixels).
+/**
+ * A signer's role can carry the organization on a second line, e.g.
+ * "Co-Founder\nZAN Tech". It's stored as one text so nothing else changes.
+ */
+export const splitRole = (designation = "") => {
+  const [role, ...rest] = String(designation || "").split("\n");
+  return [role, rest.join(" ")];
+};
+export const joinRole = (role, org) => (org ? `${role}\n${org}` : role);
+/** One-line version for lists and dropdowns: "Co-Founder, ZAN Tech". */
+export const roleInline = (designation = "") => splitRole(designation).filter((x) => x.trim()).join(", ");
+
 export const SIG_BASE = { height: 52, width: 200 };
 export const SIG_LIMITS = { size: [40, 250], x: [-300, 300], y: [-200, 150] };
 const clamp = (v, [lo, hi]) => Math.min(hi, Math.max(lo, Math.round(Number(v) || 0)));
@@ -117,6 +129,8 @@ export const buildCertificateHtml = (cert, { qr, assetBase = window.location.ori
   const description = (cert.description || "").trim();
   const signers = (cert.signers || []).filter((s) => s?.name).slice(0, 3);
   const centres = SIGNER_CENTRES[signers.length] || [];
+  // An organization adds a line under the role; lift the whole row so it clears the page edge.
+  const anyOrg = signers.some((s) => splitRole(s.designation)[1].trim());
   const code = cert.code || "ZT-XXXX-XXXX";
   const issued = fmtDay(cert.issue_date);
   const a = (f) => `${assetBase}/certificate/${f}`;
@@ -133,7 +147,7 @@ export const buildCertificateHtml = (cert, { qr, assetBase = window.location.ori
       <div class="signer" style="left:${left}px">
         ${s.signature ? `<img class="sig" data-signer="${i}" style="${sigStyle}" src="${s.signature}" alt="" />` : ""}
         <div class="sname">${escapeHtml(s.name)}</div>
-        <div class="srole">${escapeHtml(s.designation)}</div>
+        <div class="srole">${splitRole(s.designation).filter((x) => x.trim()).map(escapeHtml).join("<br>")}</div>
       </div>`;
     })
     .join("");
@@ -158,9 +172,9 @@ export const buildCertificateHtml = (cert, { qr, assetBase = window.location.ori
   .verify .lbl { font-family: Arial, Helvetica, sans-serif; font-size: 10px; letter-spacing: .8px; text-transform: uppercase; color: #6b7280; }
   .verify .code { font-family: Consolas, "Courier New", monospace; font-weight: 700; font-size: 17px; color: #1e2160; margin: 2px 0 5px; letter-spacing: .5px; }
   .verify .meta { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #374151; line-height: 1.45; }
-  .signer { position: absolute; top: 640px; width: 240px; text-align: center; }
+  .signer { position: absolute; top: ${anyOrg ? 612 : 640}px; width: 240px; text-align: center; }
   .sig { display: block; height: 52px; max-width: 200px; margin: 0 auto 4px; object-fit: contain; position: relative; }
-  .signer:not(:has(.sig)) { top: 696px; }
+  .signer:not(:has(.sig)) { top: ${anyOrg ? 668 : 696}px; }
   .sname { font-family: Arial, Helvetica, sans-serif; font-weight: 700; font-size: ${signers.length > 2 ? 19 : 22.5}px; line-height: 1.25; color: #151515; white-space: nowrap; }
   .srole { font-size: ${signers.length > 2 ? 18 : 21}px; line-height: 1.35; color: #151515; }
 </style></head>
