@@ -2,9 +2,12 @@
  * Who can use which part of the admin. The backend enforces the same map
  * (app/Support/Roles.php in ZantechBackend); keep the two in step.
  *
- * Roles live in users.role. "stuff" is the store manager (its name in the
- * database since the first version) and "member" is an older role that works
- * like a store manager.
+ * A staff member can have several roles (users.roles; users.role is the main
+ * one). They may open a page when any of their roles covers it. "stuff" is the
+ * store manager (its name in the database since the first version) and
+ * "member" is an older role that works like a store manager.
+ *
+ * Every helper here takes one role or a list of roles.
  */
 
 export const ROLES = {
@@ -48,9 +51,26 @@ const AREA_ROLES = {
   any: ["admin", "stuff", "member", "course_manager", "content_manager", "inventory_manager"],
 };
 
-export const roleLabel = (role) => ROLES[role]?.label || role || "Staff";
+/** Most access first: picks the main role and the start page. */
+export const ROLE_PRIORITY = ["admin", "stuff", "member", "course_manager", "content_manager", "inventory_manager"];
 
-export const canUse = (role, area) => !!area && (AREA_ROLES[area] || []).includes(role);
+/** One role, a list, or nothing → a clean list, most access first. */
+export const rolesOf = (role) => {
+  const list = (Array.isArray(role) ? role : [role]).filter((r) => ROLES[r]);
+  return ROLE_PRIORITY.filter((r) => list.includes(r));
+};
+
+export const primaryRole = (role) => rolesOf(role)[0] || null;
+
+/** "Store manager", or "Store manager + Course manager" for several. Admin covers everything. */
+export const roleLabel = (role) => {
+  const list = rolesOf(role);
+  if (!list.length) return typeof role === "string" && role ? role : "Staff";
+  if (list.includes("admin")) return ROLES.admin.label;
+  return list.map((r) => ROLES[r].label).join(" + ");
+};
+
+export const canUse = (role, area) => !!area && rolesOf(role).some((r) => (AREA_ROLES[area] || []).includes(r));
 
 // Pages and the area they belong to. The first matching prefix wins, so more
 // specific paths come first. Website tabs (/landing?tab=…) are checked apart.
@@ -106,7 +126,7 @@ export const canOpen = (role, pathname, search = "") => {
   return hit ? canUse(role, hit[1]) : true;
 };
 
-/** Where each role starts after signing in. */
+/** Where someone starts after signing in: the start page of their main role. */
 export const homeFor = (role) =>
   ({
     admin: "/dashboard",
@@ -115,14 +135,17 @@ export const homeFor = (role) =>
     course_manager: "/course-registrations",
     content_manager: "/blog",
     inventory_manager: "/inventory",
-  })[role] || "/profile";
+  })[primaryRole(role)] || "/profile";
 
-/** The signed-in staff member's role, from the saved login. */
+/** A user record's roles (older saved logins only have role/type). */
+export const rolesOfUser = (user) =>
+  rolesOf(Array.isArray(user?.roles) && user.roles.length ? user.roles : [user?.role || user?.type]);
+
+/** The signed-in staff member's roles, from the saved login (a list, maybe empty). */
 export const storedRole = () => {
   try {
-    const user = JSON.parse(localStorage.getItem("user") || "null");
-    return user?.role || user?.type || null;
+    return rolesOfUser(JSON.parse(localStorage.getItem("user") || "null"));
   } catch {
-    return null;
+    return [];
   }
 };

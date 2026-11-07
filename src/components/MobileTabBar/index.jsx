@@ -3,6 +3,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import { MdDashboard, MdShoppingCart, MdHowToReg, MdInventory, MdMenu, MdPeople, MdGroups, MdRequestQuote, MdArticle, MdWeb, MdAttachMoney, MdWorkspacePremium } from "react-icons/md";
 import { useOrderContext } from "../../context/OrderContext";
 import useRole from "../../hooks/useRole";
+import { primaryRole } from "../../config/access";
 import "./MobileTabBar.css";
 
 const ORDERS = { to: "/orders", label: "Orders", icon: MdShoppingCart, badgeKey: "processing" };
@@ -31,7 +32,7 @@ TABS_BY_ROLE.inventory_manager = [{ to: "/inventory", label: "Inventory", icon: 
 const MobileTabBar = ({ onOpenMenu }) => {
   const { pathname } = useLocation();
   const { statusSummary } = useOrderContext();
-  const tabs = TABS_BY_ROLE[useRole()] || [];
+  const tabs = TABS_BY_ROLE[primaryRole(useRole())] || [];
   const [registrations, setRegistrations] = useState(() => window.__ztRegistrationCount || 0);
 
   useEffect(() => {

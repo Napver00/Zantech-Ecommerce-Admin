@@ -249,7 +249,7 @@ const Profile = () => {
         <aside className="pf-side">
           <section className="pf-card" aria-labelledby="pf-access-title">
             <h2 id="pf-access-title">What you can use</h2>
-            <p className="pf-card-text">{ROLES[role]?.hint || "Your role decides which sections you see."}</p>
+            <p className="pf-card-text">{role.includes("admin") ? ROLES.admin.hint : role.length ? role.map((r) => ROLES[r].hint).join(". ") : "Your role decides which sections you see."}</p>
             <ul className="pf-access">
               {sections.map((s) => (
                 <li key={s.key}>
@@ -262,7 +262,7 @@ const Profile = () => {
                 </li>
               ))}
             </ul>
-            {role !== "admin" && <p className="pf-card-text mb-0">Need something else? An admin can change your role on the Staff page.</p>}
+            {!role.includes("admin") && <p className="pf-card-text mb-0">Need something else? An admin can give you more roles on the Staff page.</p>}
           </section>
 
           <section className="pf-card" aria-labelledby="pf-signout-title">

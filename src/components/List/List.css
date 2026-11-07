@@ -282,3 +282,12 @@
 .staff-roles > div { padding: 0.75rem 0.9rem; border: 1px solid var(--zt-border); border-radius: var(--zt-radius); background: var(--zt-surface); }
 .staff-roles dt { font-size: 0.875rem; font-weight: 700; color: var(--zt-ink); }
 .staff-roles dd { margin: 0.15rem 0 0; font-size: 0.8rem; color: var(--zt-muted); }
+/* Staff: several roles per person */
+.staff-role-cell { display: flex; align-items: center; flex-wrap: wrap; gap: 0.25rem 0.5rem; }
+.staff-role-pills { display: inline-flex; flex-wrap: wrap; gap: 0.3rem; }
+.staff-role-edit { padding: 0 0.25rem; font-size: 0.8rem; }
+.staff-role-picks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.staff-role-picks .ed-choice.is-covered { opacity: 0.55; cursor: not-allowed; }
+.staff-sees { margin: 0.75rem 0 0; font-size: 0.85rem; color: var(--zt-muted); }
+.staff-sees strong { color: var(--zt-ink); }
+@media (max-width: 575.98px) { .staff-role-picks { grid-template-columns: 1fr; } }

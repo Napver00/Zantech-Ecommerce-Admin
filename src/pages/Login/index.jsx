@@ -8,7 +8,7 @@ import { authService } from "../../services/api";
 import "./Login.css";
 import usePageTitle from "../../hooks/usePageTitle";
 import { announceUserChange } from "../../hooks/useRole";
-import { homeFor } from "../../config/access";
+import { homeFor, rolesOfUser } from "../../config/access";
 
 const HIGHLIGHTS = [
   { icon: ShoppingBag, text: "Store orders, products & stock" },
@@ -52,7 +52,7 @@ const Login = () => {
 
       toast.success("Login successful!");
       // Each role starts on its own main page
-      navigate(homeFor(response.data.user?.role || response.data.user?.type));
+      navigate(homeFor(rolesOfUser(response.data.user)));
     } catch (error) {
       toast.error(error.message || "Login failed. Please try again.");
     } finally {

@@ -1,26 +1,69 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { FaPlus, FaTrash } from "react-icons/fa";
+import { FaPlus, FaTrash, FaUserShield } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 import { Button, Form, Modal, Row, Col } from "react-bootstrap";
 import axiosInstance from "../../config/axios";
 import usePageTitle from "../../hooks/usePageTitle";
 import CommonTable from "../../components/Common/CommonTable";
 import { ListHeader, ListCard, ListToolbar, SearchBox, ResultCount, FilterTabs, Pill } from "../../components/List/List";
-import { ChoiceGroup } from "../../components/Editor/Editor";
 import "../../components/Editor/Editor.css";
 import "../../components/List/List.css";
 import confirmDialog from "../../utils/confirmDialog";
-import { ROLES, ASSIGNABLE_ROLES, roleLabel } from "../../config/access";
+import { ROLES, ASSIGNABLE_ROLES, roleLabel, rolesOf, rolesOfUser, primaryRole } from "../../config/access";
+import { navSectionsFor } from "../../config/navigation";
 
-const EMPTY = { name: "", email: "", phone: "", password: "", address: "", type: "stuff" };
+// Roles offered in the pickers. "member" is an old role: shown only for people who still have it.
+const PICKABLE = ["stuff", "course_manager", "content_manager", "inventory_manager", "admin"];
+const EMPTY = { name: "", email: "", phone: "", password: "", address: "", roles: ["stuff"] };
 
-const roleOf = (s) => s.role || s.type;
 const myId = () => {
   try {
     return JSON.parse(localStorage.getItem("user") || "{}").id;
   } catch {
     return null;
   }
+};
+
+/** What a set of roles opens in the admin, as section names. */
+const sectionsFor = (roles) => navSectionsFor(roles).map((s) => s.title);
+
+/**
+ * Tick any number of roles. Admin already covers everything, so the others
+ * are greyed out while it is ticked.
+ */
+const RolePicker = ({ value, onChange, idPrefix, extra = [] }) => {
+  const options = [...PICKABLE, ...extra.filter((r) => !PICKABLE.includes(r))];
+  const isAdmin = value.includes("admin");
+  const toggle = (r) => onChange(value.includes(r) ? value.filter((x) => x !== r) : rolesOf([...value, r]));
+  const sees = sectionsFor(value);
+  return (
+    <>
+      <div className="ed-choices staff-role-picks" role="group" aria-label="Roles">
+        {options.map((r) => {
+          const on = value.includes(r);
+          const covered = isAdmin && r !== "admin";
+          return (
+            <label key={r} className={`ed-choice ${on && !covered ? "is-selected" : ""} ${covered ? "is-covered" : ""}`} htmlFor={`${idPrefix}-${r}`}>
+              <input type="checkbox" id={`${idPrefix}-${r}`} checked={on || covered} disabled={covered} onChange={() => toggle(r)} />
+              <span className="ed-choice-text">
+                <strong>{ROLES[r].label}</strong>
+                <small>{covered ? "Included with Admin" : ROLES[r].hint}</small>
+              </span>
+            </label>
+          );
+        })}
+      </div>
+      <p className="staff-sees" aria-live="polite">
+        {value.length === 0 ? (
+          <span className="text-danger">Pick at least one role.</span>
+        ) : (
+          <>
+            <strong>They will see:</strong> {sees.length ? sees.join(", ") : "only their profile"}.
+          </>
+        )}
+      </p>
+    </>
+  );
 };
 
 const Staff = () => {
@@ -33,12 +76,14 @@ const Staff = () => {
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
   const [busy, setBusy] = useState({});
+  const [editing, setEditing] = useState(null); // staff member whose roles are being changed
+  const [editRoles, setEditRoles] = useState([]);
   const me = myId();
 
   const load = async () => {
     try {
       const res = await axiosInstance.get("/stuff");
-      setStaff(res.data?.data || []);
+      setStaff((res.data?.data || []).map((s) => ({ ...s, roles: rolesOfUser(s) })));
     } catch (err) {
       // The API answers 404 when there are no staff yet
       if (err.response?.status !== 404) toast.error(err.response?.data?.message || "Couldn't load staff");
@@ -52,32 +97,48 @@ const Staff = () => {
     load();
   }, []);
 
-  // A handful of people, so search and the role filter run here.
+  // A handful of people, so search and the role filter run here. Admins count under every role.
   const shown = useMemo(() => {
     const q = search.trim().toLowerCase();
     return staff.filter(
       (s) =>
-        (!roleFilter || roleOf(s) === roleFilter) &&
+        (!roleFilter || s.roles.includes(roleFilter)) &&
         (!q || [s.name, s.email, s.phone].some((v) => String(v || "").toLowerCase().includes(q)))
     );
   }, [staff, search, roleFilter]);
 
-  const counts = useMemo(() => staff.reduce((c, s) => ({ ...c, [roleOf(s)]: (c[roleOf(s)] || 0) + 1 }), {}), [staff]);
+  const counts = useMemo(
+    () => staff.reduce((c, s) => { s.roles.forEach((r) => { c[r] = (c[r] || 0) + 1; }); return c; }, {}),
+    [staff]
+  );
   const tabs = [
     { value: "", label: "Everyone", count: staff.length },
     ...ASSIGNABLE_ROLES.filter((r) => counts[r] || r !== "member").map((r) => ({ value: r, label: ROLES[r].label, count: counts[r] || 0 })),
   ];
 
-  const changeRole = async (s, role) => {
-    if (role === roleOf(s)) return;
-    if (!(await confirmDialog(`Make ${s.name} a ${roleLabel(role)}? ${ROLES[role].hint}.`))) return;
+  const openEdit = (s) => {
+    setEditing(s);
+    setEditRoles(s.roles);
+  };
+
+  const saveRoles = async (e) => {
+    e.preventDefault();
+    const roles = rolesOf(editRoles.includes("admin") ? ["admin"] : editRoles);
+    if (!roles.length) return;
+    const s = editing;
+    if (roles.join() === s.roles.join()) {
+      setEditing(null);
+      return;
+    }
     setBusy((b) => ({ ...b, [s.id]: true }));
     try {
-      await axiosInstance.put(`/stuff/role/${s.id}`, { role });
-      setStaff((list) => list.map((x) => (x.id === s.id ? { ...x, role, type: role } : x)));
-      toast.success(`${s.name} is now a ${roleLabel(role)}`);
+      await axiosInstance.put(`/stuff/role/${s.id}`, { roles });
+      const main = primaryRole(roles);
+      setStaff((list) => list.map((x) => (x.id === s.id ? { ...x, roles, role: main, type: main } : x)));
+      toast.success(`${s.name} is now ${roleLabel(roles)}`);
+      setEditing(null);
     } catch (err) {
-      toast.error(err.response?.data?.message || "Couldn't change the role");
+      toast.error(err.response?.data?.message || "Couldn't change the roles");
     } finally {
       setBusy((b) => ({ ...b, [s.id]: false }));
     }
@@ -108,10 +169,16 @@ const Staff = () => {
 
   const submit = async (e) => {
     e.preventDefault();
+    const roles = rolesOf(form.roles.includes("admin") ? ["admin"] : form.roles);
+    if (!roles.length) {
+      toast.error("Pick at least one role");
+      return;
+    }
     setSaving(true);
     try {
-      await axiosInstance.post("/register", form);
-      toast.success(`${form.name} added as ${roleLabel(form.type)}`);
+      const { roles: _picked, ...rest } = form;
+      await axiosInstance.post("/register", { ...rest, type: primaryRole(roles), roles });
+      toast.success(`${form.name} added as ${roleLabel(roles)}`);
       setShowModal(false);
       setForm(EMPTY);
       load();
@@ -139,22 +206,27 @@ const Staff = () => {
       ),
     },
     {
-      key: "role",
-      label: "Role",
+      key: "roles",
+      label: "Roles",
       render: (row) => (
-        <Form.Select
-          size="sm"
-          value={roleOf(row)}
-          disabled={row.id === me || !!busy[row.id]}
-          onChange={(e) => changeRole(row, e.target.value)}
-          aria-label={`Role of ${row.name}`}
-          title={row.id === me ? "Another admin has to change your role" : ROLES[roleOf(row)]?.hint}
-          style={{ maxWidth: 200 }}
-        >
-          {ASSIGNABLE_ROLES.filter((r) => r !== "member" || roleOf(row) === "member").map((r) => (
-            <option key={r} value={r}>{ROLES[r].label}</option>
-          ))}
-        </Form.Select>
+        <div className="staff-role-cell">
+          <span className="staff-role-pills">
+            {(row.roles.includes("admin") ? ["admin"] : row.roles).map((r) => (
+              <Pill key={r} tone={r === "admin" ? "info" : "muted"}>{ROLES[r].label}</Pill>
+            ))}
+          </span>
+          <Button
+            size="sm"
+            variant="link"
+            className="staff-role-edit"
+            disabled={row.id === me || !!busy[row.id]}
+            onClick={() => openEdit(row)}
+            title={row.id === me ? "Another admin has to change your roles" : undefined}
+            aria-label={`Change roles of ${row.name}`}
+          >
+            Change
+          </Button>
+        </div>
       ),
     },
     {
@@ -187,7 +259,7 @@ const Staff = () => {
     <div className="staff-page">
       <ListHeader
         title="Staff"
-        subtitle="Who can sign in to this admin, and what each person can use."
+        subtitle="Who can sign in to this admin, and what each person can use. One person can have several roles."
         actions={<Button onClick={() => { setForm(EMPTY); setShowModal(true); }}><FaPlus className="me-2" aria-hidden="true" />Add staff</Button>}
       />
 
@@ -216,6 +288,26 @@ const Staff = () => {
         />
       </ListCard>
 
+      {/* Change someone's roles */}
+      <Modal show={!!editing} onHide={() => !busy[editing?.id] && setEditing(null)} centered size="lg">
+        {editing && (
+          <Form onSubmit={saveRoles}>
+            <Modal.Header closeButton>
+              <Modal.Title as="h2" className="h5 mb-0"><FaUserShield className="me-2 text-muted" aria-hidden="true" />Roles for {editing.name}</Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+              <p className="text-muted small mb-3">Tick every part of the work they do. Changes apply on their next click; no need to sign out.</p>
+              <RolePicker value={editRoles} onChange={setEditRoles} idPrefix={`edit-${editing.id}`} extra={editing.roles} />
+            </Modal.Body>
+            <Modal.Footer>
+              <Button variant="outline-secondary" onClick={() => setEditing(null)} disabled={!!busy[editing.id]}>Cancel</Button>
+              <Button type="submit" disabled={!!busy[editing.id] || !editRoles.length}>{busy[editing.id] ? "Saving…" : "Save roles"}</Button>
+            </Modal.Footer>
+          </Form>
+        )}
+      </Modal>
+
+      {/* Add someone */}
       <Modal show={showModal} onHide={() => !saving && setShowModal(false)} centered size="lg">
         <Form onSubmit={submit}>
           <Modal.Header closeButton>
@@ -223,14 +315,8 @@ const Staff = () => {
           </Modal.Header>
           <Modal.Body>
             <Form.Group className="mb-3">
-              <Form.Label>Role</Form.Label>
-              <ChoiceGroup
-                name="staff-role"
-                value={form.type}
-                onChange={(v) => setForm((f) => ({ ...f, type: v }))}
-                columns={2}
-                options={["stuff", "course_manager", "content_manager", "inventory_manager", "admin"].map((r) => ({ value: r, label: ROLES[r].label, hint: ROLES[r].hint }))}
-              />
+              <Form.Label>Roles <span className="text-muted fw-normal">(pick one or more)</span></Form.Label>
+              <RolePicker value={form.roles} onChange={(roles) => setForm((f) => ({ ...f, roles }))} idPrefix="new-staff" />
             </Form.Group>
             <Row className="g-3">
               <Col sm={6}>
@@ -278,7 +364,7 @@ const Staff = () => {
           </Modal.Body>
           <Modal.Footer>
             <Button variant="outline-secondary" onClick={() => setShowModal(false)} disabled={saving}>Cancel</Button>
-            <Button type="submit" disabled={saving}>{saving ? "Adding…" : `Add ${roleLabel(form.type).toLowerCase()}`}</Button>
+            <Button type="submit" disabled={saving || !form.roles.length}>{saving ? "Adding…" : "Add staff"}</Button>
           </Modal.Footer>
         </Form>
       </Modal>

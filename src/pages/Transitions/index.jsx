@@ -6,6 +6,7 @@ import { toast } from "react-hot-toast";
 import axiosInstance from "../../config/axios";
 import usePageTitle from "../../hooks/usePageTitle";
 import useRole from "../../hooks/useRole";
+import { canUse } from "../../config/access";
 import CommonTable from "../../components/Common/CommonTable";
 import { ListHeader, ListCard, ListToolbar, FilterTabs, ResultCount, Pager, Pill } from "../../components/List/List";
 import { taka, fullDate, timeAgo } from "../../components/List/format";
@@ -30,7 +31,9 @@ const methodOf = (row) =>
 const Transitions = () => {
   usePageTitle("Transactions");
   const role = useRole();
-  const isAdmin = role === "admin";
+  const isAdmin = role.includes("admin");
+  const seesStore = canUse(role, "store");
+  const seesCourse = canUse(role, "course");
   const [rows, setRows] = useState([]);
   const [totals, setTotals] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -84,7 +87,7 @@ const Transitions = () => {
   };
 
   const filtered = !!(period || from || to || source);
-  const scopeLabel = role === "course_manager" ? "course fees" : ["stuff", "member"].includes(role) ? "store orders" : "store orders and course fees";
+  const scopeLabel = seesCourse && !seesStore ? "course fees" : seesStore && !seesCourse ? "store orders" : "store orders and course fees";
 
   const headers = [
     {

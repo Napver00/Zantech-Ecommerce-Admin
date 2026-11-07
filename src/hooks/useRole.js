@@ -4,7 +4,10 @@ import { storedRole } from "../config/access";
 
 const EVENT = "zt:user";
 
-/** The signed-in staff member's role; updates when the saved login changes. */
+/**
+ * The signed-in staff member's roles (a list: staff can have several); updates
+ * when the saved login changes. Pass it straight to canUse / canOpen / homeFor.
+ */
 const useRole = () => {
   const [role, setRole] = useState(storedRole);
 
