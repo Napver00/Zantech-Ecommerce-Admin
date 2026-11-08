@@ -6,6 +6,11 @@ import axiosInstance from '../../../config/axios';
 import Select from 'react-select/async';
 
 import confirmDialog from "../../../utils/confirmDialog";
+// One order line = a product, or one variant of it ("JST connector — 2 pin").
+const lineKey = (item) => item.line_id ?? `${item.product_id}:${item.variant_id ?? ""}`;
+const lineQuery = (item) => (item.variant_id ? `?variant_id=${item.variant_id}` : "");
+const lineName = (item) => (item.variant_name ? `${item.name} — ${item.variant_name}` : item.name);
+
 const OrderItems = ({ orderItems, orderId, refreshOrderData }) => {
   const [updatingQuantity, setUpdatingQuantity] = useState(false);
   const [removingItem, setRemovingItem] = useState(false);
@@ -15,7 +20,7 @@ const OrderItems = ({ orderItems, orderId, refreshOrderData }) => {
   const [selectedItems, setSelectedItems] = useState([]);
   const [addingItemsLoading, setAddingItemsLoading] = useState(false);
 
-  const handleRemoveItem = async (productId) => {
+  const handleRemoveItem = async (item) => {
     if (removingItem) return;
 
     if (!await confirmDialog("Are you sure you want to remove this item from the order?")) {
@@ -24,7 +29,7 @@ const OrderItems = ({ orderItems, orderId, refreshOrderData }) => {
 
     setRemovingItem(true);
     try {
-      const response = await axiosInstance.delete(`/orders/products/${orderId}/remove/${productId}`);
+      const response = await axiosInstance.delete(`/orders/products/${orderId}/remove/${item.product_id}${lineQuery(item)}`);
 
       if (response.data.success) {
         toast.success("Item removed successfully");
@@ -40,12 +45,12 @@ const OrderItems = ({ orderItems, orderId, refreshOrderData }) => {
     }
   };
 
-  const handleUpdateQuantity = async (productId, newQuantity) => {
+  const handleUpdateQuantity = async (item, newQuantity) => {
     if (updatingQuantity || !newQuantity || newQuantity < 1) return;
 
     setUpdatingQuantity(true);
     try {
-      const response = await axiosInstance.put(`/orders/products/${orderId}/update-quantity/${productId}`, {
+      const response = await axiosInstance.put(`/orders/products/${orderId}/update-quantity/${item.product_id}${lineQuery(item)}`, {
         quantity: parseInt(newQuantity),
       });
 
@@ -65,7 +70,7 @@ const OrderItems = ({ orderItems, orderId, refreshOrderData }) => {
   };
 
   const startEditingQuantity = (item) => {
-    setEditingItem(item.product_id);
+    setEditingItem(lineKey(item));
     setQuantityInput(item.quantity.toString());
   };
 
@@ -73,7 +78,7 @@ const OrderItems = ({ orderItems, orderId, refreshOrderData }) => {
     if (!selectedOption) return;
 
     if (
-      selectedItems.some((item) => item.product_id === selectedOption.value)
+      selectedItems.some((item) => item.key === selectedOption.value)
     ) {
       toast.error("This item is already selected");
       return;
@@ -82,7 +87,9 @@ const OrderItems = ({ orderItems, orderId, refreshOrderData }) => {
     setSelectedItems((prev) => [
       ...prev,
       {
-        product_id: selectedOption.value,
+        key: selectedOption.value,
+        product_id: selectedOption.product_id,
+        variant_id: selectedOption.variant_id,
         name: selectedOption.label,
         price: selectedOption.price,
         image: selectedOption.image,
@@ -106,6 +113,7 @@ const OrderItems = ({ orderItems, orderId, refreshOrderData }) => {
       for (const item of selectedItems) {
         const response = await axiosInstance.post(`/orders/add-product/${orderId}`, {
           product_id: item.product_id,
+          variant_id: item.variant_id || undefined,
           quantity: item.quantity,
         });
 
@@ -136,13 +144,34 @@ const OrderItems = ({ orderItems, orderId, refreshOrderData }) => {
       });
 
       if (response.data.success) {
-        return response.data.data.map(product => ({
-          value: product.id,
-          label: product.name,
-          price: product.price,
-          image: product.image,
-          quantity: product.quantity
-        }));
+        const products = response.data.data || [];
+        // Products with variants are offered once per variant.
+        const lists = await Promise.all(
+          products.map((p) => (p.variants_count > 0 ? axiosInstance.get(`/products/${p.id}/variants`).then((r) => r.data?.data?.variants || []).catch(() => []) : null))
+        );
+        return products.flatMap((product, i) => {
+          const variants = (lists[i] || []).filter((v) => v.status);
+          if (variants.length) {
+            return variants.map((v) => ({
+              value: `${product.id}:${v.id}`,
+              product_id: product.id,
+              variant_id: v.id,
+              label: `${product.name} — ${v.name}`,
+              price: v.price,
+              image: v.image_url || product.image_paths?.[0] || product.image,
+              quantity: v.quantity,
+            }));
+          }
+          return [{
+            value: String(product.id),
+            product_id: product.id,
+            variant_id: null,
+            label: product.name,
+            price: product.price,
+            image: product.image_paths?.[0] || product.image,
+            quantity: product.quantity,
+          }];
+        });
       }
       return [];
     } catch (error) {
@@ -316,13 +345,13 @@ const OrderItems = ({ orderItems, orderId, refreshOrderData }) => {
             </thead>
             <tbody>
               {orderItems.map((item) => (
-                <tr key={item.product_id}>
+                <tr key={lineKey(item)}>
                   <td>
                     <div className="d-flex align-items-center">
                       {item.image && (
                         <img
                           src={item.image}
-                          alt={item.name}
+                          alt=""
                           className="rounded me-3"
                           style={{
                             width: "50px",
@@ -333,6 +362,7 @@ const OrderItems = ({ orderItems, orderId, refreshOrderData }) => {
                       )}
                       <div>
                         <div className="fw-medium mb-1">{item.name}</div>
+                        {item.variant_name && <div className="small text-muted mb-1">Option: <strong className="text-body">{item.variant_name}</strong></div>}
                         {item.is_bundle === 1 && (
                           <small className="text-muted">
                             Bundle Product
@@ -343,7 +373,7 @@ const OrderItems = ({ orderItems, orderId, refreshOrderData }) => {
                   </td>
                   <td>৳{parseFloat(item.price).toLocaleString()}</td>
                   <td>
-                    {editingItem === item.product_id ? (
+                    {editingItem === lineKey(item) ? (
                       <div className="d-flex align-items-center gap-2">
                         <Form.Control
                           type="number"
@@ -361,7 +391,7 @@ const OrderItems = ({ orderItems, orderId, refreshOrderData }) => {
                           size="sm"
                           onClick={() =>
                             handleUpdateQuantity(
-                              item.product_id,
+                              item,
                               quantityInput
                             )
                           }
@@ -412,7 +442,8 @@ const OrderItems = ({ orderItems, orderId, refreshOrderData }) => {
                     <Button
                       variant="outline-danger"
                       size="sm"
-                      onClick={() => handleRemoveItem(item.product_id)}
+                      onClick={() => handleRemoveItem(item)}
+                      aria-label={`Remove ${lineName(item)}`}
                       disabled={updatingQuantity || removingItem}
                       className="modern-btn"
                     >

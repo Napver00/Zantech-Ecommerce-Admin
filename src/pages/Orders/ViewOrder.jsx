@@ -38,7 +38,7 @@ const orderWhatsAppText = (orderData) => {
   if (!order) return "";
   const payment = payments[0];
   const items = order_items.map(
-    (i) => `• ${i.product_name || i.name || "Item"} × ${i.quantity}`
+    (i) => `• ${i.product_name || i.name || "Item"}${i.variant_name ? ` (${i.variant_name})` : ""} × ${i.quantity}`
   );
   return [
     `Dear ${user?.name || order.user_name || "Customer"},`,

@@ -12,12 +12,23 @@ const selectStyles = {
 const loadProducts = async (q) => {
   try {
     const res = await axiosInstance.get("/products", { params: { search: q, limit: 20 } });
-    return (res.data?.data || []).map((p) => ({
-      value: p.id,
-      label: p.name,
-      stock: Number(p.quantity) || 0,
-      image: p.image_paths?.[0] || null,
-    }));
+    const products = res.data?.data || [];
+    // A product with variants is bought per variant: offer each one ("JST connector — 2 pin").
+    const lists = await Promise.all(
+      products.map((p) => (p.variants_count > 0 ? axiosInstance.get(`/products/${p.id}/variants`).then((r) => r.data?.data?.variants || []).catch(() => []) : null))
+    );
+    return products.flatMap((p, i) =>
+      (lists[i] || []).length
+        ? lists[i].map((v) => ({
+            value: `${p.id}:${v.id}`,
+            item_id: p.id,
+            variant_id: v.id,
+            label: `${p.name} — ${v.name}`,
+            stock: Number(v.quantity) || 0,
+            image: v.image_url || p.image_paths?.[0] || null,
+          }))
+        : [{ value: String(p.id), item_id: p.id, variant_id: null, label: p.name, stock: Number(p.quantity) || 0, image: p.image_paths?.[0] || null }]
+    );
   } catch {
     return [];
   }
@@ -63,7 +74,9 @@ export const ProductPicker = ({ inputId, onPick, placeholder = "Search products 
 const ChallanLines = ({ lines, onChange }) => {
   if (!lines.length) return null;
 
-  const set = (id, patch) => onChange(lines.map((l) => (l.item_id === id ? { ...l, ...patch } : l)));
+  // Lines are keyed by product + variant, so two variants of one product are two lines.
+  const keyOf = (l) => l.key || String(l.item_id);
+  const set = (id, patch) => onChange(lines.map((l) => (keyOf(l) === id ? { ...l, ...patch } : l)));
   const setQty = (id, q) => set(id, { quantity: Math.max(1, Math.min(99999, parseInt(q, 10) || 1)) });
 
   return (
@@ -76,7 +89,7 @@ const ChallanLines = ({ lines, onChange }) => {
         <span />
       </li>
       {lines.map((l) => (
-        <li key={l.item_id} className="ch-line">
+        <li key={keyOf(l)} className="ch-line">
           <div className="ch-line-name">
             <span className="fw-semibold d-block">{l.name}</span>
             <span className="small text-muted">
@@ -94,17 +107,17 @@ const ChallanLines = ({ lines, onChange }) => {
               step="0.01"
               value={l.price}
               placeholder="0"
-              onChange={(e) => set(l.item_id, { price: e.target.value })}
+              onChange={(e) => set(keyOf(l), { price: e.target.value })}
               aria-label={`Buying price of ${l.name}`}
             />
           </div>
           <div className="co-qty" role="group" aria-label={`Quantity of ${l.name}`}>
-            <button type="button" onClick={() => setQty(l.item_id, l.quantity - 1)} disabled={l.quantity <= 1} aria-label="One less"><FaMinus aria-hidden="true" /></button>
-            <input type="number" inputMode="numeric" min={1} value={l.quantity} onChange={(e) => setQty(l.item_id, e.target.value)} aria-label="Quantity" />
-            <button type="button" onClick={() => setQty(l.item_id, l.quantity + 1)} aria-label="One more"><FaPlus aria-hidden="true" /></button>
+            <button type="button" onClick={() => setQty(keyOf(l), l.quantity - 1)} disabled={l.quantity <= 1} aria-label="One less"><FaMinus aria-hidden="true" /></button>
+            <input type="number" inputMode="numeric" min={1} value={l.quantity} onChange={(e) => setQty(keyOf(l), e.target.value)} aria-label="Quantity" />
+            <button type="button" onClick={() => setQty(keyOf(l), l.quantity + 1)} aria-label="One more"><FaPlus aria-hidden="true" /></button>
           </div>
           <span className="co-line-total">{taka((Number(l.price) || 0) * (Number(l.quantity) || 0))}</span>
-          <button type="button" className="co-remove" onClick={() => onChange(lines.filter((x) => x.item_id !== l.item_id))} aria-label={`Remove ${l.name}`}>
+          <button type="button" className="co-remove" onClick={() => onChange(lines.filter((x) => keyOf(x) !== keyOf(l)))} aria-label={`Remove ${l.name}`}>
             <FaTrash aria-hidden="true" />
           </button>
         </li>

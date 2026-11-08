@@ -62,3 +62,10 @@
 @media (max-width: 575.98px) {
   .iv-sections { grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0 0 1rem; padding: 0; overflow: visible; display: grid; }
 }
+
+/* Variants sit under their product, indented */
+.iv-variant { padding-left: 1.4rem; position: relative; }
+.iv-variant::before { content: ""; position: absolute; left: 0.45rem; top: -0.4rem; bottom: 50%; width: 0.6rem; border-left: 1px solid var(--zt-border); border-bottom: 1px solid var(--zt-border); border-bottom-left-radius: 4px; }
+.iv-variant .ls-thumb { width: 32px; height: 32px; }
+.iv-total { font-weight: 700; font-variant-numeric: tabular-nums; }
+.iv-total small { font-weight: 400; color: var(--zt-muted); }

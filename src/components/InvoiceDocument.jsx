@@ -185,7 +185,7 @@ const InvoiceDocument = ({ orderData }) => {
               .map(
                 (item) => `
               <tr>
-                <td>${item.name}${item.is_bundle === 1 ? " (Bundle)" : ""}</td>
+                <td>${item.name}${item.variant_name ? ` — ${item.variant_name}` : ""}${item.is_bundle === 1 ? " (Bundle)" : ""}</td>
                 <td class="text-end">৳${parseFloat(
                   item.price
                 ).toLocaleString()}</td>

@@ -1,0 +1,272 @@
+/* Product variants editor (1 pin / 2 pin / 3 pin …) */
+
+.ve-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.ve-empty {
+  padding: 1rem;
+  border: 1px dashed var(--zt-border);
+  border-radius: 8px;
+  background: var(--zt-subtle);
+  font-size: 0.9rem;
+}
+
+/* Desktop: one row per variant, columns line up with the header */
+.ve-head,
+.ve-row {
+  display: grid;
+  grid-template-columns: 44px minmax(110px, 1.4fr) minmax(90px, 1fr) 96px 90px 80px 76px 56px 84px;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.ve-head {
+  padding: 0 0.5rem 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--zt-muted);
+}
+
+.ve-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.ve-row {
+  padding: 0.45rem 0.5rem;
+  border: 1px solid var(--zt-border);
+  border-radius: 8px;
+  background: var(--zt-surface, #fff);
+}
+
+.ve-row.is-off {
+  background: var(--zt-subtle);
+}
+
+.ve-row.is-off .ve-name {
+  color: var(--zt-muted);
+}
+
+.ve-row.has-error {
+  border-color: var(--zt-red);
+}
+
+.ve-row .form-control {
+  min-height: 36px;
+  font-size: 0.875rem;
+  padding-top: 0.3rem;
+  padding-bottom: 0.3rem;
+}
+
+.ve-error {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--zt-red);
+}
+
+.ve-on {
+  margin: 0;
+  display: flex;
+  justify-content: center;
+}
+
+.ve-acts {
+  display: flex;
+  gap: 0.15rem;
+  justify-content: flex-end;
+}
+
+.ve-acts button {
+  border: 0;
+  background: none;
+  color: var(--zt-muted);
+  width: 26px;
+  height: 30px;
+  border-radius: 4px;
+}
+
+.ve-acts button:hover:not(:disabled),
+.ve-acts button:focus-visible {
+  background: var(--zt-subtle);
+  color: var(--zt-ink);
+}
+
+.ve-acts button.is-danger:hover {
+  color: var(--zt-red);
+}
+
+.ve-acts button:disabled {
+  opacity: 0.3;
+}
+
+/* Photo picker */
+.ve-photo {
+  position: relative;
+}
+
+.ve-photo-btn {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px dashed var(--zt-border);
+  border-radius: 6px;
+  background: var(--zt-subtle);
+  color: var(--zt-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.ve-photo-btn img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ve-photo-pop {
+  position: absolute;
+  z-index: 20;
+  top: 46px;
+  left: 0;
+  width: 236px;
+  padding: 0.6rem;
+  border: 1px solid var(--zt-border);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 10px 24px rgb(15 23 42 / 0.14);
+}
+
+.ve-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.35rem;
+}
+
+.ve-photo-grid button {
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  overflow: hidden;
+  aspect-ratio: 1;
+  background: var(--zt-subtle);
+}
+
+.ve-photo-grid button.is-on {
+  border-color: var(--zt-primary);
+}
+
+.ve-photo-grid img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ve-photo-clear {
+  margin-top: 0.5rem;
+  border: 0;
+  background: none;
+  padding: 0;
+  font-size: 0.8rem;
+  color: var(--zt-primary);
+  text-decoration: underline;
+}
+
+.ve-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.ve-sum {
+  font-size: 0.85rem;
+  color: var(--zt-muted);
+}
+
+.ve-sum strong {
+  color: var(--zt-ink);
+}
+
+.ve-save {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--zt-border);
+}
+
+.ve-dirty {
+  margin-right: auto;
+  font-size: 0.85rem;
+  color: #b45309;
+}
+
+.pd-variant-note {
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--zt-border);
+  border-left: 3px solid var(--zt-primary);
+  border-radius: 8px;
+  background: var(--zt-subtle);
+  font-size: 0.9rem;
+}
+
+/* Field names: the column header says them on wide screens */
+.ve-f { display: none; }
+.ve-qty, .ve-shown { margin: 0; }
+.ve-price.ed-money > span, .ve-discount.ed-money > span { top: auto; bottom: 0; height: 36px; display: flex; align-items: center; transform: none; }
+
+/* Narrow space (phone, or a narrow window beside the sidebar): each variant becomes a small card.
+   Uses the section's own width, so it works whatever the sidebar does. */
+.ve { container-type: inline-size; }
+
+@container (max-width: 860px) {
+  .ve-top {
+    grid-template-columns: 1fr;
+  }
+
+  .ve-head {
+    display: none;
+  }
+
+  .ve-f {
+    display: block;
+    font-style: normal;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--zt-muted);
+    margin-bottom: 0.15rem;
+  }
+
+  .ve-row {
+    grid-template-columns: 44px repeat(4, minmax(0, 1fr));
+    grid-template-areas:
+      "photo name name name name"
+      "photo sku sku on acts"
+      "price price discount discount ."
+      "qty qty shown shown .";
+    row-gap: 0.4rem;
+  }
+
+  .ve-row .ve-photo { grid-area: photo; align-self: start; }
+  .ve-row .ve-name { grid-area: name; }
+  .ve-row .ve-sku { grid-area: sku; }
+  .ve-row .ve-on { grid-area: on; justify-content: flex-start; }
+  .ve-row .ve-acts { grid-area: acts; }
+  .ve-row .ve-price { grid-area: price; }
+  .ve-row .ve-discount { grid-area: discount; }
+  .ve-row .ve-qty { grid-area: qty; }
+  .ve-row .ve-shown { grid-area: shown; }
+}

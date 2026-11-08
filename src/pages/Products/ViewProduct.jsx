@@ -15,6 +15,7 @@ import Loading from "../../components/Loading";
 import ProductImages from "../../components/Products/ProductImages";
 import usePageTitle from "../../hooks/usePageTitle";
 import ProductBundle from "../../components/Products/ProductBundle";
+import VariantsEditor from "../../components/Products/VariantsEditor";
 import "./Products.css";
 import {
   EditorPage, EditorSection, SectionNav, SaveBar, Field, useUnsavedChanges, showFirstError, editorHtml,
@@ -417,6 +418,14 @@ const ViewProduct = () => {
   // ── Text, price and stock: saved together with the save bar ───────────────
   const [errors, setErrors] = useState({});
   const { dirty, markSaved } = useUnsavedChanges(editForm, !loading && !!product);
+  const variants = product?.variants || [];
+  const hasVariants = variants.length > 0;
+  // Saving variants changes the product's price and stock; reload and treat that as saved.
+  const [variantSaves, setVariantSaves] = useState(0);
+  useEffect(() => {
+    if (variantSaves) markSaved();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [variantSaves]);
   usePageTitle(product?.name ? `${product.name} · Product` : "Product");
 
   const setField = (name, value) => {
@@ -433,9 +442,11 @@ const ViewProduct = () => {
     if (!String(current.name).trim()) found.name = "Give the product a name.";
     if (!String(current.short_description).trim()) found.short_description = "Write a line or two about the product.";
     if (!plainText(current.description)) found.description = "Describe the product: what it does, specs, what is in the box.";
-    if (current.price === "" || Number(current.price) < 0) found.price = "Enter the price.";
-    if (Number(current.discount) > Number(current.price)) found.discount = "The discount can't be more than the price.";
-    if (current.quantity === "" || Number(current.quantity) < 0) found.quantity = "Enter how many you have in stock.";
+    if (!hasVariants) {
+      if (current.price === "" || Number(current.price) < 0) found.price = "Enter the price.";
+      if (Number(current.discount) > Number(current.price)) found.discount = "The discount can't be more than the price.";
+      if (current.quantity === "" || Number(current.quantity) < 0) found.quantity = "Enter how many you have in stock.";
+    }
     setErrors(found);
     if (Object.keys(found).length) {
       showFirstError(found, DETAIL_ORDER);
@@ -498,6 +509,7 @@ const ViewProduct = () => {
     { id: "details", label: "Product", state: has(editForm.name && editForm.short_description) },
     { id: "pricing", label: "Price & stock", state: "done" },
     { id: "photos", label: "Photos", state: has(product.images?.length) },
+    ...(product.is_bundle === 1 ? [] : [{ id: "variants", label: "Variants", state: hasVariants ? "done" : "empty" }]),
     { id: "organize", label: "Categories & tags", state: has(product.categories?.length) },
     { id: "bundle", label: "Bundle", state: product.is_bundle === 1 ? has(product.bundle_items?.length || product.bundles?.length) : "done" },
   ].map((s) => (errorSections.has(s.id) ? { ...s, state: "error" } : s));
@@ -508,10 +520,11 @@ const ViewProduct = () => {
       meta={
         <>
           <span className={`ed-status ${isActive ? "is-live" : "is-off"}`}>{isActive ? "In the store" : "Hidden from store"}</span>
-          <span>{taka(Number(product.price) - (Number(product.discount) || 0))}</span>
+          <span>{hasVariants ? "from " : ""}{taka(Number(product.price) - (Number(product.discount) || 0))}</span>
           <span className={stock === 0 ? "text-danger fw-semibold" : stock <= 5 ? "text-warning fw-semibold" : ""}>
             {stock === 0 ? "Out of stock" : `${stock} in stock`}
           </span>
+          {hasVariants && <span>{variants.length} variants</span>}
           {product.is_bundle === 1 && <span>Bundle</span>}
         </>
       }
@@ -562,6 +575,11 @@ const ViewProduct = () => {
         </EditorSection>
 
         <EditorSection id="pricing" title="Price & stock">
+          {hasVariants ? (
+            <div className="pd-variant-note">
+              Price and stock come from the <a href="#variants">{variants.length} variants</a> below: the store shows <strong>from {taka(pays)}</strong>, with <strong>{stock}</strong> in stock in total.
+            </div>
+          ) : (<>
           <div className="ed-grid">
             <Field name="price" label="Price" required error={errors.price} labelFor="pd-price">
               <div className="ed-money"><span>৳</span>
@@ -583,6 +601,7 @@ const ViewProduct = () => {
             <strong>{taka(pays)}</strong>
             {discount > 0 && price > 0 && <span>they save {Math.round((discount / price) * 100)}%</span>}
           </div>
+          </>)}
         </EditorSection>
       </form>
 
@@ -607,6 +626,13 @@ const ViewProduct = () => {
           />
         </div>
       </EditorSection>
+
+      {product.is_bundle !== 1 && (
+        <EditorSection id="variants" title="Variants" count={variants.length || null} optional
+          help="One product in several versions, e.g. a JST connector in 1 pin, 2 pin and 3 pin, each with its own price, stock and photo. Saved with its own button.">
+          <VariantsEditor product={product} onSaved={async () => { await fetchProduct(); setVariantSaves((n) => n + 1); }} />
+        </EditorSection>
+      )}
 
       <EditorSection id="organize" title="Categories & tags" help="Changes here save straight away.">
         <div className="ed-field">

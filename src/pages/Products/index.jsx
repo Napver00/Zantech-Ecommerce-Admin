@@ -198,6 +198,11 @@ const Products = () => {
   };
 
   const handleQuickEdit = (product) => {
+    // Price and stock of a product with variants are set per variant, on its page.
+    if (product.variants_count > 0) {
+      navigate(`/products/${product.id}#variants`);
+      return;
+    }
     setSelectedProduct(product);
     setEditForm({
       name: product.name || "",
@@ -356,7 +361,7 @@ const Products = () => {
           )}
           <span className="min-w-0">
             <span className="ls-cell-main text-truncate d-block" style={{ maxWidth: 340 }} title={row.name}>{row.name}</span>
-            <span className="ls-cell-sub">#{row.id}{Number(row.is_bundle) === 1 ? " · Bundle" : ""}</span>
+            <span className="ls-cell-sub">#{row.id}{Number(row.is_bundle) === 1 ? " · Bundle" : ""}{row.variants_count > 0 ? ` · ${row.variants_count} variants` : ""}</span>
           </span>
         </div>
       ),
@@ -370,7 +375,7 @@ const Products = () => {
         const hasDiscount = Number(row.discountPercentage) > 0;
         return (
           <>
-            <span className="ls-money d-block">{taka(hasDiscount ? row.discountedPrice : row.price)}</span>
+            <span className="ls-money d-block">{row.variants_count > 0 ? "from " : ""}{taka(hasDiscount ? row.discountedPrice : row.price)}</span>
             {hasDiscount && (
               <span className="ls-cell-sub">
                 <s>{taka(row.price)}</s> −{Math.round(row.discountPercentage)}%

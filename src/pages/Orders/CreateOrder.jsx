@@ -152,14 +152,37 @@ const CreateOrder = () => {
   const loadProducts = async (q) => {
     try {
       const r = await axiosInstance.get("/products", { params: { search: q, limit: 20 } });
-      return (r.data?.data || []).map((p) => ({
-        value: p.id,
-        label: p.name,
-        price: Number(p.price) || 0,
-        stock: Number(p.quantity) || 0,
-        image: p.image_paths?.[0] || null,
-        sub: `${taka(p.price)} · ${Number(p.quantity) > 0 ? `${p.quantity} in stock` : "Out of stock"}`,
-      }));
+      const products = r.data?.data || [];
+      // A product with variants is offered once per variant ("JST connector — 2 pin").
+      const variantLists = await Promise.all(
+        products.map((p) => (p.variants_count > 0 ? axiosInstance.get(`/products/${p.id}/variants`).then((x) => x.data?.data?.variants || []).catch(() => []) : null))
+      );
+      return products.flatMap((p, idx) => {
+        const variants = (variantLists[idx] || []).filter((v) => v.status);
+        if (variants.length) {
+          return variants.map((v) => ({
+            value: `${p.id}:${v.id}`,
+            product_id: p.id,
+            variant_id: v.id,
+            variant_name: v.name,
+            label: `${p.name} — ${v.name}`,
+            price: Number(v.price) || 0,
+            stock: Number(v.quantity) || 0,
+            image: v.image_url || p.image_paths?.[0] || null,
+            sub: `${taka(v.price)} · ${Number(v.quantity) > 0 ? `${v.quantity} in stock` : "Out of stock"}${v.sku ? ` · ${v.sku}` : ""}`,
+          }));
+        }
+        return [{
+          value: String(p.id),
+          product_id: p.id,
+          variant_id: null,
+          label: p.name,
+          price: Number(p.price) || 0,
+          stock: Number(p.quantity) || 0,
+          image: p.image_paths?.[0] || null,
+          sub: `${taka(p.price)} · ${Number(p.quantity) > 0 ? `${p.quantity} in stock` : "Out of stock"}`,
+        }];
+      });
     } catch {
       return [];
     }
@@ -168,13 +191,13 @@ const CreateOrder = () => {
   const addProduct = (option) => {
     if (!option) return;
     setItems((list) => {
-      const found = list.find((i) => i.product_id === option.value);
+      const found = list.find((i) => i.key === option.value);
       if (found) {
-        return list.map((i) => (i.product_id === option.value ? { ...i, quantity: i.quantity + 1 } : i));
+        return list.map((i) => (i.key === option.value ? { ...i, quantity: i.quantity + 1 } : i));
       }
       return [
         ...list,
-        { product_id: option.value, name: option.label, price: option.price, stock: option.stock, image: option.image, quantity: 1 },
+        { key: option.value, product_id: option.product_id, variant_id: option.variant_id, name: option.label, price: option.price, stock: option.stock, image: option.image, quantity: 1 },
       ];
     });
     setErrors((e) => ({ ...e, products: null }));
@@ -182,10 +205,10 @@ const CreateOrder = () => {
 
   const setQty = (id, qty) => {
     const n = Math.max(1, Math.min(999, parseInt(qty, 10) || 1));
-    setItems((list) => list.map((i) => (i.product_id === id ? { ...i, quantity: n } : i)));
+    setItems((list) => list.map((i) => (i.key === id ? { ...i, quantity: n } : i)));
   };
 
-  const removeItem = (id) => setItems((list) => list.filter((i) => i.product_id !== id));
+  const removeItem = (id) => setItems((list) => list.filter((i) => i.key !== id));
 
   // ─── Money ─────────────────────────────────────────────────────────────────
 
@@ -255,7 +278,7 @@ const CreateOrder = () => {
         payment_type: payment,
         trxed: payment === 2 ? trx.trxed.trim() : "",
         paymentphone: payment === 2 ? trx.paymentphone.trim() : "",
-        products: items.map((i) => ({ product_id: i.product_id, quantity: i.quantity, price: i.price })),
+        products: items.map((i) => ({ product_id: i.product_id, variant_id: i.variant_id || undefined, quantity: i.quantity, price: i.price })),
       };
       const r = await axiosInstance.post("/orders/place-order", payload);
       if (!r.data?.success) throw new Error(r.data?.message || "The order wasn't placed.");
@@ -281,7 +304,7 @@ const CreateOrder = () => {
       {items.length ? (
         <ul className="co-summary-lines">
           {items.map((i) => (
-            <li key={i.product_id}>
+            <li key={i.key}>
               <span className="text-truncate">{i.quantity} × {i.name}</span>
               <span>{taka(i.price * i.quantity)}</span>
             </li>
@@ -448,7 +471,7 @@ const CreateOrder = () => {
             {items.length > 0 && (
               <ul className="co-lines">
                 {items.map((i) => (
-                  <li key={i.product_id} className="co-line">
+                  <li key={i.key} className="co-line">
                     {i.image ? <img src={i.image} alt="" className="ls-thumb" /> : <span className="ls-thumb is-empty">No photo</span>}
                     <div className="co-line-name">
                       <span className="fw-semibold d-block">{i.name}</span>
@@ -460,7 +483,7 @@ const CreateOrder = () => {
                       )}
                     </div>
                     <div className="co-qty" role="group" aria-label={`Quantity of ${i.name}`}>
-                      <button type="button" onClick={() => setQty(i.product_id, i.quantity - 1)} disabled={i.quantity <= 1} aria-label="One less">
+                      <button type="button" onClick={() => setQty(i.key, i.quantity - 1)} disabled={i.quantity <= 1} aria-label="One less">
                         <FaMinus aria-hidden="true" />
                       </button>
                       <input
@@ -468,15 +491,15 @@ const CreateOrder = () => {
                         inputMode="numeric"
                         min={1}
                         value={i.quantity}
-                        onChange={(e) => setQty(i.product_id, e.target.value)}
+                        onChange={(e) => setQty(i.key, e.target.value)}
                         aria-label="Quantity"
                       />
-                      <button type="button" onClick={() => setQty(i.product_id, i.quantity + 1)} aria-label="One more">
+                      <button type="button" onClick={() => setQty(i.key, i.quantity + 1)} aria-label="One more">
                         <FaPlus aria-hidden="true" />
                       </button>
                     </div>
                     <span className="co-line-total">{taka(i.price * i.quantity)}</span>
-                    <button type="button" className="co-remove" onClick={() => removeItem(i.product_id)} aria-label={`Remove ${i.name}`}>
+                    <button type="button" className="co-remove" onClick={() => removeItem(i.key)} aria-label={`Remove ${i.name}`}>
                       <FaTrash aria-hidden="true" />
                     </button>
                   </li>

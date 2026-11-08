@@ -114,10 +114,10 @@ const ViewChallan = () => {
 
   const pickToAdd = async (option) => {
     if (!option) return;
-    if (adding.some((l) => l.item_id === option.value)) return;
-    setAdding((list) => [...list, { item_id: option.value, name: option.label, stock: option.stock, price: "", quantity: 1, last: null }]);
-    const last = await lastBuyingPrice(option.value, option.label);
-    if (last) setAdding((list) => list.map((l) => (l.item_id === option.value ? { ...l, last, price: l.price === "" ? String(last.price) : l.price } : l)));
+    if (adding.some((l) => l.key === option.value)) return;
+    setAdding((list) => [...list, { key: option.value, item_id: option.item_id, variant_id: option.variant_id, name: option.label, stock: option.stock, price: "", quantity: 1, last: null }]);
+    const last = await lastBuyingPrice(option.item_id, option.label.split(" — ")[0]);
+    if (last) setAdding((list) => list.map((l) => (l.key === option.value ? { ...l, last, price: l.price === "" ? String(last.price) : l.price } : l)));
   };
 
   const saveAdded = async () => {
@@ -129,6 +129,7 @@ const ViewChallan = () => {
     try {
       await axiosInstance.post(`/challans/add-items/${id}`, {
         item_id: adding.map((l) => l.item_id),
+        variant_id: adding.map((l) => l.variant_id || null),
         buying: adding.map((l) => Number(l.price)),
         quantity: adding.map((l) => l.quantity),
       });

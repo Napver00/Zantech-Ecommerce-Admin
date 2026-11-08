@@ -52,16 +52,16 @@ const AddChallan = () => {
   const addProduct = async (option) => {
     if (!option) return;
     setErrors((e) => ({ ...e, lines: null }));
-    if (lines.some((l) => l.item_id === option.value)) {
-      setLines((list) => list.map((l) => (l.item_id === option.value ? { ...l, quantity: l.quantity + 1 } : l)));
+    if (lines.some((l) => l.key === option.value)) {
+      setLines((list) => list.map((l) => (l.key === option.value ? { ...l, quantity: l.quantity + 1 } : l)));
       return;
     }
-    const line = { item_id: option.value, name: option.label, stock: option.stock, price: "", quantity: 1, last: null };
+    const line = { key: option.value, item_id: option.item_id, variant_id: option.variant_id, name: option.label, stock: option.stock, price: "", quantity: 1, last: null };
     setLines((list) => [...list, line]);
     // Start from what we paid last time, if it was bought before.
-    const last = await lastBuyingPrice(option.value, option.label);
+    const last = await lastBuyingPrice(option.item_id, option.label.split(" — ")[0]);
     if (last) {
-      setLines((list) => list.map((l) => (l.item_id === option.value ? { ...l, last, price: l.price === "" ? String(last.price) : l.price } : l)));
+      setLines((list) => list.map((l) => (l.key === option.value ? { ...l, last, price: l.price === "" ? String(last.price) : l.price } : l)));
     }
   };
 
@@ -109,6 +109,7 @@ const AddChallan = () => {
     fd.append("invoice", receipt);
     lines.forEach((l, i) => {
       fd.append(`item_id[${i}]`, l.item_id);
+      if (l.variant_id) fd.append(`variant_id[${i}]`, l.variant_id);
       fd.append(`buying[${i}]`, l.price);
       fd.append(`quantity[${i}]`, l.quantity);
     });
@@ -137,7 +138,7 @@ const AddChallan = () => {
       {lines.length ? (
         <ul className="co-summary-lines">
           {lines.map((l) => (
-            <li key={l.item_id}>
+            <li key={l.key}>
               <span className="text-truncate">{l.quantity} × {l.name}</span>
               <span>{taka((Number(l.price) || 0) * l.quantity)}</span>
             </li>
