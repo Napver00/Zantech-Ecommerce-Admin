@@ -6,6 +6,8 @@ import { toast } from "react-hot-toast";
 import axiosInstance from "../../config/axios";
 import Loading from "../../components/Loading";
 import confirmDialog from "../../utils/confirmDialog";
+import useRole from "../../hooks/useRole";
+import { canUse } from "../../config/access";
 import usePageTitle from "../../hooks/usePageTitle";
 import { Pill } from "../../components/List/List";
 import { taka, shortDate, timeAgo } from "../../components/List/format";
@@ -19,7 +21,7 @@ export const STATUS = {
   due: { label: "Unpaid", tone: "warn" },
   partial: { label: "Advance paid", tone: "info" },
   paid: { label: "Paid", tone: "good" },
-  void: { label: "Void", tone: "muted" },
+  void: { label: "Cancelled", tone: "muted" },
 };
 const METHODS = ["Cash", "bKash", "Nagad", "Bank transfer", "Cheque"];
 const today = () => {
@@ -30,6 +32,10 @@ const today = () => {
 const ViewCustomInvoice = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const isAdmin = canUse(useRole(), "admin");
+  const [deleting, setDeleting] = useState(false); // the delete dialog is open
+  const [confirmNo, setConfirmNo] = useState("");
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const [inv, setInv] = useState(null);
   const [payOpen, setPayOpen] = useState(false);
   const [pay, setPay] = useState({ amount: "", method: "Cash", trx_id: "", paid_on: today(), note: "" });
@@ -96,16 +102,38 @@ const ViewCustomInvoice = () => {
   };
 
   const toggleVoid = async () => {
-    const msg = isVoid
-      ? "Restore this invoice? Its payments count as income again."
-      : `Void ${inv.invoice_no}? It stays here for the record, but its ${taka(paid)} paid is taken off Income in the account site.`;
-    if (!(await confirmDialog(msg))) return;
+    const ok = await confirmDialog(
+      isVoid
+        ? { title: `Restore ${inv.invoice_no}?`, message: `The deal is back on. ${paid > 0 ? `Its ${taka(paid)} paid counts as income again, and the` : "The"} account-site project goes back to active.`, confirmLabel: "Restore deal", tone: "primary" }
+        : {
+            title: `Cancel the deal on ${inv.invoice_no}?`,
+            message: `The invoice stays here for the record.${paid > 0 ? ` The ${taka(paid)} already paid is taken off Income in the account site (refunded or written off).` : ""} Its project there is marked Cancelled.`,
+            confirmLabel: "Cancel the deal",
+            tone: "danger",
+          }
+    );
+    if (!ok) return;
     try {
       const res = await axiosInstance.patch(`/custom-invoices/${id}/void`, { void: !isVoid });
       setInv(res.data.data);
-      toast.success(isVoid ? "Invoice restored" : "Invoice voided");
+      toast.success(isVoid ? "Deal restored" : paid > 0 ? `Deal cancelled; ${taka(paid)} taken off income` : "Deal cancelled");
     } catch (err) {
       toast.error(err.response?.data?.message || "Couldn't change it");
+    }
+  };
+
+  // Admins only: removes the invoice here and its project, income and expenses on the account site.
+  const remove = async (e) => {
+    e.preventDefault();
+    if (confirmNo.trim().toUpperCase() !== inv.invoice_no.toUpperCase()) return;
+    setDeleteBusy(true);
+    try {
+      await axiosInstance.delete(`/custom-invoices/${id}`);
+      toast.success(`${inv.invoice_no} deleted, with its account-site project`);
+      navigate("/custom-invoices", { replace: true });
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Couldn't delete the invoice");
+      setDeleteBusy(false);
     }
   };
 
@@ -202,7 +230,17 @@ const ViewCustomInvoice = () => {
             ) : (
               <p className="cd-empty">Nothing paid yet. Record an advance when the client pays one.</p>
             )}
-            <p className="cd-empty">Payments go to Income in the account site{inv.project_name ? `, under the "${inv.project_name}" R&D project` : ""}.</p>
+          </section>
+
+          <section className="cd-card" aria-labelledby="cv-acct-title">
+            <div className="cd-card-head"><h2 id="cv-acct-title">Account site</h2></div>
+            <dl className="cv-acct">
+              <div><dt>Project</dt><dd>{inv.title} ({inv.invoice_no})</dd></div>
+              <div><dt>Status there</dt><dd><Pill tone={isVoid ? "bad" : inv.status === "paid" ? "good" : "info"}>{isVoid ? "Cancelled" : inv.status === "paid" ? "Completed" : "Active"}</Pill></dd></div>
+              <div><dt>Expected income</dt><dd>{taka(total)}</dd></div>
+              <div><dt>Income booked</dt><dd>{isVoid ? taka(0) : taka(paid)}</dd></div>
+            </dl>
+            <p className="cd-empty">Kept in step automatically: payments and advances become this project's income. Add the deal's own costs to the same project in the account site.</p>
           </section>
 
           <section className="cd-card" aria-labelledby="cv-client-title">
@@ -216,16 +254,57 @@ const ViewCustomInvoice = () => {
           </section>
 
           <section className="cd-card">
-            <div className="cd-card-head"><h2>{isVoid ? "Voided" : "Cancel this invoice"}</h2></div>
-            <p className="cd-empty">{isVoid ? "Kept for the record. Restore it to use it again." : "Void it if the work was cancelled. It stays here, and its payments come off Income."}</p>
+            <div className="cd-card-head"><h2>{isVoid ? "Deal cancelled" : "Cancel the deal"}</h2></div>
+            <p className="cd-empty">
+              {isVoid
+                ? "Kept for the record; no income is counted. Restore it if the deal is back on."
+                : `If the work is called off, even after payment. The invoice stays here; ${paid > 0 ? `the ${taka(paid)} paid comes off income and ` : ""}the project is marked Cancelled.`}
+            </p>
             <div className="px-3 pb-3">
               <Button size="sm" variant={isVoid ? "outline-primary" : "outline-danger"} onClick={toggleVoid}>
-                {isVoid ? <><FaUndo className="me-1" aria-hidden="true" />Restore</> : <><FaBan className="me-1" aria-hidden="true" />Void invoice</>}
+                {isVoid ? <><FaUndo className="me-1" aria-hidden="true" />Restore deal</> : <><FaBan className="me-1" aria-hidden="true" />Cancel the deal</>}
               </Button>
             </div>
           </section>
+
+          {isAdmin && (
+            <section className="cd-card cv-danger">
+              <div className="cd-card-head"><h2>Delete invoice</h2></div>
+              <p className="cd-empty">Admins only. Deletes this invoice and its payments here, and its project on the account site with all of that project's income and expenses. This can't be undone.</p>
+              <div className="px-3 pb-3">
+                <Button size="sm" variant="danger" onClick={() => { setConfirmNo(""); setDeleting(true); }}>
+                  <FaTrash className="me-1" aria-hidden="true" />Delete invoice
+                </Button>
+              </div>
+            </section>
+          )}
         </aside>
       </div>
+
+      <Modal show={deleting} onHide={() => !deleteBusy && setDeleting(false)} centered>
+        <Form onSubmit={remove}>
+          <Modal.Header closeButton><Modal.Title as="h2" className="h5 mb-0">Delete {inv.invoice_no}?</Modal.Title></Modal.Header>
+          <Modal.Body>
+            <p className="mb-2">This removes, for good:</p>
+            <ul className="cv-delete-list">
+              <li>this invoice and its {inv.payments?.length || 0} {inv.payments?.length === 1 ? "payment" : "payments"} ({taka(paid)})</li>
+              <li>its project "{inv.title} ({inv.invoice_no})" on the account site</li>
+              <li>all income and expenses in that project on the account site</li>
+            </ul>
+            <p className="small text-muted">If the deal was only called off, use <strong>Cancel the deal</strong> instead: it keeps the record.</p>
+            <Form.Group controlId="cv-delete-confirm">
+              <Form.Label>Type <strong>{inv.invoice_no}</strong> to confirm</Form.Label>
+              <Form.Control value={confirmNo} onChange={(e) => setConfirmNo(e.target.value)} autoComplete="off" autoFocus />
+            </Form.Group>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="outline-secondary" onClick={() => setDeleting(false)} disabled={deleteBusy}>Keep it</Button>
+            <Button type="submit" variant="danger" disabled={deleteBusy || confirmNo.trim().toUpperCase() !== inv.invoice_no.toUpperCase()}>
+              {deleteBusy ? "Deleting…" : "Delete everything"}
+            </Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
 
       <Modal show={payOpen} onHide={() => !saving && setPayOpen(false)} centered>
         <Form onSubmit={savePayment}>
